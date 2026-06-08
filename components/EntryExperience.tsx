@@ -5,6 +5,7 @@ import { useState } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import {
   ArrowRight,
+  AlertTriangle,
   CalendarDays,
   Eye,
   EyeOff,
@@ -21,6 +22,7 @@ import {
   UserRound,
 } from "lucide-react";
 import type { PublicUserAccount } from "@/data/accounts";
+import type { AdminAlert } from "@/data/adminAlerts";
 import AccountBindingPanel from "@/components/AccountBindingPanel";
 import { LocalPrivacyBadge, LocalPrivacyImage } from "@/components/LocalPrivacyImage";
 
@@ -88,6 +90,7 @@ export default function EntryExperience() {
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
   const [users, setUsers] = useState<PublicUserAccount[]>([]);
+  const [alerts, setAlerts] = useState<AdminAlert[]>([]);
   const [adminPanel, setAdminPanel] = useState(false);
   const [resetUser, setResetUser] = useState("");
   const [resetPassword, setResetPassword] = useState("");
@@ -104,6 +107,20 @@ export default function EntryExperience() {
     if (!response.ok) throw new Error("Load users failed");
     const payload = (await response.json()) as { users?: PublicUserAccount[] };
     setUsers(payload.users ?? []);
+  };
+
+  const loadAlerts = async () => {
+    const response = await fetch("/api/admin-alerts", { cache: "no-store" });
+    if (!response.ok) {
+      setAlerts([]);
+      return;
+    }
+    const payload = (await response.json()) as { alerts?: AdminAlert[] };
+    setAlerts(payload.alerts ?? []);
+  };
+
+  const loadAdminData = async () => {
+    await Promise.all([loadUsers(), loadAlerts()]);
   };
 
   const submit = async () => {
@@ -149,7 +166,7 @@ export default function EntryExperience() {
       });
 
       if (adminLogin) {
-        await loadUsers();
+        await loadAdminData();
         setAdminPanel(true);
         setStatus("done");
         setMessage("管理员已登录。");
@@ -161,13 +178,19 @@ export default function EntryExperience() {
     } catch (error) {
       setStatus("wrong");
       const detail = error instanceof Error ? error.message : "";
-      setMessage(
-        mode === "register"
-          ? detail === "Account already exists"
+      if (detail.includes("Database is not configured")) {
+        setMessage("数据库还没有连接完成，请先配置 Supabase 并重新部署。");
+      } else if (mode === "register") {
+        setMessage(
+          detail === "Account already exists"
             ? "注册失败：用户名已经存在。"
-            : "注册失败：用户名至少 2 位，密码至少 4 位。"
-          : "信息不正确，请重新确认。",
-      );
+            : "注册失败：用户名至少 2 位，密码至少 4 位。",
+        );
+      } else if (mode === "recover") {
+        setMessage("找回失败：请确认用户名、找回口令和新密码。");
+      } else {
+        setMessage("账号或密码不正确，请重新确认。");
+      }
       window.setTimeout(() => setStatus("idle"), 900);
     }
   };
@@ -182,7 +205,7 @@ export default function EntryExperience() {
         username: resetUser,
         newPassword: resetPassword,
       });
-      await loadUsers();
+      await loadAdminData();
       setResetUser("");
       setResetPassword("");
       setStatus("done");
@@ -202,6 +225,7 @@ export default function EntryExperience() {
 
     setAdminPanel(false);
     setUsers([]);
+    setAlerts([]);
     setUsername("");
     setPassword("");
     setResetUser("");
@@ -438,7 +462,7 @@ export default function EntryExperience() {
                     <button
                       className="inline-flex min-h-10 items-center gap-2 rounded-[8px] border border-[#D8DDD8]/80 bg-[#FAFBF7]/74 px-3 text-sm font-semibold text-[#5A6670]"
                       type="button"
-                      onClick={() => void loadUsers()}
+                      onClick={() => void loadAdminData()}
                     >
                       <RefreshCcw className="h-4 w-4" />
                       刷新
@@ -453,6 +477,30 @@ export default function EntryExperience() {
                     </button>
                   </div>
                 </div>
+
+                {alerts.length > 0 && (
+                  <div className="mt-5 rounded-[8px] border border-[#F5B8C6]/70 bg-[#FFF1F4]/76 p-4 shadow-[0_18px_46px_rgba(216,111,130,0.10)]">
+                    <div className="flex items-start gap-3">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/72 text-[#D86F82]">
+                        <AlertTriangle className="h-5 w-5" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-[#8F4152]">系统提醒</p>
+                        <div className="mt-2 space-y-2">
+                          {alerts.slice(0, 3).map((alert) => (
+                            <div key={alert.id} className="rounded-[7px] border border-white/70 bg-white/62 px-3 py-2">
+                              <p className="text-sm font-semibold text-[#344451]">{alert.title}</p>
+                              <p className="mt-1 text-xs leading-5 text-[#5A6670]/62">{alert.message}</p>
+                              <p className="mt-1 text-[11px] font-semibold text-[#5A6670]/42">
+                                {formatDateTime(alert.createdAt)}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
                   <div className="rounded-[8px] border border-white/70 bg-white/58 p-4">

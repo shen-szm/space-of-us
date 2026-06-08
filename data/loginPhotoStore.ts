@@ -192,6 +192,11 @@ const fetchServerStore = async (): Promise<LoginPhotoServerStore> => {
   };
 };
 
+const getResponseError = async (response: Response, fallback: string) => {
+  const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+  return payload?.error ?? fallback;
+};
+
 export const readLoginPhotoStore = async (): Promise<LoginPhotoServerStore> => {
   try {
     await ensureMigrated();
@@ -223,7 +228,7 @@ export const writeLoginPhoto = async (slotId: string, image: string): Promise<vo
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ slotId, image }),
   });
-  if (!response.ok) throw new Error(`writeLoginPhoto failed (${response.status})`);
+  if (!response.ok) throw new Error(await getResponseError(response, `writeLoginPhoto failed (${response.status})`));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(loginPhotosUpdatedEvent));
   }
@@ -235,7 +240,9 @@ export const writeLoginPhotoText = async (slotId: string, text: LoginPhotoText):
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ slotId, text }),
   });
-  if (!response.ok) throw new Error(`writeLoginPhotoText failed (${response.status})`);
+  if (!response.ok) {
+    throw new Error(await getResponseError(response, `writeLoginPhotoText failed (${response.status})`));
+  }
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(loginPhotosUpdatedEvent));
   }
@@ -247,7 +254,7 @@ export const deleteLoginPhoto = async (slotId: string): Promise<void> => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ slotId }),
   });
-  if (!response.ok) throw new Error(`deleteLoginPhoto failed (${response.status})`);
+  if (!response.ok) throw new Error(await getResponseError(response, `deleteLoginPhoto failed (${response.status})`));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(loginPhotosUpdatedEvent));
   }
@@ -259,7 +266,9 @@ export const deleteLoginPhotoText = async (slotId: string): Promise<void> => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ slotId, kind: "text" }),
   });
-  if (!response.ok) throw new Error(`deleteLoginPhotoText failed (${response.status})`);
+  if (!response.ok) {
+    throw new Error(await getResponseError(response, `deleteLoginPhotoText failed (${response.status})`));
+  }
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(loginPhotosUpdatedEvent));
   }

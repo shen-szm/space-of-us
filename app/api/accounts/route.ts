@@ -16,6 +16,15 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const cleanString = (value: unknown, maxLength: number) =>
   typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 
+const isStorageConfigError = (error: unknown) =>
+  error instanceof Error && error.message.toLowerCase().includes("supabase is required");
+
+const storageErrorResponse = () =>
+  NextResponse.json(
+    { error: "Database is not configured. Please finish Supabase setup and redeploy." },
+    { status: 503 },
+  );
+
 export async function GET(request: NextRequest) {
   const authError = requireAdminSession(request);
   if (authError) return authError;
@@ -44,7 +53,8 @@ export async function POST(request: NextRequest) {
     try {
       const user = await registerAccount({ username, displayName, password, recoveryPhrase: registerRecoveryPhrase });
       return NextResponse.json({ ok: true, user });
-    } catch {
+    } catch (error) {
+      if (isStorageConfigError(error)) return storageErrorResponse();
       return NextResponse.json({ error: "Account already exists" }, { status: 409 });
     }
   }
@@ -58,7 +68,8 @@ export async function POST(request: NextRequest) {
     try {
       const user = await resetAccountPassword({ username, recoveryPhrase, newPassword });
       return NextResponse.json({ ok: true, user });
-    } catch {
+    } catch (error) {
+      if (isStorageConfigError(error)) return storageErrorResponse();
       return NextResponse.json({ error: "Reset verification failed" }, { status: 401 });
     }
   }
@@ -75,7 +86,8 @@ export async function POST(request: NextRequest) {
     try {
       const user = await adminResetAccountPassword({ username, newPassword });
       return NextResponse.json({ ok: true, user });
-    } catch {
+    } catch (error) {
+      if (isStorageConfigError(error)) return storageErrorResponse();
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
   }

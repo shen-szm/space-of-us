@@ -31,6 +31,9 @@ const parseLogoutPayload = (payload: unknown): AuthRole | "all" => {
   return "all";
 };
 
+const isStorageConfigError = (error: unknown) =>
+  error instanceof Error && error.message.toLowerCase().includes("supabase is required");
+
 export async function POST(request: NextRequest) {
   const payload = parseLoginPayload(await request.json().catch(() => null));
 
@@ -50,10 +53,21 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const verifiedAccount =
-    payload.role === "site" && payload.username
-      ? await verifyAccountPassword(payload.username, payload.password)
-      : null;
+  let verifiedAccount: Awaited<ReturnType<typeof verifyAccountPassword>> = null;
+  try {
+    verifiedAccount =
+      payload.role === "site" && payload.username
+        ? await verifyAccountPassword(payload.username, payload.password)
+        : null;
+  } catch (error) {
+    if (isStorageConfigError(error)) {
+      return NextResponse.json(
+        { error: "Database is not configured. Please finish Supabase setup and redeploy." },
+        { status: 503 },
+      );
+    }
+    throw error;
+  }
 
   const verifiedSharedPassword = payload.role === "site" && !payload.username && verifyPassword("site", payload.password);
   const verifiedAdmin = payload.role === "admin" && verifyPassword("admin", payload.password);

@@ -5,7 +5,11 @@ import { cities } from "@/data/cities";
 import type { Memory } from "@/data/memories";
 import {
   assertWritableStorageConfigured,
+  createSignedImageUrl,
+  isPrivateStorageImageReference,
   isSupabaseConfigured,
+  isStorageQuotaExceededError,
+  normalizePrivateImageReference,
   readJsonValue,
   uploadDataImage,
   writeJsonValue,
@@ -54,6 +58,7 @@ const isAllowedImage = (value: string) =>
   value.length <= imageMaxLength &&
   (value.startsWith("/photos/") ||
     value.startsWith("/sprites/") ||
+    isPrivateStorageImageReference(value) ||
     value.startsWith("https://") ||
     value.startsWith("data:image/"));
 
@@ -161,6 +166,34 @@ async function uploadMemoryImages(memory: Memory): Promise<Memory> {
   };
 }
 
+async function signMemoryImages(memory: Memory): Promise<Memory> {
+  const photos = await Promise.all((memory.photos ?? [memory.image]).map((photo) => createSignedImageUrl(photo)));
+  const image = await createSignedImageUrl(memory.image);
+
+  return {
+    ...memory,
+    image,
+    photos,
+  };
+}
+
+async function signMemoryStore(memories: MemoryStore): Promise<MemoryStore> {
+  return Object.fromEntries(
+    await Promise.all(
+      Object.entries(memories).map(async ([cityId, cityMemories]) => [
+        cityId,
+        await Promise.all(cityMemories.map((memory) => signMemoryImages(memory))),
+      ]),
+    ),
+  );
+}
+
+const quotaErrorResponse = () =>
+  NextResponse.json(
+    { error: "存储空间已满，暂时无法上传文件。管理员已收到提醒。" },
+    { status: 507 },
+  );
+
 function parseMemoryPayload(payload: unknown): Memory | null {
   if (!isRecord(payload) || !isRecord(payload.memory)) return null;
 
@@ -202,8 +235,8 @@ function parseMemoryPayload(payload: unknown): Memory | null {
     city: city.name,
     cityEn: city.nameEn,
     date: normalizedDate,
-    image: coverImage,
-    photos: photos.length > 0 ? photos : [coverImage],
+    image: normalizePrivateImageReference(coverImage),
+    photos: (photos.length > 0 ? photos : [coverImage]).map(normalizePrivateImageReference),
     text: trimmedText,
     createdAt: new Date().toISOString(),
   };
@@ -274,8 +307,8 @@ function parseEditPayload(payload: unknown) {
       cityEn: city.nameEn,
       date: normalizedDate,
       text: trimmedText,
-      image: coverImage,
-      photos: safePhotos,
+      image: normalizePrivateImageReference(coverImage),
+      photos: safePhotos.map(normalizePrivateImageReference),
     },
   };
 }
@@ -309,7 +342,9 @@ export async function GET(request: NextRequest) {
 
   const memories = await readMemoryStore();
 
-  return NextResponse.json({ memories: isLocalPrivacyRequest(request) ? maskMemoryPhotos(memories) : memories });
+  return NextResponse.json({
+    memories: isLocalPrivacyRequest(request) ? maskMemoryPhotos(memories) : await signMemoryStore(memories),
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -328,16 +363,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid memory payload" }, { status: 400 });
   }
 
-  const memory = await uploadMemoryImages(parsedMemory);
-  const memories = await readMemoryStore();
-  const nextMemories = {
-    ...memories,
-    [memory.cityId]: [memory, ...(memories[memory.cityId] ?? [])],
-  };
+  try {
+    const memory = await uploadMemoryImages(parsedMemory);
+    const memories = await readMemoryStore();
+    const nextMemories = {
+      ...memories,
+      [memory.cityId]: [memory, ...(memories[memory.cityId] ?? [])],
+    };
 
-  await writeMemoryStore(nextMemories);
+    await writeMemoryStore(nextMemories);
 
-  return NextResponse.json({ memory, memories: nextMemories });
+    return NextResponse.json({ memory: await signMemoryImages(memory), memories: await signMemoryStore(nextMemories) });
+  } catch (error) {
+    if (isStorageQuotaExceededError(error)) return quotaErrorResponse();
+    throw error;
+  }
 }
 
 export async function PUT(request: NextRequest) {
@@ -356,19 +396,24 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "Invalid memory store payload" }, { status: 400 });
   }
 
-  const normalizedMemories = normalizeMemoryStore(payload.memories as RawMemoryStore);
-  const nextMemories = Object.fromEntries(
-    await Promise.all(
-      Object.entries(normalizedMemories).map(async ([cityId, memories]) => [
-        cityId,
-        await Promise.all(memories.map((memory) => uploadMemoryImages(memory))),
-      ]),
-    ),
-  );
+  try {
+    const normalizedMemories = normalizeMemoryStore(payload.memories as RawMemoryStore);
+    const nextMemories = Object.fromEntries(
+      await Promise.all(
+        Object.entries(normalizedMemories).map(async ([cityId, memories]) => [
+          cityId,
+          await Promise.all(memories.map((memory) => uploadMemoryImages(memory))),
+        ]),
+      ),
+    );
 
-  await writeMemoryStore(nextMemories);
+    await writeMemoryStore(nextMemories);
 
-  return NextResponse.json({ memories: nextMemories });
+    return NextResponse.json({ memories: await signMemoryStore(nextMemories) });
+  } catch (error) {
+    if (isStorageQuotaExceededError(error)) return quotaErrorResponse();
+    throw error;
+  }
 }
 
 export async function PATCH(request: NextRequest) {
@@ -396,15 +441,23 @@ export async function PATCH(request: NextRequest) {
     const nextCityMemories = cityMemories.map((entry, index) =>
       index === memoryIndex ? { ...entry, ...editPayload.updates } : entry,
     );
-    nextCityMemories[memoryIndex] = await uploadMemoryImages(nextCityMemories[memoryIndex]);
-    const nextMemories = {
-      ...memories,
-      [editPayload.cityId]: nextCityMemories,
-    };
+    try {
+      nextCityMemories[memoryIndex] = await uploadMemoryImages(nextCityMemories[memoryIndex]);
+      const nextMemories = {
+        ...memories,
+        [editPayload.cityId]: nextCityMemories,
+      };
 
-    await writeMemoryStore(nextMemories);
+      await writeMemoryStore(nextMemories);
 
-    return NextResponse.json({ memory: nextCityMemories[memoryIndex], memories: nextMemories });
+      return NextResponse.json({
+        memory: await signMemoryImages(nextCityMemories[memoryIndex]),
+        memories: await signMemoryStore(nextMemories),
+      });
+    } catch (error) {
+      if (isStorageQuotaExceededError(error)) return quotaErrorResponse();
+      throw error;
+    }
   }
 
   const payload = parseCoverPayload(rawPayload);
@@ -422,14 +475,15 @@ export async function PATCH(request: NextRequest) {
   }
 
   const memory = cityMemories[memoryIndex];
-  const photos = memory.photos?.length ? memory.photos : [memory.image];
+  const photos = (memory.photos?.length ? memory.photos : [memory.image]).map(normalizePrivateImageReference);
+  const coverImage = normalizePrivateImageReference(payload.coverImage);
 
-  if (!photos.includes(payload.coverImage)) {
+  if (!photos.includes(coverImage)) {
     return NextResponse.json({ error: "Cover image must be one of the memory photos" }, { status: 400 });
   }
 
   const nextCityMemories = cityMemories.map((entry, index) =>
-    index === memoryIndex ? { ...entry, image: payload.coverImage } : entry,
+    index === memoryIndex ? { ...entry, image: coverImage } : entry,
   );
   const nextMemories = {
     ...memories,
@@ -438,7 +492,10 @@ export async function PATCH(request: NextRequest) {
 
   await writeMemoryStore(nextMemories);
 
-  return NextResponse.json({ memory: nextCityMemories[memoryIndex], memories: nextMemories });
+  return NextResponse.json({
+    memory: await signMemoryImages(nextCityMemories[memoryIndex]),
+    memories: await signMemoryStore(nextMemories),
+  });
 }
 
 export async function DELETE(request: NextRequest) {
@@ -473,5 +530,5 @@ export async function DELETE(request: NextRequest) {
 
   await writeMemoryStore(nextMemories);
 
-  return NextResponse.json({ memories: nextMemories });
+  return NextResponse.json({ memories: await signMemoryStore(nextMemories) });
 }

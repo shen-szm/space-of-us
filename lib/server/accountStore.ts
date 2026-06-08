@@ -21,20 +21,6 @@ import {
 const storeKey = "accounts";
 const localFileName = "accounts.json";
 
-const globalAccountStore = globalThis as typeof globalThis & {
-  __spaceOfUsAccountStore?: AccountStore;
-};
-
-const readMemoryStore = () => {
-  globalAccountStore.__spaceOfUsAccountStore ??= defaultAccountStore();
-  return normalizeStore(globalAccountStore.__spaceOfUsAccountStore);
-};
-
-const writeMemoryStore = async (store: AccountStore) => {
-  globalAccountStore.__spaceOfUsAccountStore = normalizeStore(store);
-  return globalAccountStore.__spaceOfUsAccountStore;
-};
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
@@ -157,7 +143,7 @@ const writeLocalStore = async (store: AccountStore) => {
 
 export const readAccountStore = async () => {
   if (!getSupabaseAdmin()) {
-    if (process.env.NODE_ENV === "production" && process.env.MAP_OF_US_STORAGE_MODE !== "local") return readMemoryStore();
+    assertWritableStorageConfigured();
     return readLocalStore();
   }
   return normalizeStore(await readJsonValue(storeKey, defaultAccountStore()));
@@ -166,7 +152,7 @@ export const readAccountStore = async () => {
 export const writeAccountStore = async (store: AccountStore) => {
   const supabase = getSupabaseAdmin();
   if (!supabase) {
-    if (process.env.NODE_ENV === "production" && process.env.MAP_OF_US_STORAGE_MODE !== "local") return writeMemoryStore(store);
+    assertWritableStorageConfigured();
     return writeLocalStore(store);
   }
   assertWritableStorageConfigured();

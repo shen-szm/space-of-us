@@ -83,16 +83,26 @@ export default function SettingsExperience() {
   const updateLoginPhoto = async (slotId: string, event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const image = await readFileAsDataUrl(file);
-    await writeLoginPhoto(slotId, image);
-    setLoginPhotos(await readLoginPhotos());
-    setStatus("登录照片已保存");
+    try {
+      const image = await readFileAsDataUrl(file);
+      await writeLoginPhoto(slotId, image);
+      setLoginPhotos(await readLoginPhotos());
+      setStatus("登录照片已保存");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "登录照片保存失败");
+    } finally {
+      event.target.value = "";
+    }
   };
 
   const resetLoginPhoto = async (slotId: string) => {
-    await deleteLoginPhoto(slotId);
-    setLoginPhotos(await readLoginPhotos());
-    setStatus("登录照片已恢复默认");
+    try {
+      await deleteLoginPhoto(slotId);
+      setLoginPhotos(await readLoginPhotos());
+      setStatus("登录照片已恢复默认");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "登录照片恢复失败");
+    }
   };
 
   const updateLoginPhotoText = async (slotId: string, field: keyof LoginPhotoText, value: string) => {
@@ -109,8 +119,12 @@ export default function SettingsExperience() {
     };
     setSettings(nextSettings);
     writeAppSettings(nextSettings);
-    await writeLoginPhotoText(slotId, nextText);
-    setStatus("登录照片文字已保存");
+    try {
+      await writeLoginPhotoText(slotId, nextText);
+      setStatus("登录照片文字已保存");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "登录照片文字保存失败");
+    }
   };
 
   const resetLoginPhotoText = async (slotId: string) => {
@@ -119,8 +133,12 @@ export default function SettingsExperience() {
     const nextSettings = { ...settings, loginPhotoTexts: nextTexts };
     setSettings(nextSettings);
     writeAppSettings(nextSettings);
-    await deleteLoginPhotoText(slotId);
-    setStatus("登录照片文字已恢复默认");
+    try {
+      await deleteLoginPhotoText(slotId);
+      setStatus("登录照片文字已恢复默认");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "登录照片文字恢复失败");
+    }
   };
 
   useEffect(() => {

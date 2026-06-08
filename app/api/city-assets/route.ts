@@ -4,7 +4,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { cities } from "@/data/cities";
 import {
   assertWritableStorageConfigured,
+  createSignedImageMap,
+  isPrivateStorageImageReference,
   isSupabaseConfigured,
+  isStorageQuotaExceededError,
   readJsonValue,
   uploadDataImage,
   writeJsonValue,
@@ -27,7 +30,10 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const isAllowedImage = (value: string) =>
   value.length <= imageMaxLength &&
-  (value.startsWith("/sprites/") || value.startsWith("https://") || value.startsWith("data:image/"));
+  (value.startsWith("/sprites/") ||
+    isPrivateStorageImageReference(value) ||
+    value.startsWith("https://") ||
+    value.startsWith("data:image/"));
 
 function normalizeCityAssetStore(value: unknown): CityAssetStore {
   if (!isRecord(value)) return {};
@@ -62,6 +68,14 @@ async function writeCityAssetStore(store: CityAssetStore) {
   await mkdir(path.dirname(cityAssetStorePath), { recursive: true });
   await writeFile(cityAssetStorePath, `${JSON.stringify(store, null, 2)}\n`, "utf8");
 }
+
+const signCityAssetStore = (store: CityAssetStore) => createSignedImageMap(store);
+
+const quotaErrorResponse = () =>
+  NextResponse.json(
+    { error: "存储空间已满，暂时无法上传文件。管理员已收到提醒。" },
+    { status: 507 },
+  );
 
 function parseCityAssetPayload(payload: unknown) {
   if (!isRecord(payload)) return null;
@@ -98,7 +112,9 @@ export async function GET(request: NextRequest) {
 
   const assets = await readCityAssetStore();
 
-  return NextResponse.json({ assets: isLocalPrivacyRequest(request) ? maskCityAssets(assets) : assets });
+  return NextResponse.json({
+    assets: isLocalPrivacyRequest(request) ? maskCityAssets(assets) : await signCityAssetStore(assets),
+  });
 }
 
 export async function PUT(request: NextRequest) {
@@ -117,13 +133,18 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "Invalid city asset payload" }, { status: 400 });
   }
 
-  const assets = await readCityAssetStore();
-  const image = await uploadDataImage(payload.image, `city-assets/${payload.cityId}`, "landmark");
-  const nextAssets = { ...assets, [payload.cityId]: image };
+  try {
+    const assets = await readCityAssetStore();
+    const image = await uploadDataImage(payload.image, `city-assets/${payload.cityId}`, "landmark");
+    const nextAssets = { ...assets, [payload.cityId]: image };
 
-  await writeCityAssetStore(nextAssets);
+    await writeCityAssetStore(nextAssets);
 
-  return NextResponse.json({ assets: nextAssets });
+    return NextResponse.json({ assets: await signCityAssetStore(nextAssets) });
+  } catch (error) {
+    if (isStorageQuotaExceededError(error)) return quotaErrorResponse();
+    throw error;
+  }
 }
 
 export async function PATCH(request: NextRequest) {
@@ -142,19 +163,24 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Invalid city asset store payload" }, { status: 400 });
   }
 
-  const normalizedAssets = normalizeCityAssetStore(payload.assets);
-  const nextAssets = Object.fromEntries(
-    await Promise.all(
-      Object.entries(normalizedAssets).map(async ([cityId, image]) => [
-        cityId,
-        await uploadDataImage(image, `city-assets/${cityId}`, "landmark"),
-      ]),
-    ),
-  );
+  try {
+    const normalizedAssets = normalizeCityAssetStore(payload.assets);
+    const nextAssets = Object.fromEntries(
+      await Promise.all(
+        Object.entries(normalizedAssets).map(async ([cityId, image]) => [
+          cityId,
+          await uploadDataImage(image, `city-assets/${cityId}`, "landmark"),
+        ]),
+      ),
+    );
 
-  await writeCityAssetStore(nextAssets);
+    await writeCityAssetStore(nextAssets);
 
-  return NextResponse.json({ assets: nextAssets });
+    return NextResponse.json({ assets: await signCityAssetStore(nextAssets) });
+  } catch (error) {
+    if (isStorageQuotaExceededError(error)) return quotaErrorResponse();
+    throw error;
+  }
 }
 
 export async function DELETE(request: NextRequest) {
@@ -179,5 +205,5 @@ export async function DELETE(request: NextRequest) {
 
   await writeCityAssetStore(nextAssets);
 
-  return NextResponse.json({ assets: nextAssets });
+  return NextResponse.json({ assets: await signCityAssetStore(nextAssets) });
 }

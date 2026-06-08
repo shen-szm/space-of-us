@@ -3,7 +3,10 @@ import path from "path";
 import { NextResponse, type NextRequest } from "next/server";
 import {
   assertWritableStorageConfigured,
+  createSignedImageMap,
+  isPrivateStorageImageReference,
   isSupabaseConfigured,
+  isStorageQuotaExceededError,
   readJsonValue,
   uploadDataImage,
   writeJsonValue,
@@ -37,6 +40,7 @@ const isAllowedImage = (value: string) =>
   value.length <= imageMaxLength &&
   (value.startsWith("/photos/") ||
     value.startsWith("/sprites/") ||
+    isPrivateStorageImageReference(value) ||
     value.startsWith("https://") ||
     value.startsWith("data:image/"));
 
@@ -104,6 +108,19 @@ async function writeLoginPhotoStore(store: LoginPhotoStore) {
   await writeFile(loginPhotoStorePath, `${JSON.stringify(store, null, 2)}\n`, "utf8");
 }
 
+async function signLoginPhotoStore(store: LoginPhotoStore): Promise<LoginPhotoStore> {
+  return {
+    ...store,
+    photos: await createSignedImageMap(store.photos),
+  };
+}
+
+const quotaErrorResponse = () =>
+  NextResponse.json(
+    { error: "存储空间已满，暂时无法上传文件。管理员已收到提醒。" },
+    { status: 507 },
+  );
+
 function parseLoginPhotoPayload(
   payload: unknown,
 ): { slotId: string; image: string } | { slotId: string; text: LoginPhotoText } | null {
@@ -154,7 +171,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ photos: {}, texts: {} });
   }
 
-  const { photos, texts } = await readLoginPhotoStore();
+  const { photos, texts } = await signLoginPhotoStore(await readLoginPhotoStore());
 
   return NextResponse.json({ photos, texts });
 }
@@ -180,20 +197,25 @@ export async function PUT(request: NextRequest) {
 
   const store = await readLoginPhotoStore();
 
-  if ("image" in payload) {
-    const image = await uploadDataImage(payload.image, `login-photos/${payload.slotId}`, "cover");
-    const nextStore = { ...store, photos: { ...store.photos, [payload.slotId]: image } };
+  try {
+    if ("image" in payload) {
+      const image = await uploadDataImage(payload.image, `login-photos/${payload.slotId}`, "cover");
+      const nextStore = { ...store, photos: { ...store.photos, [payload.slotId]: image } };
+
+      await writeLoginPhotoStore(nextStore);
+
+      return NextResponse.json(await signLoginPhotoStore(nextStore));
+    }
+
+    const nextStore = { ...store, texts: { ...store.texts, [payload.slotId]: payload.text } };
 
     await writeLoginPhotoStore(nextStore);
 
-    return NextResponse.json(nextStore);
+    return NextResponse.json(await signLoginPhotoStore(nextStore));
+  } catch (error) {
+    if (isStorageQuotaExceededError(error)) return quotaErrorResponse();
+    throw error;
   }
-
-  const nextStore = { ...store, texts: { ...store.texts, [payload.slotId]: payload.text } };
-
-  await writeLoginPhotoStore(nextStore);
-
-  return NextResponse.json(nextStore);
 }
 
 export async function PATCH(request: NextRequest) {
@@ -217,22 +239,27 @@ export async function PATCH(request: NextRequest) {
 
   const currentStore = await readLoginPhotoStore();
   const normalizedPhotos = normalizePhotoMap(payload.photos);
-  const nextPhotos = Object.fromEntries(
-    await Promise.all(
-      Object.entries(normalizedPhotos).map(async ([slotId, image]) => [
-        slotId,
-        await uploadDataImage(image, `login-photos/${slotId}`, "cover"),
-      ]),
-    ),
-  );
-  const nextStore = {
-    photos: isRecord(payload.photos) ? nextPhotos : currentStore.photos,
-    texts: isRecord(payload.texts) ? normalizeTextMap(payload.texts) : currentStore.texts,
-  };
+  try {
+    const nextPhotos = Object.fromEntries(
+      await Promise.all(
+        Object.entries(normalizedPhotos).map(async ([slotId, image]) => [
+          slotId,
+          await uploadDataImage(image, `login-photos/${slotId}`, "cover"),
+        ]),
+      ),
+    );
+    const nextStore = {
+      photos: isRecord(payload.photos) ? nextPhotos : currentStore.photos,
+      texts: isRecord(payload.texts) ? normalizeTextMap(payload.texts) : currentStore.texts,
+    };
 
-  await writeLoginPhotoStore(nextStore);
+    await writeLoginPhotoStore(nextStore);
 
-  return NextResponse.json(nextStore);
+    return NextResponse.json(await signLoginPhotoStore(nextStore));
+  } catch (error) {
+    if (isStorageQuotaExceededError(error)) return quotaErrorResponse();
+    throw error;
+  }
 }
 
 export async function DELETE(request: NextRequest) {
@@ -268,5 +295,5 @@ export async function DELETE(request: NextRequest) {
 
   await writeLoginPhotoStore(nextStore);
 
-  return NextResponse.json(nextStore);
+  return NextResponse.json(await signLoginPhotoStore(nextStore));
 }

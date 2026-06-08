@@ -10,9 +10,7 @@ create table if not exists public.map_of_us_store (
 alter table public.map_of_us_store disable row level security;
 
 insert into storage.buckets (id, name, public)
-values ('map-of-us', 'map-of-us', true)
-on conflict (id) do update set public = excluded.public;
+values ('map-of-us', 'map-of-us', false)
+on conflict (id) do update set public = false;
 
-create policy "Map of Us public read"
-on storage.objects for select
-using (bucket_id = 'map-of-us');
+drop policy if exists "Map of Us public read" on storage.objects;

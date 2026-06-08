@@ -53,6 +53,11 @@ type DragState = {
 type MemoryPanelTab = "memory" | "gallery" | "history";
 type CityAssetStore = Record<string, string>;
 
+const getResponseError = async (response: Response, fallback: string) => {
+  const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+  return payload?.error ?? fallback;
+};
+
 const colors = {
   cream: "#FAFBF7",
   dim: "#D8DDD8",
@@ -527,7 +532,7 @@ export default function ProvinceMap({ province, width = 1120, height = 760 }: Pr
       body: JSON.stringify({ memory }),
     });
 
-    if (!response.ok) throw new Error("Failed to save memory");
+    if (!response.ok) throw new Error(await getResponseError(response, "Failed to save memory"));
 
     const data = (await response.json()) as { memory: Memory; memories: LocalMemoryStore };
 
@@ -548,7 +553,7 @@ export default function ProvinceMap({ province, width = 1120, height = 760 }: Pr
       body: JSON.stringify({ cityId, memoryId, coverImage }),
     });
 
-    if (!response.ok) throw new Error("Failed to update memory cover");
+    if (!response.ok) throw new Error(await getResponseError(response, "Failed to update memory cover"));
 
     const data = (await response.json()) as { memory: Memory; memories: LocalMemoryStore };
 
@@ -569,7 +574,7 @@ export default function ProvinceMap({ province, width = 1120, height = 760 }: Pr
       body: JSON.stringify({ cityId, memoryId, memory }),
     });
 
-    if (!response.ok) throw new Error("Failed to update memory");
+    if (!response.ok) throw new Error(await getResponseError(response, "Failed to update memory"));
 
     const data = (await response.json()) as { memory: Memory; memories: LocalMemoryStore };
 
@@ -590,7 +595,7 @@ export default function ProvinceMap({ province, width = 1120, height = 760 }: Pr
       body: JSON.stringify({ cityId, memoryId }),
     });
 
-    if (!response.ok) throw new Error("Failed to delete memory");
+    if (!response.ok) throw new Error(await getResponseError(response, "Failed to delete memory"));
 
     const data = (await response.json()) as { memories: LocalMemoryStore };
 
@@ -611,7 +616,7 @@ export default function ProvinceMap({ province, width = 1120, height = 760 }: Pr
       body: JSON.stringify({ cityId, image }),
     });
 
-    if (!response.ok) throw new Error("Failed to save city asset");
+    if (!response.ok) throw new Error(await getResponseError(response, "Failed to save city asset"));
 
     const data = (await response.json()) as { assets: CityAssetStore };
     setCityAssets(data.assets);
@@ -626,7 +631,7 @@ export default function ProvinceMap({ province, width = 1120, height = 760 }: Pr
       body: JSON.stringify({ cityId }),
     });
 
-    if (!response.ok) throw new Error("Failed to delete city asset");
+    if (!response.ok) throw new Error(await getResponseError(response, "Failed to delete city asset"));
 
     const data = (await response.json()) as { assets: CityAssetStore };
     setCityAssets(data.assets);

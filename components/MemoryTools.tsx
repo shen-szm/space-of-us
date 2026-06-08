@@ -565,8 +565,8 @@ export function SettingsPage() {
       await writeLoginPhoto(slotId, image);
       setLoginPhotos(await readLoginPhotos());
       setStatus("登录照片已更新");
-    } catch {
-      setStatus("登录照片更新失败，请选择一张图片");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "登录照片更新失败，请选择一张图片");
     } finally {
       setIsWorking(false);
       event.target.value = "";
@@ -584,7 +584,7 @@ export function SettingsPage() {
         setLoginPhotos(await readLoginPhotos());
         setStatus("登录照片已恢复默认");
       })
-      .catch(() => setStatus("鐧诲綍鐓х墖鎭㈠澶辫触锛岃绋嶅悗鍐嶈瘯"));
+      .catch((error) => setStatus(error instanceof Error ? error.message : "登录照片恢复失败，请稍后再试"));
   };
 
   const updateLoginPhotoText = (slotId: string, field: keyof LoginPhotoText, value: string) => {
@@ -608,7 +608,7 @@ export function SettingsPage() {
     setAppSettings(nextSettings);
     void writeLoginPhotoText(slotId, nextText)
       .then(() => setStatus("登录文字已更新"))
-      .catch(() => setStatus("鐧诲綍鏂囧瓧鏇存柊澶辫触锛岃绋嶅悗鍐嶈瘯"));
+      .catch((error) => setStatus(error instanceof Error ? error.message : "登录文字更新失败，请稍后再试"));
   };
 
   const resetLoginPhotoText = (slotId: string) => {
@@ -623,7 +623,7 @@ export function SettingsPage() {
     setAppSettings({ ...appSettings, loginPhotoTexts: nextTexts });
     void deleteLoginPhotoText(slotId)
       .then(() => setStatus("登录文字已恢复默认"))
-      .catch(() => setStatus("鐧诲綍鏂囧瓧鎭㈠澶辫触锛岃绋嶅悗鍐嶈瘯"));
+      .catch((error) => setStatus(error instanceof Error ? error.message : "登录文字恢复失败，请稍后再试"));
   };
 
   const anniversaryDate = appSettings.anniversaryDate ?? "";
