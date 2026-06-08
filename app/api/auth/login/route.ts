@@ -55,7 +55,10 @@ export async function POST(request: NextRequest) {
       ? await verifyAccountPassword(payload.username, payload.password)
       : null;
 
-  if (!verifiedAccount && !verifyPassword(payload.role, payload.password)) {
+  const verifiedSharedPassword = payload.role === "site" && !payload.username && verifyPassword("site", payload.password);
+  const verifiedAdmin = payload.role === "admin" && verifyPassword("admin", payload.password);
+
+  if (!verifiedAccount && !verifiedSharedPassword && !verifiedAdmin) {
     return NextResponse.json({ error: "Invalid password" }, { status: 401 });
   }
 

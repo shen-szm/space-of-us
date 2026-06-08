@@ -1,5 +1,5 @@
-import { SettingsPage } from "@/components/MemoryTools";
+import SettingsExperience from "@/components/SettingsExperience";
 
 export default function Settings() {
-  return <SettingsPage />;
+  return <SettingsExperience />;
 }

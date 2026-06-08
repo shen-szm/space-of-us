@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import {
   Archive,
   BookOpen,
@@ -10,6 +11,7 @@ import {
   Map as MapIcon,
   Settings,
   Sparkles,
+  ShieldCheck,
 } from "lucide-react";
 
 export type MemoryNavKey =
@@ -113,6 +115,24 @@ export function MemoryPageShell({
   active: MemoryNavKey;
   children: ReactNode;
 }>) {
+  const [adminSession, setAdminSession] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/accounts", { cache: "no-store" })
+      .then((response) => {
+        if (!cancelled) setAdminSession(response.ok);
+      })
+      .catch(() => {
+        if (!cancelled) setAdminSession(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#FAFBF7] text-[#5A6670]">
       <div className="map-mist-band" aria-hidden="true" />
@@ -122,6 +142,15 @@ export function MemoryPageShell({
         <MemorySidebar active={active} />
         <section className="min-w-0 flex-1 px-6 py-8 sm:px-10">{children}</section>
       </div>
+      {adminSession && (
+        <Link
+          className="fixed bottom-5 right-5 z-50 inline-flex min-h-11 items-center gap-2 rounded-full border border-white/72 bg-white/70 px-4 text-sm font-semibold text-[#344451] shadow-[0_18px_46px_rgba(90,102,112,0.18)] backdrop-blur-2xl transition hover:-translate-y-0.5 hover:border-[#E8B8C2] hover:text-[#D86F82]"
+          href="/"
+        >
+          <ShieldCheck className="h-4 w-4" />
+          返回控制台
+        </Link>
+      )}
     </main>
   );
 }

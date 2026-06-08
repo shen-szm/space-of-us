@@ -122,7 +122,8 @@ export default function EntryExperience() {
         });
         setStatus("done");
         setMode("login");
-        setMessage("注册成功，现在可以登录。");
+        setPassword("");
+        setMessage("注册成功，现在可以用这个账号登录。");
         return;
       }
 
@@ -157,9 +158,16 @@ export default function EntryExperience() {
 
       setStatus("open");
       window.setTimeout(() => router.push("/map"), 460);
-    } catch {
+    } catch (error) {
       setStatus("wrong");
-      setMessage(mode === "register" ? "注册失败：用户名可能已存在，或密码少于 4 位。" : "信息不正确，请重新确认。");
+      const detail = error instanceof Error ? error.message : "";
+      setMessage(
+        mode === "register"
+          ? detail === "Account already exists"
+            ? "注册失败：用户名已经存在。"
+            : "注册失败：用户名至少 2 位，密码至少 4 位。"
+          : "信息不正确，请重新确认。",
+      );
       window.setTimeout(() => setStatus("idle"), 900);
     }
   };
@@ -202,8 +210,7 @@ export default function EntryExperience() {
     setMessage("");
   };
 
-  const primaryLabel =
-    mode === "register" ? "创建账号" : mode === "recover" ? "重置密码" : "进入网站";
+  const primaryLabel = mode === "register" ? "创建账号" : mode === "recover" ? "重置密码" : "进入网站";
 
   return (
     <main
@@ -242,7 +249,7 @@ export default function EntryExperience() {
                 <span className="block text-[#F5AFC0]">新地图</span>
               </p>
               <p className="mt-4 max-w-[360px] text-sm font-medium leading-7 text-white/68">
-                左侧保留原来的回忆照片氛围，右侧只做更清爽的账号入口。
+                左侧保留原来的回忆照片氛围，右侧是更清爽的账号入口，属于沈先生和张小姐的 Space of us。
               </p>
             </div>
           </motion.div>
@@ -538,7 +545,7 @@ export default function EntryExperience() {
                     <span className="text-xs font-semibold text-[#5A6670]/48">{users.length} 人</span>
                   </div>
                   <p className="mt-2 text-xs leading-5 text-[#5A6670]/48">
-                    出于安全考虑，后台不会显示用户密码、找回口令或哈希值。
+                    后台不会显示用户密码、找回口令或哈希值，只显示账号、绑定和邀请状态。
                   </p>
                   <div className="mt-3 max-h-[420px] space-y-3 overflow-auto pr-1">
                     {users.length === 0 && (
@@ -575,10 +582,6 @@ export default function EntryExperience() {
                             {formatDateTime(user.createdAt)}
                           </p>
                           <p>
-                            <span className="font-semibold text-[#344451]">更新时间：</span>
-                            {formatDateTime(user.updatedAt)}
-                          </p>
-                          <p>
                             <span className="font-semibold text-[#344451]">最近登录：</span>
                             {formatDateTime(user.lastLoginAt)}
                           </p>
@@ -595,29 +598,6 @@ export default function EntryExperience() {
                             {(user.bindingRequests ?? []).length} 条
                           </p>
                         </div>
-
-                        {(user.bindingRequests ?? []).length > 0 && (
-                          <div className="mt-3 rounded-[7px] border border-[#D8DDD8]/64 bg-[#FAFBF7]/64 p-3">
-                            <p className="text-xs font-semibold text-[#344451]">绑定邀请记录</p>
-                            <div className="mt-2 space-y-2">
-                              {(user.bindingRequests ?? []).map((request) => (
-                                <div key={request.id} className="rounded-[6px] bg-white/60 px-3 py-2 text-xs leading-5 text-[#5A6670]/60">
-                                  <p>
-                                    {request.fromDisplayName} → {request.toDisplayName}
-                                  </p>
-                                  <p>
-                                    状态：{request.status} · 发起方同意：{request.fromAccepted ? "是" : "否"} · 接收方同意：
-                                    {request.toAccepted ? "是" : "否"}
-                                  </p>
-                                  <p>
-                                    创建：{formatDateTime(request.createdAt)}
-                                    {request.completedAt ? ` · 完成：${formatDateTime(request.completedAt)}` : ""}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>

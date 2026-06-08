@@ -9,7 +9,7 @@ import {
   writeJsonValue,
 } from "@/lib/server/supabase";
 import { isLocalPrivacyRequest } from "@/lib/localPrivacy";
-import { getMissingAuthEnv, requireAdminSession } from "@/lib/server/auth";
+import { getMissingAuthEnv, requireSiteSession } from "@/lib/server/auth";
 import { getPrivateDataFilePath } from "@/lib/server/dataDir";
 
 export const dynamic = "force-dynamic";
@@ -160,7 +160,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const authResponse = requireAdminSession(request);
+  const authResponse = requireSiteSession(request);
   if (authResponse) return authResponse;
 
   try {
@@ -197,7 +197,7 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const authResponse = requireAdminSession(request);
+  const authResponse = requireSiteSession(request);
   if (authResponse) return authResponse;
 
   try {
@@ -236,7 +236,7 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const authResponse = requireAdminSession(request);
+  const authResponse = requireSiteSession(request);
   if (authResponse) return authResponse;
 
   try {
