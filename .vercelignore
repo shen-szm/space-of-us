@@ -1,0 +1,17 @@
+.DS_Store
+.claude/
+.next/
+.vercel/
+.npm-cache/
+.electron-cache/
+.electron-builder-cache/
+archive/
+awesome-design-md/
+*.log
+data/accounts.json
+data/couple-hub.json
+data/localMemories.json
+data/*.private.json
+data/*.backup-*
+node_modules/
+tsconfig.tsbuildinfo
