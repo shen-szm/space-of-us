@@ -5,6 +5,7 @@
 .npm-cache/
 .electron-cache/
 .electron-builder-cache/
+dist/
 archive/
 awesome-design-md/
 *.log
