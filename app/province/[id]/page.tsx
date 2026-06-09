@@ -5,15 +5,13 @@ import { ProvinceProgressBadge } from "@/components/HomeProgress";
 import ProvinceMap from "@/components/ProvinceMap";
 import { getCitiesByProvince } from "@/data/cities";
 import { getProvinceCityTotal } from "@/data/provinceCityPlaces";
-import { getProvince, provinces } from "@/data/provinces";
+import { getProvince } from "@/data/provinces";
 
 interface ProvincePageProps {
   params: Promise<{ id: string }>;
 }
 
-export function generateStaticParams() {
-  return provinces.map((province) => ({ id: province.id }));
-}
+export const dynamic = "force-dynamic";
 
 export default async function ProvincePage({ params }: ProvincePageProps) {
   const { id } = await params;
