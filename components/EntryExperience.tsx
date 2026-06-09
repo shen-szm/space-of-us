@@ -78,6 +78,15 @@ const postJson = async (url: string, payload: Record<string, unknown>) => {
   return response.json() as Promise<unknown>;
 };
 
+const getJson = async <T,>(url: string) => {
+  const response = await fetch(url, { cache: "no-store", credentials: "same-origin" });
+  if (!response.ok) {
+    const errorPayload = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(errorPayload?.error ?? `Request failed (${response.status})`);
+  }
+  return response.json() as Promise<T>;
+};
+
 export default function EntryExperience() {
   const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("login");
@@ -103,24 +112,24 @@ export default function EntryExperience() {
   const reverseX = useTransform(smoothX, [-0.5, 0.5], [14, -14]);
 
   const loadUsers = async () => {
-    const response = await fetch("/api/accounts", { cache: "no-store" });
-    if (!response.ok) throw new Error("Load users failed");
-    const payload = (await response.json()) as { users?: PublicUserAccount[] };
+    const payload = await getJson<{ users?: PublicUserAccount[] }>("/api/accounts");
     setUsers(payload.users ?? []);
   };
 
   const loadAlerts = async () => {
-    const response = await fetch("/api/admin-alerts", { cache: "no-store" });
-    if (!response.ok) {
+    try {
+      const payload = await getJson<{ alerts?: AdminAlert[] }>("/api/admin-alerts");
+      setAlerts(payload.alerts ?? []);
+    } catch {
       setAlerts([]);
-      return;
     }
-    const payload = (await response.json()) as { alerts?: AdminAlert[] };
-    setAlerts(payload.alerts ?? []);
   };
 
   const loadAdminData = async () => {
-    await Promise.all([loadUsers(), loadAlerts()]);
+    const [usersResult] = await Promise.allSettled([loadUsers(), loadAlerts()]);
+    if (usersResult.status === "rejected") {
+      throw usersResult.reason instanceof Error ? usersResult.reason : new Error("Load users failed");
+    }
   };
 
   const submit = async () => {
@@ -166,10 +175,17 @@ export default function EntryExperience() {
       });
 
       if (adminLogin) {
-        await loadAdminData();
         setAdminPanel(true);
         setStatus("done");
-        setMessage("管理员已登录。");
+        setMessage("管理员已登录，正在加载后台数据。");
+        window.setTimeout(() => {
+          void loadAdminData()
+            .then(() => setMessage("管理员已登录。"))
+            .catch((error) => {
+              const detail = error instanceof Error ? error.message : "Load users failed";
+              setMessage(`管理员已登录，但用户列表加载失败：${detail}`);
+            });
+        }, 250);
         return;
       }
 
