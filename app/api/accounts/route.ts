@@ -39,7 +39,12 @@ export async function GET(request: NextRequest) {
   const authError = requireAdminSession(request);
   if (authError) return authError;
 
-  return NextResponse.json({ users: await listPublicAccounts() });
+  try {
+    return NextResponse.json({ users: await listPublicAccounts() });
+  } catch (error) {
+    if (isStorageConfigError(error)) return storageErrorResponse();
+    return NextResponse.json({ error: `Load users failed: ${getErrorMessage(error)}` }, { status: 500 });
+  }
 }
 
 export async function POST(request: NextRequest) {
