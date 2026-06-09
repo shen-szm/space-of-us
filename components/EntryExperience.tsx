@@ -189,7 +189,7 @@ export default function EntryExperience() {
       } else if (mode === "recover") {
         setMessage("找回失败：请确认用户名、找回口令和新密码。");
       } else {
-        setMessage("账号或密码不正确，请重新确认。");
+        setMessage(detail ? `登录失败：${detail}` : "账号或密码不正确，请重新确认。");
       }
       window.setTimeout(() => setStatus("idle"), 900);
     }

@@ -47,8 +47,12 @@ export async function POST(request: NextRequest) {
   }
 
   if (payload.role === "admin") {
-    const adminUsername = process.env.ADMIN_USERNAME || "admin";
-    if (payload.username && payload.username.toLowerCase() !== adminUsername.toLowerCase()) {
+    const adminUsernames = new Set(
+      [process.env.ADMIN_USERNAME, "admin"]
+        .filter((value): value is string => Boolean(value))
+        .map((value) => value.trim().toLowerCase()),
+    );
+    if (payload.username && !adminUsernames.has(payload.username.toLowerCase())) {
       return NextResponse.json({ error: "Invalid admin account" }, { status: 401 });
     }
   }
@@ -73,7 +77,10 @@ export async function POST(request: NextRequest) {
   const verifiedAdmin = payload.role === "admin" && verifyPassword("admin", payload.password);
 
   if (!verifiedAccount && !verifiedSharedPassword && !verifiedAdmin) {
-    return NextResponse.json({ error: "Invalid password" }, { status: 401 });
+    return NextResponse.json(
+      { error: payload.role === "admin" ? "Invalid admin password" : "Invalid account password" },
+      { status: 401 },
+    );
   }
 
   if (verifiedAccount) {
