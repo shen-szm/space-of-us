@@ -141,8 +141,8 @@ export const getMissingAuthEnv = (includePasswords = false) => {
   const missing: string[] = [];
 
   if (!process.env.AUTH_COOKIE_SECRET) missing.push("AUTH_COOKIE_SECRET");
-  if (includePasswords && !process.env.SITE_PASSWORD) missing.push("SITE_PASSWORD");
-  if (includePasswords && !process.env.ADMIN_PASSWORD) missing.push("ADMIN_PASSWORD");
+  if (includePasswords && getPasswords("site").length === 0) missing.push("SITE_PASSWORD");
+  if (includePasswords && getPasswords("admin").length === 0) missing.push("ADMIN_PASSWORD");
 
   return missing;
 };
