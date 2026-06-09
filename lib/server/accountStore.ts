@@ -110,10 +110,25 @@ const normalizeStore = (value: unknown): AccountStore => {
   };
 };
 
-const getSecret = () => process.env.AUTH_COOKIE_SECRET ?? "map-of-us-local-dev";
+const accountHashSecret = () =>
+  process.env.ACCOUNT_HASH_SECRET ?? process.env.AUTH_COOKIE_SECRET ?? "space-of-us-account-hash-v1";
+
+const legacyHashSecrets = () =>
+  [
+    accountHashSecret(),
+    process.env.AUTH_COOKIE_SECRET,
+    "map-of-us-local-dev",
+    "space-of-us-account-hash-v1",
+  ].filter((secret, index, secrets): secret is string => Boolean(secret) && secrets.indexOf(secret) === index);
+
+const hashWithSecret = (value: string, salt: string, secret: string) =>
+  createHmac("sha256", secret).update(`${salt}:${value}`).digest("base64url");
 
 export const hashAccountSecret = (value: string, salt: string) =>
-  createHmac("sha256", getSecret()).update(`${salt}:${value}`).digest("base64url");
+  hashWithSecret(value, salt, accountHashSecret());
+
+const verifyAccountSecret = (value: string, salt: string, hash: string) =>
+  legacyHashSecrets().some((secret) => safeEqual(hashWithSecret(value, salt, secret), hash));
 
 export const createBindingInviteCode = () =>
   Array.from({ length: 8 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
@@ -179,8 +194,7 @@ export const verifyAccountPassword = async (username: string, password: string) 
   const account = await findAccount(username);
   if (!account) return null;
 
-  const passwordHash = hashAccountSecret(password, account.id);
-  return safeEqual(passwordHash, account.passwordHash) ? account : null;
+  return verifyAccountSecret(password, account.id, account.passwordHash) ? account : null;
 };
 
 export const registerAccount = async ({
@@ -233,8 +247,7 @@ export const resetAccountPassword = async ({
   const account = store.users.find((item) => item.username === normalized);
   if (!account) throw new Error("Account not found");
 
-  const recoveryHash = hashAccountSecret(recoveryPhrase, account.id);
-  if (!safeEqual(recoveryHash, account.recoveryHash)) {
+  if (!verifyAccountSecret(recoveryPhrase, account.id, account.recoveryHash)) {
     throw new Error("Invalid recovery phrase");
   }
 

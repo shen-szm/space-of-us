@@ -12,6 +12,7 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "dist/**",
+    ".vercel/**",
     "next-env.d.ts",
     // Electron desktop wrapper runs in Node (CommonJS), not the Next.js app.
     "electron/**",
