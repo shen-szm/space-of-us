@@ -200,7 +200,9 @@ export default function EntryExperience() {
         setMessage(
           detail === "Account already exists"
             ? "注册失败：用户名已经存在。"
-            : "注册失败：用户名至少 2 位，密码至少 4 位。",
+            : detail
+              ? `注册失败：${detail}`
+              : "注册失败：用户名至少 2 位，密码至少 4 位。",
         );
       } else if (mode === "recover") {
         setMessage("找回失败：请确认用户名、找回口令和新密码。");

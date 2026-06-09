@@ -19,6 +19,16 @@ const cleanString = (value: unknown, maxLength: number) =>
 const isStorageConfigError = (error: unknown) =>
   error instanceof Error && error.message.toLowerCase().includes("supabase is required");
 
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return "Unknown error";
+  }
+};
+
 const storageErrorResponse = () =>
   NextResponse.json(
     { error: "Database is not configured. Please finish Supabase setup and redeploy." },
@@ -55,7 +65,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, user });
     } catch (error) {
       if (isStorageConfigError(error)) return storageErrorResponse();
-      return NextResponse.json({ error: "Account already exists" }, { status: 409 });
+      const message = getErrorMessage(error);
+      if (message === "Account already exists") {
+        return NextResponse.json({ error: "Account already exists" }, { status: 409 });
+      }
+      return NextResponse.json({ error: `Account registration failed: ${message}` }, { status: 500 });
     }
   }
 
@@ -70,7 +84,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, user });
     } catch (error) {
       if (isStorageConfigError(error)) return storageErrorResponse();
-      return NextResponse.json({ error: "Reset verification failed" }, { status: 401 });
+      const message = getErrorMessage(error);
+      const status = message === "Account not found" || message === "Invalid recovery phrase" ? 401 : 500;
+      return NextResponse.json({ error: `Reset verification failed: ${message}` }, { status });
     }
   }
 
@@ -88,7 +104,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, user });
     } catch (error) {
       if (isStorageConfigError(error)) return storageErrorResponse();
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      const message = getErrorMessage(error);
+      const status = message === "Account not found" ? 404 : 500;
+      return NextResponse.json({ error: `Admin reset failed: ${message}` }, { status });
     }
   }
 
