@@ -1,10 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
-import {
-  type CoupleHubStore,
-  defaultCoupleStore,
-} from "@/data/couple";
+import { type CoupleHubStore, defaultCoupleStore } from "@/data/couple";
 import { getPrivateDataFilePath } from "@/lib/server/dataDir";
 import {
   assertWritableStorageConfigured,
@@ -18,6 +15,15 @@ const localFileName = "couple-hub.json";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
+
+const hasCoupleData = (store: CoupleHubStore) =>
+  store.agreements.length > 0 ||
+  store.menu.length > 0 ||
+  store.orders.length > 0 ||
+  Boolean(store.profile.boundAt) ||
+  Boolean(store.profile.inviteCodeHash) ||
+  Boolean(store.profile.partners.a) ||
+  Boolean(store.profile.partners.b);
 
 const normalizeStore = (value: unknown): CoupleHubStore => {
   const fallback = defaultCoupleStore();
@@ -72,15 +78,27 @@ const writeLocalStore = async (store: CoupleHubStore) => {
   return store;
 };
 
-export const readCoupleStore = async () => {
+const scopedStoreKey = (scopeKey?: string) => (scopeKey ? `${storeKey}:${scopeKey}` : storeKey);
+
+export const readCoupleStore = async (scopeKey?: string) => {
   if (!getSupabaseAdmin()) return readLocalStore();
-  return normalizeStore(await readJsonValue(storeKey, defaultCoupleStore()));
+
+  const scopedKey = scopedStoreKey(scopeKey);
+  const scopedStore = normalizeStore(await readJsonValue(scopedKey, defaultCoupleStore()));
+
+  if (hasCoupleData(scopedStore) || !scopeKey) return scopedStore;
+
+  const legacyStore = normalizeStore(await readJsonValue(storeKey, defaultCoupleStore()));
+  if (!hasCoupleData(legacyStore)) return scopedStore;
+
+  await writeJsonValue(scopedKey, legacyStore);
+  return legacyStore;
 };
 
-export const writeCoupleStore = async (store: CoupleHubStore) => {
+export const writeCoupleStore = async (store: CoupleHubStore, scopeKey?: string) => {
   assertWritableStorageConfigured();
   if (!getSupabaseAdmin()) return writeLocalStore(store);
-  return writeJsonValue(storeKey, store);
+  return writeJsonValue(scopedStoreKey(scopeKey), store);
 };
 
 export const createInviteCode = () =>

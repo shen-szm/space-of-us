@@ -190,6 +190,19 @@ export const findPublicAccount = async (username: string) => {
   return account ? toPublicAccount(account) : null;
 };
 
+export const getAccountScopeKey = async (username: string) => {
+  const account = await findAccount(username);
+  if (!account) return null;
+
+  const pairIds = [account.id, account.partnerUserId].filter((value): value is string => Boolean(value)).sort();
+  const scopeKey = pairIds.length > 1 ? `pair:${pairIds.join(":")}` : `user:${account.id}`;
+
+  return {
+    account,
+    scopeKey,
+  };
+};
+
 export const verifyAccountPassword = async (username: string, password: string) => {
   const account = await findAccount(username);
   if (!account) return null;

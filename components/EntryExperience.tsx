@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { motion } from "framer-motion";
 import {
-  ArrowRight,
   AlertTriangle,
+  ArrowRight,
   CalendarDays,
   Eye,
   EyeOff,
@@ -17,9 +17,9 @@ import {
   MapPinned,
   RefreshCcw,
   ShieldCheck,
-  UsersRound,
   UserPlus,
   UserRound,
+  UsersRound,
 } from "lucide-react";
 import type { PublicUserAccount } from "@/data/accounts";
 import type { AdminAlert } from "@/data/adminAlerts";
@@ -30,12 +30,20 @@ const loginPhotoVersion = "placeholder-20260601";
 const loginPhotoPath = (fileName: string) => `/photos/login/${fileName}.jpg?v=${loginPhotoVersion}`;
 
 type AuthMode = "login" | "register" | "recover";
-type Status = "idle" | "checking" | "wrong" | "open" | "done";
+type Status = "idle" | "checking" | "wrong" | "done";
 
 const authModes: Array<{ key: AuthMode; label: string }> = [
   { key: "login", label: "登录" },
   { key: "register", label: "注册" },
   { key: "recover", label: "找回" },
+];
+
+const adminQuickLinks = [
+  { label: "地图主页", href: "/map", icon: MapPinned },
+  { label: "情侣中心", href: "/couple", icon: Heart },
+  { label: "回忆记录", href: "/memories", icon: LayoutDashboard },
+  { label: "纪念日", href: "/anniversaries", icon: CalendarDays },
+  { label: "系统设置", href: "/settings", icon: ShieldCheck },
 ];
 
 const isAdminName = (value: string) =>
@@ -47,22 +55,6 @@ const formatDateTime = (value?: string) => {
   if (Number.isNaN(date.getTime())) return "暂无";
   return date.toLocaleString("zh-CN");
 };
-
-const adminQuickLinks = [
-  { label: "地图主页", href: "/map", icon: MapPinned },
-  { label: "情侣中心", href: "/couple", icon: Heart },
-  { label: "回忆记录", href: "/memories", icon: LayoutDashboard },
-  { label: "纪念日", href: "/anniversaries", icon: CalendarDays },
-  { label: "系统设置", href: "/settings", icon: ShieldCheck },
-];
-
-function BrandHeart() {
-  return (
-    <span className="grid h-12 w-12 place-items-center rounded-full border border-white/72 bg-white/62 text-[#D86F82] shadow-[0_16px_38px_rgba(216,111,130,0.16)] backdrop-blur-xl">
-      <Heart className="h-6 w-6 fill-[#D86F82]" />
-    </span>
-  );
-}
 
 const postJson = async (url: string, payload: Record<string, unknown>) => {
   const response = await fetch(url, {
@@ -87,6 +79,34 @@ const getJson = async <T,>(url: string) => {
   return response.json() as Promise<T>;
 };
 
+const surfaceMessage = (mode: AuthMode, detail: string) => {
+  if (detail.includes("Database is not configured")) {
+    return "数据库还没有连接完成，请先配置 Supabase 并重新部署。";
+  }
+  if (detail.includes("Supabase API key is invalid")) {
+    return "Supabase 密钥或项目地址不匹配，请检查生产环境变量。";
+  }
+  if (mode === "register") {
+    if (detail === "Account already exists") return "注册失败：用户名已经存在。";
+    if (detail.includes("Invalid account fields")) return "注册失败：用户名至少 2 位，密码至少 4 位。";
+    return detail ? `注册失败：${detail}` : "注册失败，请稍后重试。";
+  }
+  if (mode === "recover") {
+    return detail ? `找回失败：${detail}` : "找回失败，请确认用户名、找回口令和新密码。";
+  }
+  if (detail.includes("Invalid admin")) return "管理员账号或密码不正确。";
+  if (detail.includes("Invalid account")) return "账号或密码不正确，请重新确认。";
+  return detail ? `登录失败：${detail}` : "登录失败，请稍后重试。";
+};
+
+function BrandHeart() {
+  return (
+    <span className="grid h-12 w-12 place-items-center rounded-full border border-white/72 bg-white/62 text-[#D86F82] shadow-[0_16px_38px_rgba(216,111,130,0.16)] backdrop-blur-xl">
+      <Heart className="h-6 w-6 fill-[#D86F82]" />
+    </span>
+  );
+}
+
 export default function EntryExperience() {
   const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("login");
@@ -103,13 +123,6 @@ export default function EntryExperience() {
   const [adminPanel, setAdminPanel] = useState(false);
   const [resetUser, setResetUser] = useState("");
   const [resetPassword, setResetPassword] = useState("");
-  const pointerX = useMotionValue(0);
-  const pointerY = useMotionValue(0);
-  const smoothX = useSpring(pointerX, { stiffness: 70, damping: 24 });
-  const smoothY = useSpring(pointerY, { stiffness: 70, damping: 24 });
-  const driftX = useTransform(smoothX, [-0.5, 0.5], [-18, 18]);
-  const driftY = useTransform(smoothY, [-0.5, 0.5], [-12, 12]);
-  const reverseX = useTransform(smoothX, [-0.5, 0.5], [14, -14]);
 
   const loadUsers = async () => {
     const payload = await getJson<{ users?: PublicUserAccount[] }>("/api/accounts");
@@ -149,7 +162,8 @@ export default function EntryExperience() {
         setStatus("done");
         setMode("login");
         setPassword("");
-        setMessage("注册成功，现在可以用这个账号登录。");
+        setNewPassword("");
+        setMessage("注册成功，现在可以用这个账号登录了。");
         return;
       }
 
@@ -163,7 +177,8 @@ export default function EntryExperience() {
         setStatus("done");
         setMode("login");
         setPassword(newPassword);
-        setMessage("密码已重置，请使用新密码登录。");
+        setNewPassword("");
+        setMessage("密码已经重置，请使用新密码登录。");
         return;
       }
 
@@ -177,38 +192,22 @@ export default function EntryExperience() {
       if (adminLogin) {
         setAdminPanel(true);
         setStatus("done");
-        setMessage("管理员已登录，正在加载后台数据。");
-        window.setTimeout(() => {
-          void loadAdminData()
-            .then(() => setMessage("管理员已登录。"))
-            .catch((error) => {
-              const detail = error instanceof Error ? error.message : "Load users failed";
-              setMessage(`管理员已登录，但用户列表加载失败：${detail}`);
-            });
-        }, 250);
+        setMessage("管理员已登录，正在读取后台数据。");
+        void loadAdminData()
+          .then(() => setMessage("管理员已登录。"))
+          .catch((error) => {
+            const detail = error instanceof Error ? error.message : "Load users failed";
+            setMessage(`管理员已登录，但用户列表加载失败：${detail}`);
+          });
         return;
       }
 
-      setStatus("open");
-      window.setTimeout(() => router.push("/map"), 460);
+      setStatus("done");
+      router.push("/map");
     } catch (error) {
-      setStatus("wrong");
       const detail = error instanceof Error ? error.message : "";
-      if (detail.includes("Database is not configured")) {
-        setMessage("数据库还没有连接完成，请先配置 Supabase 并重新部署。");
-      } else if (mode === "register") {
-        setMessage(
-          detail === "Account already exists"
-            ? "注册失败：用户名已经存在。"
-            : detail
-              ? `注册失败：${detail}`
-              : "注册失败：用户名至少 2 位，密码至少 4 位。",
-        );
-      } else if (mode === "recover") {
-        setMessage("找回失败：请确认用户名、找回口令和新密码。");
-      } else {
-        setMessage(detail ? `登录失败：${detail}` : "账号或密码不正确，请重新确认。");
-      }
+      setStatus("wrong");
+      setMessage(surfaceMessage(mode, detail));
       window.setTimeout(() => setStatus("idle"), 900);
     }
   };
@@ -216,7 +215,6 @@ export default function EntryExperience() {
   const adminResetPassword = async () => {
     if (!resetUser.trim() || !resetPassword.trim()) return;
     setStatus("checking");
-
     try {
       await postJson("/api/accounts", {
         action: "adminResetPassword",
@@ -228,9 +226,9 @@ export default function EntryExperience() {
       setResetPassword("");
       setStatus("done");
       setMessage("用户密码已重置。");
-    } catch {
+    } catch (error) {
       setStatus("wrong");
-      setMessage("重置失败，请确认用户存在。");
+      setMessage(error instanceof Error ? `重置失败：${error.message}` : "重置失败，请稍后重试。");
     }
   };
 
@@ -246,27 +244,20 @@ export default function EntryExperience() {
     setAlerts([]);
     setUsername("");
     setPassword("");
+    setRecoveryPhrase("");
     setResetUser("");
     setResetPassword("");
     setStatus("idle");
     setMessage("");
   };
 
-  const primaryLabel = mode === "register" ? "创建账号" : mode === "recover" ? "重置密码" : "进入网站";
+  const primaryLabel =
+    mode === "register" ? "创建账号" : mode === "recover" ? "重置密码" : "进入网站";
 
   return (
-    <main
-      className="login-stage relative min-h-[100dvh] overflow-x-hidden overflow-y-auto bg-[#F9F6EC] text-[#344451]"
-      onPointerMove={(event) => {
-        pointerX.set(event.clientX / window.innerWidth - 0.5);
-        pointerY.set(event.clientY / window.innerHeight - 0.5);
-      }}
-    >
+    <main className="login-stage relative min-h-[100dvh] overflow-x-hidden overflow-y-auto bg-[#F9F6EC] text-[#344451]">
       <LocalPrivacyBadge />
       <div className="login-paper absolute inset-0" />
-      <motion.div className="login-sun" style={{ x: reverseX }} aria-hidden="true" />
-      <motion.div className="login-cloud login-cloud-a" style={{ x: driftX }} aria-hidden="true" />
-      <motion.div className="login-cloud login-cloud-b" style={{ x: reverseX }} aria-hidden="true" />
       <div className="login-grid absolute inset-0" aria-hidden="true" />
 
       <div className="relative z-10 grid min-h-[100dvh] gap-5 px-4 py-4 sm:px-6 lg:grid-cols-[minmax(420px,0.9fr)_minmax(520px,1.1fr)] lg:px-8">
@@ -280,7 +271,7 @@ export default function EntryExperience() {
             priority
           />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(22,31,39,0.86),rgba(22,31,39,0.24)_50%,rgba(22,31,39,0.72)),radial-gradient(circle_at_72%_22%,rgba(245,220,224,0.24),transparent_34%)]" />
-          <motion.div className="absolute inset-x-8 inset-y-8 flex flex-col justify-between pb-8" style={{ x: driftX, y: driftY }}>
+          <div className="absolute inset-x-8 inset-y-8 flex flex-col justify-between pb-8">
             <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/14 bg-white/10 px-3 py-2 text-xs font-semibold text-white/76 backdrop-blur">
               <MapPinned className="h-4 w-4 text-[#F5DCE0]" />
               private album
@@ -290,11 +281,11 @@ export default function EntryExperience() {
                 旧照片
                 <span className="block text-[#F5AFC0]">新地图</span>
               </p>
-              <p className="mt-4 max-w-[360px] text-sm font-medium leading-7 text-white/68">
+              <p className="mt-4 max-w-[380px] text-sm font-medium leading-7 text-white/68">
                 左侧保留原来的回忆照片氛围，右侧是更清爽的账号入口，属于沈先生和张小姐的 Space of us。
               </p>
             </div>
-          </motion.div>
+          </div>
         </section>
 
         <section className="flex min-h-[calc(100dvh-32px)] items-center justify-center">
@@ -424,7 +415,7 @@ export default function EntryExperience() {
                           className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[#344451] outline-none placeholder:text-[#5A6670]/36"
                           value={recoveryPhrase}
                           onChange={(event) => setRecoveryPhrase(event.target.value)}
-                          placeholder="只有你知道的一句话"
+                          placeholder="只要你自己记得住就行"
                         />
                       </span>
                     </label>
@@ -457,11 +448,15 @@ export default function EntryExperience() {
                   className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-[8px] bg-[#273846] px-4 text-sm font-semibold text-white shadow-[0_20px_46px_rgba(39,56,70,0.18)] transition hover:-translate-y-0.5 hover:bg-[#D86F82] disabled:opacity-55"
                   type="button"
                   onClick={() => void submit()}
-                  disabled={status === "checking" || status === "open"}
+                  disabled={status === "checking"}
                 >
                   {status === "checking" ? "处理中" : primaryLabel}
                   <ArrowRight className="h-4 w-4" />
                 </button>
+
+                <div className="mt-3 rounded-[8px] border border-[#F0E6D8] bg-[#FAFBF7]/76 px-4 py-3 text-xs leading-6 text-[#5A6670]/58">
+                  当前公开入口仍是国际托管。换设备登录后，数据会从云端同步；若中国大陆网络访问慢，可稍后重试或切换网络。
+                </div>
 
                 <AccountBindingPanel compact className="mt-4" />
               </>
@@ -473,7 +468,7 @@ export default function EntryExperience() {
                       管理界面
                     </h1>
                     <p className="mt-2 text-sm leading-6 text-[#5A6670]/62">
-                      管理员可进入主站功能，并查看注册用户的账号、绑定与邀请状态。
+                      管理员可进入主站功能，并查看注册用户、绑定状态和系统提醒。
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -551,17 +546,16 @@ export default function EntryExperience() {
                     </span>
                     <div>
                       <p className="text-sm font-semibold text-[#344451]">主站功能</p>
-                      <p className="mt-1 text-xs text-[#5A6670]/50">像启动台一样快速进入每个页面</p>
+                      <p className="mt-1 text-xs text-[#5A6670]/50">管理员也可以直接进入站内页面进行检查。</p>
                     </div>
                   </div>
                   <div className="relative mt-4 grid gap-3 sm:grid-cols-5">
                     {adminQuickLinks.map((item) => {
                       const Icon = item.icon;
-
                       return (
                         <button
                           key={item.href}
-                          className="group flex min-h-24 flex-col items-center justify-center gap-2 rounded-[8px] border border-white/72 bg-white/54 px-3 text-sm font-semibold text-[#5A6670] shadow-[0_12px_30px_rgba(90,102,112,0.06)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-[#E8B8C2] hover:bg-white/72 hover:text-[#D86F82] hover:shadow-[0_20px_46px_rgba(90,102,112,0.11)]"
+                          className="group flex min-h-24 flex-col items-center justify-center gap-2 rounded-[8px] border border-white/72 bg-white/54 px-3 text-sm font-semibold text-[#5A6670] shadow-[0_12px_30px_rgba(90,102,112,0.06)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-[#E8B8C2] hover:bg-white/72 hover:text-[#D86F82]"
                           type="button"
                           onClick={() => router.push(item.href)}
                         >

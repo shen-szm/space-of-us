@@ -94,7 +94,7 @@ export const agreementCategoryLabels: Record<AgreementCategory, string> = {
 
 export const agreementStatusLabels: Record<AgreementStatus, string> = {
   wish: "想去",
-  planned: "已约定",
+  planned: "已计划",
   doing: "进行中",
   done: "已完成",
   archived: "已归档",

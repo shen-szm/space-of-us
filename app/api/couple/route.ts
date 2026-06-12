@@ -9,7 +9,8 @@ import {
   type OrderStatus,
   type PartnerRole,
 } from "@/data/couple";
-import { requireSiteSession } from "@/lib/server/auth";
+import { getAccountScopeKey } from "@/lib/server/accountStore";
+import { getSessionUsername, requireSiteSession } from "@/lib/server/auth";
 import {
   createInviteCode,
   hashInviteCode,
@@ -39,23 +40,44 @@ const asPartnerRole = (value: unknown): PartnerRole =>
 const now = () => new Date().toISOString();
 const id = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-export async function GET(request: NextRequest) {
+const resolveScope = async (request: NextRequest) => {
   const authError = requireSiteSession(request);
-  if (authError) return authError;
+  if (authError) return { authError };
 
-  return NextResponse.json(await readCoupleStore());
+  const username = getSessionUsername(request);
+  if (!username) {
+    return {
+      authError: NextResponse.json({ error: "Authentication required" }, { status: 401 }),
+    };
+  }
+
+  const scope = await getAccountScopeKey(username);
+  if (!scope) {
+    return {
+      authError: NextResponse.json({ error: "Account not found" }, { status: 404 }),
+    };
+  }
+
+  return { scopeKey: scope.scopeKey };
+};
+
+export async function GET(request: NextRequest) {
+  const resolved = await resolveScope(request);
+  if (resolved.authError) return resolved.authError;
+
+  return NextResponse.json(await readCoupleStore(resolved.scopeKey));
 }
 
 export async function POST(request: NextRequest) {
-  const authError = requireSiteSession(request);
-  if (authError) return authError;
+  const resolved = await resolveScope(request);
+  if (resolved.authError) return resolved.authError;
 
   const payload = await request.json().catch(() => null);
   if (!isRecord(payload) || typeof payload.action !== "string") {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
-  const store = await readCoupleStore();
+  const store = await readCoupleStore(resolved.scopeKey);
   const timestamp = now();
 
   if (payload.action === "createInvite") {
@@ -70,7 +92,7 @@ export async function POST(request: NextRequest) {
     store.profile.inviteCodePreview = code.slice(-2);
     store.profile.inviteCreatedAt = timestamp;
 
-    await writeCoupleStore(store);
+    await writeCoupleStore(store, resolved.scopeKey);
     return NextResponse.json({ store, role: "a", inviteCode: code });
   }
 
@@ -86,7 +108,7 @@ export async function POST(request: NextRequest) {
     };
     store.profile.boundAt = store.profile.boundAt ?? timestamp;
 
-    await writeCoupleStore(store);
+    await writeCoupleStore(store, resolved.scopeKey);
     return NextResponse.json({ store, role: "b" });
   }
 
@@ -114,14 +136,14 @@ export async function POST(request: NextRequest) {
       ? store.agreements.map((current) => (current.id === item.id ? item : current))
       : [item, ...store.agreements];
 
-    await writeCoupleStore(store);
+    await writeCoupleStore(store, resolved.scopeKey);
     return NextResponse.json(store);
   }
 
   if (payload.action === "deleteAgreement") {
     const itemId = cleanString(payload.id, 80);
     store.agreements = store.agreements.filter((item) => item.id !== itemId);
-    await writeCoupleStore(store);
+    await writeCoupleStore(store, resolved.scopeKey);
     return NextResponse.json(store);
   }
 
@@ -142,19 +164,21 @@ export async function POST(request: NextRequest) {
       updatedAt: timestamp,
     };
 
-    if (!item.brand || !item.name) return NextResponse.json({ error: "Brand and name are required" }, { status: 400 });
+    if (!item.brand || !item.name) {
+      return NextResponse.json({ error: "Brand and name are required" }, { status: 400 });
+    }
     store.menu = store.menu.some((current) => current.id === item.id)
       ? store.menu.map((current) => (current.id === item.id ? item : current))
       : [item, ...store.menu];
 
-    await writeCoupleStore(store);
+    await writeCoupleStore(store, resolved.scopeKey);
     return NextResponse.json(store);
   }
 
   if (payload.action === "deleteMenuItem") {
     const itemId = cleanString(payload.id, 80);
     store.menu = store.menu.filter((item) => item.id !== itemId);
-    await writeCoupleStore(store);
+    await writeCoupleStore(store, resolved.scopeKey);
     return NextResponse.json(store);
   }
 
@@ -181,7 +205,7 @@ export async function POST(request: NextRequest) {
     };
 
     store.orders = [order, ...store.orders];
-    await writeCoupleStore(store);
+    await writeCoupleStore(store, resolved.scopeKey);
     return NextResponse.json(store);
   }
 
@@ -200,7 +224,7 @@ export async function POST(request: NextRequest) {
         : order,
     );
 
-    await writeCoupleStore(store);
+    await writeCoupleStore(store, resolved.scopeKey);
     return NextResponse.json(store);
   }
 

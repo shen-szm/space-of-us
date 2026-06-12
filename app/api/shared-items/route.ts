@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireSiteSession } from "@/lib/server/auth";
+import { getSessionUsername, requireSiteSession } from "@/lib/server/auth";
+import { getAccountScopeKey } from "@/lib/server/accountStore";
 import { assertWritableStorageConfigured, readJsonValue, writeJsonValue } from "@/lib/server/supabase";
 
 export const dynamic = "force-dynamic";
@@ -89,9 +90,13 @@ async function readStore() {
   return normalizeStore(await readJsonValue(storeKey, emptyStore()));
 }
 
-async function writeStore(store: SharedItemStore) {
+async function readScopedStore(scopeKey: string) {
+  return normalizeStore(await readJsonValue(`${storeKey}:${scopeKey}`, emptyStore()));
+}
+
+async function writeScopedStore(scopeKey: string, store: SharedItemStore) {
   assertWritableStorageConfigured();
-  await writeJsonValue(storeKey, store);
+  await writeJsonValue(`${storeKey}:${scopeKey}`, store);
   return store;
 }
 
@@ -99,11 +104,29 @@ export async function GET(request: NextRequest) {
   const authError = requireSiteSession(request);
   if (authError) return authError;
 
+  const username = getSessionUsername(request);
+  if (!username) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+
+  const scope = await getAccountScopeKey(username);
+  if (!scope) return NextResponse.json({ error: "Account not found" }, { status: 404 });
+
   const kind = getKind(request);
   if (!kind) return NextResponse.json({ error: "Invalid kind" }, { status: 400 });
 
   try {
-    const store = await readStore();
+    const scopedStore = await readScopedStore(scope.scopeKey);
+    if (scopedStore[kind].length > 0) {
+      return NextResponse.json({ items: scopedStore[kind] });
+    }
+
+    const legacyStore = await readStore();
+    if (legacyStore[kind].length > 0) {
+      const migratedStore = { ...scopedStore, [kind]: legacyStore[kind] };
+      await writeScopedStore(scope.scopeKey, migratedStore);
+      return NextResponse.json({ items: migratedStore[kind] });
+    }
+
+    const store = scopedStore;
     return NextResponse.json({ items: store[kind] });
   } catch (error) {
     if (isStorageConfigError(error)) return storageErrorResponse();
@@ -115,14 +138,20 @@ export async function PUT(request: NextRequest) {
   const authError = requireSiteSession(request);
   if (authError) return authError;
 
+  const username = getSessionUsername(request);
+  if (!username) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+
+  const scope = await getAccountScopeKey(username);
+  if (!scope) return NextResponse.json({ error: "Account not found" }, { status: 404 });
+
   const payload = await request.json().catch(() => null);
   const kind = getKind(request, payload);
   if (!kind || !isRecord(payload)) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
 
   try {
-    const store = await readStore();
+    const store = await readScopedStore(scope.scopeKey);
     store[kind] = normalizeItems(payload.items);
-    await writeStore(store);
+    await writeScopedStore(scope.scopeKey, store);
     return NextResponse.json({ items: store[kind] });
   } catch (error) {
     if (isStorageConfigError(error)) return storageErrorResponse();
