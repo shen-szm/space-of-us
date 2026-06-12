@@ -331,7 +331,8 @@ function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
           <p className="mt-2 text-sm font-medium text-[#5A6670]/58">{config.subtitle}</p>
         </div>
         <div className="rounded-full border border-white/78 bg-white/60 px-4 py-2 text-sm font-semibold text-[#5A6670]/62 shadow-[0_12px_30px_rgba(90,102,112,0.08)] backdrop-blur-xl">
-          {items.length} 鏉?        </div>
+          {items.length} 条
+        </div>
         </div>
       </header>
 

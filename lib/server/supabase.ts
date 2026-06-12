@@ -9,11 +9,18 @@ const normalizeSupabaseUrl = (value?: string | null) => {
   return trimmed.replace(/\/rest\/v1\/?$/i, "").replace(/\/+$/g, "");
 };
 
-const firstDefined = (...values: Array<string | undefined>) => values.find((value) => Boolean(value?.trim()));
+const cleanedEnvValue = (value?: string | null) => {
+  if (!value) return undefined;
+  const trimmed = value.trim().replace(/^['"]|['"]$/g, "");
+  return trimmed || undefined;
+};
+
+const uniqueDefined = (...values: Array<string | undefined>) =>
+  [...new Set(values.map((value) => cleanedEnvValue(value)).filter((value): value is string => Boolean(value)))];
 
 const rawSupabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseUrl = normalizeSupabaseUrl(rawSupabaseUrl);
-const supabaseServiceRoleKey = firstDefined(
+const supabaseKeys = uniqueDefined(
   process.env.SUPABASE_SERVICE_ROLE_KEY,
   process.env.SUPABASE_SECRET_KEY,
   process.env.SUPABASE_PUBLISHABLE_KEY,
@@ -28,7 +35,7 @@ const privateImagePrefix = "supabase-private://";
 const signedUrlExpiresInSeconds = 60 * 60 * 24;
 const adminAlertsKey = "admin-alerts";
 
-export const isSupabaseConfigured = !shouldUseLocalFileStorage && Boolean(supabaseUrl && supabaseServiceRoleKey);
+export const isSupabaseConfigured = !shouldUseLocalFileStorage && Boolean(supabaseUrl && supabaseKeys.length > 0);
 export const shouldRequirePersistentStorage = process.env.NODE_ENV === "production" && !shouldUseLocalFileStorage;
 
 const getSupabaseConfigProblem = () => {
@@ -37,8 +44,8 @@ const getSupabaseConfigProblem = () => {
   if ((rawSupabaseUrl ?? "").includes("/rest/v1")) {
     return "SUPABASE_URL should be the project URL, not the /rest/v1 Data API endpoint.";
   }
-  if (!supabaseServiceRoleKey) {
-    return "A Supabase server key is missing. Set SUPABASE_SERVICE_ROLE_KEY, SUPABASE_SECRET_KEY, or SUPABASE_PUBLISHABLE_KEY.";
+  if (supabaseKeys.length === 0) {
+    return "A Supabase server key is missing. Set SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SECRET_KEY.";
   }
 
   return null;
@@ -69,6 +76,46 @@ const toSupabaseError = (error: unknown) => {
   return error instanceof Error ? error : new Error(text || "Supabase request failed");
 };
 
+const shouldRetryWithNextKey = (error: unknown) => {
+  const text = getErrorText(error).toLowerCase();
+  return (
+    text.includes("invalid api key") ||
+    text.includes("jwt") ||
+    text.includes("not authorized") ||
+    text.includes("permission denied")
+  );
+};
+
+const createSupabaseAdmin = (key: string) =>
+  createClient(supabaseUrl!, key, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+async function runWithSupabaseAdmin<T>(operation: (client: ReturnType<typeof createSupabaseAdmin>) => Promise<T>) {
+  if (shouldUseLocalFileStorage || !supabaseUrl || supabaseKeys.length === 0) return null;
+
+  let lastError: Error | null = null;
+
+  for (const key of supabaseKeys) {
+    const client = createSupabaseAdmin(key);
+
+    try {
+      return await operation(client);
+    } catch (error) {
+      const nextError = toSupabaseError(error);
+      lastError = nextError;
+      if (!shouldRetryWithNextKey(nextError)) {
+        throw nextError;
+      }
+    }
+  }
+
+  throw lastError ?? new Error("Supabase request failed");
+}
+
 export function assertWritableStorageConfigured() {
   const problem = getSupabaseConfigProblem();
   if (shouldRequirePersistentStorage && problem) {
@@ -77,35 +124,30 @@ export function assertWritableStorageConfigured() {
 }
 
 export function getSupabaseAdmin() {
-  if (shouldUseLocalFileStorage) return null;
-  if (!supabaseUrl || !supabaseServiceRoleKey) return null;
-
-  return createClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
+  if (shouldUseLocalFileStorage || !supabaseUrl || supabaseKeys.length === 0) return null;
+  return createSupabaseAdmin(supabaseKeys[0]);
 }
 
 export async function readJsonValue<T>(key: string, fallback: T): Promise<T> {
-  const supabase = getSupabaseAdmin();
-  if (!supabase) return fallback;
+  const result = await runWithSupabaseAdmin(async (supabase) => {
+    const { data, error } = await supabase.from("map_of_us_store").select("value").eq("key", key).maybeSingle();
+    if (error) throw error;
+    return (data?.value as T | null) ?? fallback;
+  });
 
-  const { data, error } = await supabase.from("map_of_us_store").select("value").eq("key", key).maybeSingle();
-  if (error) throw toSupabaseError(error);
-
-  return (data?.value as T | null) ?? fallback;
+  return result ?? fallback;
 }
 
 export async function writeJsonValue<T>(key: string, value: T): Promise<T> {
-  const supabase = getSupabaseAdmin();
-  if (!supabase) return value;
+  const result = await runWithSupabaseAdmin(async (supabase) => {
+    const { error } = await supabase
+      .from("map_of_us_store")
+      .upsert({ key, value, updated_at: new Date().toISOString() });
+    if (error) throw error;
+    return value;
+  });
 
-  const { error } = await supabase.from("map_of_us_store").upsert({ key, value, updated_at: new Date().toISOString() });
-  if (error) throw toSupabaseError(error);
-
-  return value;
+  return result ?? value;
 }
 
 export class StorageQuotaExceededError extends Error {
@@ -136,8 +178,7 @@ export async function listAdminAlerts() {
 }
 
 export async function recordAdminAlert(alert: Omit<AdminAlert, "id" | "createdAt">) {
-  const supabase = getSupabaseAdmin();
-  if (!supabase) return null;
+  if (!getSupabaseAdmin()) return null;
 
   const alerts = await listAdminAlerts().catch(() => []);
   const nextAlert: AdminAlert = {
@@ -164,8 +205,7 @@ export function isDataImageUrl(value: string) {
 }
 
 export async function uploadDataImage(value: string, pathPrefix: string, fallbackFileName: string) {
-  const supabase = getSupabaseAdmin();
-  if (!supabase || !isDataImageUrl(value)) return value;
+  if (!isDataImageUrl(value)) return value;
 
   const match = dataUrlPattern.exec(value);
   if (!match) return value;
@@ -174,12 +214,16 @@ export async function uploadDataImage(value: string, pathPrefix: string, fallbac
   const extension = extensionByMime.get(mimeType) ?? "png";
   const filePath = `${pathPrefix}/${fallbackFileName}.${extension}`.replaceAll(/\/+/g, "/");
   const bytes = Buffer.from(base64, "base64");
-  const { error } = await supabase.storage.from(supabaseStorageBucket).upload(filePath, bytes, {
-    contentType: mimeType,
-    upsert: true,
-  });
 
-  if (error) {
+  const result = await runWithSupabaseAdmin(async (supabase) => {
+    const { error } = await supabase.storage.from(supabaseStorageBucket).upload(filePath, bytes, {
+      contentType: mimeType,
+      upsert: true,
+    });
+
+    if (error) throw error;
+    return `${privateImagePrefix}${supabaseStorageBucket}/${filePath}`;
+  }).catch(async (error) => {
     if (isStorageQuotaError(error)) {
       await recordAdminAlert({
         type: "storage_quota",
@@ -191,9 +235,9 @@ export async function uploadDataImage(value: string, pathPrefix: string, fallbac
     }
 
     throw toSupabaseError(error);
-  }
+  });
 
-  return `${privateImagePrefix}${supabaseStorageBucket}/${filePath}`;
+  return result ?? value;
 }
 
 const getPrivateStoragePath = (value: string) => {
@@ -225,16 +269,19 @@ export function normalizePrivateImageReference(value: string) {
 }
 
 export async function createSignedImageUrl(value: string) {
-  const supabase = getSupabaseAdmin();
   const filePath = getPrivateStoragePath(value);
-  if (!supabase || !filePath) return value;
+  if (!filePath) return value;
 
-  const { data, error } = await supabase.storage
-    .from(supabaseStorageBucket)
-    .createSignedUrl(filePath, signedUrlExpiresInSeconds);
+  const result = await runWithSupabaseAdmin(async (supabase) => {
+    const { data, error } = await supabase.storage
+      .from(supabaseStorageBucket)
+      .createSignedUrl(filePath, signedUrlExpiresInSeconds);
 
-  if (error) return value;
-  return data.signedUrl;
+    if (error) throw error;
+    return data.signedUrl;
+  }).catch(() => value);
+
+  return result ?? value;
 }
 
 export async function createSignedImageMap<T extends Record<string, string>>(items: T): Promise<T> {
