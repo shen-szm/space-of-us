@@ -34,6 +34,16 @@ const parseLogoutPayload = (payload: unknown): AuthRole | "all" => {
 const isStorageConfigError = (error: unknown) =>
   error instanceof Error && error.message.toLowerCase().includes("supabase is required");
 
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return "Unknown error";
+  }
+};
+
 export async function POST(request: NextRequest) {
   const payload = parseLoginPayload(await request.json().catch(() => null));
 
@@ -70,7 +80,7 @@ export async function POST(request: NextRequest) {
         { status: 503 },
       );
     }
-    throw error;
+    return NextResponse.json({ error: `Login verification failed: ${getErrorMessage(error)}` }, { status: 500 });
   }
 
   const verifiedSharedPassword = payload.role === "site" && !payload.username && verifyPassword("site", payload.password);
@@ -84,7 +94,11 @@ export async function POST(request: NextRequest) {
   }
 
   if (verifiedAccount) {
-    await markAccountLogin(verifiedAccount.username);
+    try {
+      await markAccountLogin(verifiedAccount.username);
+    } catch (error) {
+      return NextResponse.json({ error: `Login session update failed: ${getErrorMessage(error)}` }, { status: 500 });
+    }
   }
 
   const response = NextResponse.json({

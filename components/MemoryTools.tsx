@@ -97,15 +97,15 @@ const loginPhotoVersion = "placeholder-20260601";
 const loginPhotoFallback = (fileName: string) => `/photos/login/${fileName}.jpg?v=${loginPhotoVersion}`;
 
 const loginPhotoSlots = [
-  { id: "hangzhou", city: "鏉窞", label: "鏄ユ棩婀栫晹", fallback: loginPhotoFallback("hangzhou") },
-  { id: "shanghai", city: "涓婃捣", label: "澶栨哗鍌嶆櫄", fallback: loginPhotoFallback("shanghai") },
-  { id: "macau", city: "婢抽棬", label: "鏃у煄鑺卞奖", fallback: loginPhotoFallback("macau") },
-  { id: "hongkong", city: "棣欐腐", label: "澶滆壊浜捣", fallback: loginPhotoFallback("hongkong") },
-  { id: "qingdao", city: "闈掑矝", label: "娴烽缁忚繃", fallback: loginPhotoFallback("qingdao") },
-  { id: "zhengzhou", city: "閮戝窞", label: "瑙侀潰閭ｅぉ", fallback: loginPhotoFallback("zhengzhou") },
-  { id: "zhuhai", city: "鐝犳捣", label: "娴疯竟鏁ｆ", fallback: loginPhotoFallback("zhuhai") },
-  { id: "guangzhou", city: "骞垮窞", label: "鏃ц鐑皵", fallback: loginPhotoFallback("guangzhou") },
-  { id: "jinan", city: "娴庡崡", label: "娉夎竟灏忚", fallback: loginPhotoFallback("jinan") },
+  { id: "hangzhou", city: "杭州", label: "春日湖畔", fallback: loginPhotoFallback("hangzhou") },
+  { id: "shanghai", city: "上海", label: "外滩傍晚", fallback: loginPhotoFallback("shanghai") },
+  { id: "macau", city: "澳门", label: "旧城光影", fallback: loginPhotoFallback("macau") },
+  { id: "hongkong", city: "香港", label: "夜色亮起", fallback: loginPhotoFallback("hongkong") },
+  { id: "qingdao", city: "青岛", label: "海风经过", fallback: loginPhotoFallback("qingdao") },
+  { id: "zhengzhou", city: "郑州", label: "见面那天", fallback: loginPhotoFallback("zhengzhou") },
+  { id: "zhuhai", city: "珠海", label: "海边散步", fallback: loginPhotoFallback("zhuhai") },
+  { id: "guangzhou", city: "广州", label: "旧街热气", fallback: loginPhotoFallback("guangzhou") },
+  { id: "jinan", city: "济南", label: "泉边小记", fallback: loginPhotoFallback("jinan") },
 ] as const;
 
 const readItems = (key: string): StoredItem[] => {
@@ -436,7 +436,7 @@ function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
                       className="grid h-8 w-8 place-items-center rounded-[6px] text-[#5A6670]/42 transition hover:bg-[#D6E8F0]/34 hover:text-[#A8C8DC]"
                       type="button"
                       onClick={() => startEdit(item)}
-                      aria-label="缂栬緫"
+                      aria-label="编辑"
                       disabled={!canEdit}
                     >
                       <Pencil className="h-4 w-4" />
@@ -445,7 +445,7 @@ function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
                       className="grid h-8 w-8 place-items-center rounded-[6px] text-[#5A6670]/42 transition hover:bg-[#F5DCE0]/45 hover:text-[#E8B8C2]"
                       type="button"
                       onClick={() => remove(item.id)}
-                      aria-label="鍒犻櫎"
+                      aria-label="删除"
                       disabled={!canEdit}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -692,7 +692,7 @@ export function SettingsPage() {
 
     const trimmed = value.trim();
     if (!trimmed) {
-      setStatus("璇疯緭鍏ユ柊瀵嗙爜");
+      setStatus("请输入新密码");
       return;
     }
     if (target === "site" && !/^\d{4,8}$/.test(trimmed)) {
@@ -713,7 +713,7 @@ export function SettingsPage() {
       if (target === "site") setNewEntryPassword("");
       else setNewAdminPassword("");
     } else {
-      setStatus("瀵嗙爜淇敼澶辫触锛岃閲嶈瘯");
+      setStatus("密码修改失败，请重试");
     }
   };
 
@@ -836,7 +836,7 @@ export function SettingsPage() {
       return;
     }
 
-    setAdminError(response?.status === 503 ? "绠＄悊鍛樿璇佹湭閰嶇疆" : "瀵嗙爜涓嶅");
+    setAdminError(response?.status === 503 ? "管理员认证尚未配置" : "密码不对");
   };
 
   const lockAdmin = () => {
@@ -1021,12 +1021,12 @@ export function SettingsPage() {
           </div>
 
           <div className="mt-5">
-            <p className="text-xs font-semibold text-[#5A6670]/48">鍙充笅瑙掑ご鍍?logo</p>
+            <p className="text-xs font-semibold text-[#5A6670]/48">右下角头像 Logo</p>
             <div className="mt-2 flex items-center gap-4">
               <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-[7px] border border-[#D8DDD8]/70 bg-white/40">
                 <LocalPrivacyImage
                   src={coupleLogo}
-                  alt="澶村儚 logo 棰勮"
+                  alt="头像 Logo 预览"
                   fill
                   sizes="80px"
                   className="object-contain"
@@ -1038,7 +1038,7 @@ export function SettingsPage() {
                     isAdmin ? "" : "pointer-events-none opacity-50"
                   }`}
                 >
-                  涓婁紶鍥剧墖
+                  上传图片
                   <input
                     type="file"
                     accept="image/*"
@@ -1053,7 +1053,7 @@ export function SettingsPage() {
                   onClick={resetCoupleLogo}
                   disabled={!isAdmin}
                 >
-                  鎭㈠榛樿
+                  恢复默认
                 </button>
               </div>
             </div>
@@ -1063,12 +1063,13 @@ export function SettingsPage() {
         <div className="rounded-[8px] border border-[#D8DDD8]/78 bg-[#FAFBF7]/76 p-5 shadow-[0_12px_28px_rgba(90,102,112,0.06)] md:col-span-2">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold text-[#5A6670]">鐧诲綍鐓х墖</p>
+              <p className="text-sm font-semibold text-[#5A6670]">登录照片</p>
               <p className="mt-2 text-sm leading-6 text-[#5A6670]/62">
-                瀵瑰簲鐧诲綍鐣岄潰搴曢儴鐨?9 寮犵収鐗囥€傛浛鎹㈡煇涓€鏍煎悗锛屽ぇ鑳屾櫙銆佺浉妗嗗拰缂╃暐鍥鹃兘浼氬悓姝ヤ娇鐢ㄨ繖涓€寮犮€?              </p>
+                对应登录界面底部的 9 张照片。替换某一格后，大背景、相框和缩略图都会同步使用这一张。
+              </p>
             </div>
             <p className="text-xs font-semibold text-[#5A6670]/42">
-              宸茶嚜瀹氫箟 {Object.keys(loginPhotos).length} / {loginPhotoSlots.length}
+              已自定义 {Object.keys(loginPhotos).length} / {loginPhotoSlots.length}
             </p>
           </div>
 
@@ -1139,7 +1140,7 @@ export function SettingsPage() {
                         type="button"
                         onClick={() => resetLoginPhoto(slot.id)}
                         disabled={isWorking || !isAdmin || !customPhoto}
-                        title={`鎭㈠${slot.city}榛樿鐓х墖`}
+                        title={`恢复${slot.city}默认照片`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -1179,9 +1180,10 @@ export function SettingsPage() {
           </button>
         </div>
         <div className="rounded-[8px] border border-[#D8DDD8]/78 bg-[#FAFBF7]/76 p-5 shadow-[0_12px_28px_rgba(90,102,112,0.06)]">
-          <p className="text-sm font-semibold text-[#5A6670]">瀵煎叆鎭㈠</p>
+          <p className="text-sm font-semibold text-[#5A6670]">导入恢复</p>
           <p className="mt-2 text-sm leading-6 text-[#5A6670]/62">
-            閫夋嫨涔嬪墠瀵煎嚭鐨勫浠芥枃浠讹紝浼氳鐩栧綋鍓嶅煄甯傚洖蹇嗭紝骞舵仮澶嶈緟鍔╅〉闈㈡暟鎹€?          </p>
+            选择之前导出的备份文件，会覆盖当前城市回忆，并恢复辅助页面数据。
+          </p>
           <input
             ref={importInputRef}
             className="hidden"
@@ -1197,7 +1199,7 @@ export function SettingsPage() {
             disabled={isWorking || !isAdmin}
           >
             <Upload className="h-4 w-4" />
-            瀵煎叆澶囦唤
+            导入备份
           </button>
         </div>
       </section>

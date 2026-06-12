@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import {
-  ArrowRight,
   AlertTriangle,
+  ArrowRight,
   CalendarDays,
   Eye,
   EyeOff,
@@ -17,9 +17,9 @@ import {
   MapPinned,
   RefreshCcw,
   ShieldCheck,
-  UsersRound,
   UserPlus,
   UserRound,
+  UsersRound,
 } from "lucide-react";
 import type { PublicUserAccount } from "@/data/accounts";
 import type { AdminAlert } from "@/data/adminAlerts";
@@ -149,7 +149,7 @@ export default function EntryExperience() {
         setStatus("done");
         setMode("login");
         setPassword("");
-        setMessage("注册成功，现在可以用这个账号登录。");
+        setMessage("注册成功，现在可以用这个账号登录了。");
         return;
       }
 
@@ -280,7 +280,10 @@ export default function EntryExperience() {
             priority
           />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(22,31,39,0.86),rgba(22,31,39,0.24)_50%,rgba(22,31,39,0.72)),radial-gradient(circle_at_72%_22%,rgba(245,220,224,0.24),transparent_34%)]" />
-          <motion.div className="absolute inset-x-8 inset-y-8 flex flex-col justify-between pb-8" style={{ x: driftX, y: driftY }}>
+          <motion.div
+            className="absolute inset-x-8 inset-y-8 flex flex-col justify-between pb-8"
+            style={{ x: driftX, y: driftY }}
+          >
             <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/14 bg-white/10 px-3 py-2 text-xs font-semibold text-white/76 backdrop-blur">
               <MapPinned className="h-4 w-4 text-[#F5DCE0]" />
               private album
@@ -291,7 +294,8 @@ export default function EntryExperience() {
                 <span className="block text-[#F5AFC0]">新地图</span>
               </p>
               <p className="mt-4 max-w-[360px] text-sm font-medium leading-7 text-white/68">
-                左侧保留原来的回忆照片氛围，右侧是更清爽的账号入口，属于沈先生和张小姐的 Space of us。
+                左侧保留原来的回忆照片氛围，右侧是更清爽的账号入口，属于沈先生和张小姐的 Space of
+                us。
               </p>
             </div>
           </motion.div>
@@ -473,7 +477,7 @@ export default function EntryExperience() {
                       管理界面
                     </h1>
                     <p className="mt-2 text-sm leading-6 text-[#5A6670]/62">
-                      管理员可进入主站功能，并查看注册用户的账号、绑定与邀请状态。
+                      管理员可以进入主站功能，并查看注册用户的账号、绑定与邀请状态。
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
