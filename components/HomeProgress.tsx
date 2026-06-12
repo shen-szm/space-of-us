@@ -19,6 +19,7 @@ import {
   defaultCoupleLogo,
   defaultWeatherCityIds,
   readAppSettings,
+  syncAppSettings,
   type AppSettings,
 } from "@/data/appSettings";
 
@@ -32,6 +33,7 @@ function useAppSettings(): AppSettings {
   useEffect(() => {
     const sync = () => setSettings(readAppSettings());
     sync();
+    void syncAppSettings().then(setSettings).catch(() => undefined);
     window.addEventListener(appSettingsUpdatedEvent, sync);
     window.addEventListener("storage", sync);
 

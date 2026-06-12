@@ -41,19 +41,19 @@ import {
   writeLoginPhoto,
 } from "@/data/loginPhotoStore";
 import {
+  readSharedItems,
+  saveSharedItems,
+  sharedItemsUpdatedEvent,
+  type SharedItem,
+} from "@/data/sharedItems";
+import {
   adminModeUpdatedEvent,
   readAdminMode,
   writeAdminMode,
 } from "@/data/adminMode";
 import { LocalPrivacyImage } from "@/components/LocalPrivacyImage";
 
-type StoredItem = {
-  id: string;
-  title: string;
-  date?: string;
-  note: string;
-  cityId?: string;
-};
+type StoredItem = SharedItem;
 type CityAssetStore = Record<string, string>;
 
 type ToolConfig = {
@@ -107,22 +107,6 @@ const loginPhotoSlots = [
   { id: "guangzhou", city: "广州", label: "旧街热气", fallback: loginPhotoFallback("guangzhou") },
   { id: "jinan", city: "济南", label: "泉边小记", fallback: loginPhotoFallback("jinan") },
 ] as const;
-
-const readItems = (key: string): StoredItem[] => {
-  if (typeof window === "undefined") return [];
-
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(key) ?? "[]") as unknown;
-
-    return Array.isArray(parsed) ? parsed.filter((item): item is StoredItem => typeof item === "object" && item !== null && "id" in item) : [];
-  } catch {
-    return [];
-  }
-};
-
-const writeItems = (key: string, items: StoredItem[]) => {
-  window.localStorage.setItem(key, JSON.stringify(items));
-};
 
 const useAdminMode = () => {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -260,14 +244,37 @@ function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
   const [note, setNote] = useState("");
   const [cityId, setCityId] = useState(cities[0]?.id ?? "");
   const [editingId, setEditingId] = useState("");
+  const [status, setStatus] = useState("");
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setItems(readItems(config.storageKey));
-    }, 0);
+    const load = () => {
+      void readSharedItems(config.kind)
+        .then((nextItems) => {
+          setItems(nextItems);
+          setStatus("");
+        })
+        .catch((error) => {
+          setStatus(error instanceof Error ? error.message : "共享内容加载失败，请稍后重试。");
+        });
+    };
 
-    return () => window.clearTimeout(timer);
-  }, [config.storageKey]);
+    const timer = window.setTimeout(load, 0);
+    const handleUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<{ kind?: string; items?: StoredItem[] }>).detail;
+      if (detail?.kind === config.kind && Array.isArray(detail.items)) {
+        setItems(detail.items);
+      } else {
+        load();
+      }
+    };
+
+    window.addEventListener(sharedItemsUpdatedEvent, handleUpdate);
+
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener(sharedItemsUpdatedEvent, handleUpdate);
+    };
+  }, [config.kind]);
 
   const cityOptions = useMemo(() => cities.slice().sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN")), []);
   const canSave = title.trim().length > 0;
@@ -283,6 +290,7 @@ function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
     if (!canEdit) return;
     if (!canSave) return;
 
+    const previousItems = items;
     const item = {
       id: editingId || `${config.kind}-${Date.now()}`,
       title: title.trim(),
@@ -295,7 +303,16 @@ function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
       : [item, ...items];
 
     setItems(nextItems);
-    writeItems(config.storageKey, nextItems);
+    setStatus("");
+    void saveSharedItems(config.kind, nextItems)
+      .then((savedItems) => {
+        setItems(savedItems);
+        setStatus("已同步到云端。");
+      })
+      .catch((error) => {
+        setItems(previousItems);
+        setStatus(error instanceof Error ? error.message : "保存失败，请稍后重试。");
+      });
     resetForm();
   };
 
@@ -310,9 +327,19 @@ function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
 
   const remove = (id: string) => {
     if (!canEdit) return;
+    const previousItems = items;
     const nextItems = items.filter((item) => item.id !== id);
     setItems(nextItems);
-    writeItems(config.storageKey, nextItems);
+    setStatus("");
+    void saveSharedItems(config.kind, nextItems)
+      .then((savedItems) => {
+        setItems(savedItems);
+        setStatus("已同步到云端。");
+      })
+      .catch((error) => {
+        setItems(previousItems);
+        setStatus(error instanceof Error ? error.message : "删除失败，请稍后重试。");
+      });
     if (editingId === id) resetForm();
   };
 
@@ -412,6 +439,7 @@ function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
               取消编辑
             </button>
           )}
+          {status ? <p className="mt-3 text-xs font-semibold text-[#5A6670]/54">{status}</p> : null}
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
