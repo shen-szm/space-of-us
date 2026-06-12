@@ -1,17 +1,24 @@
 # Space of us
 
-沈先生和张小姐的专属情侣空间。
+`Space of us` 是一套情侣共享空间网站，围绕两个人的回忆、约定、菜单、订单、纪念日和地点收藏展开。
 
-这个网站用来记录两个人的地图回忆、纪念日、地点收藏、约定清单、情侣菜单和共享订单。它保留了柔和的回忆相册氛围，同时加入更简洁的 Apple 风格界面。
+当前仓库保留了网站版与桌面端构建能力；本轮整理重点放在网站版、云端同步和 V3 交付上。
 
-## 功能
+## 当前分支说明
 
-- 地图回忆：记录一起去过或想去的城市。
-- 情侣中心：管理约定、菜单、订单和双方绑定。
-- 地点收藏：保存想吃、想玩、想旅行的地方。
-- 纪念日：双方都可以新增和维护重要日子。
-- 时光宝盒：存放不一定属于某座城市的小秘密。
-- 管理后台：管理员可查看用户信息并重置密码。
+- `main` / `space-of-us`：保留原有基线
+- `space-of-us-v3`：当前本地整理分支
+- `origin/V3`：GitHub 上对应的 V3 远端分支
+
+## 当前能力
+
+- 普通用户注册、登录、找回密码
+- 管理员后台登录、查看用户、重置密码
+- 情侣绑定邀请
+- 情侣菜单、订单、约定
+- 地点收藏、纪念日、时光宝盒
+- 登录页照片与站点展示文案配置
+- 共享数据逐步迁移到 Supabase，支持多设备同步
 
 ## 本地运行
 
@@ -20,15 +27,36 @@ npm install
 npm run dev
 ```
 
-默认本地地址：
+默认开发地址：
 
 ```text
 http://localhost:3002
 ```
 
-## 构建
+## 质量检查
 
 ```bash
 npm run lint
 npm run build
 ```
+
+## 线上依赖
+
+当前线上版本使用：
+
+- Vercel：站点部署
+- Supabase：账号、共享数据、上传存储
+
+需要的关键环境变量包括：
+
+- `AUTH_COOKIE_SECRET`
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_STORAGE_BUCKET`
+- `SITE_PASSWORD`
+- `ADMIN_USERNAME`
+- `ADMIN_PASSWORD`
+
+## 日志约定
+
+从 V3 开始，所有有效改动都记录到 [CHANGELOG.md](C:\Users\31795\Documents\Map\map-of-us-template-main\CHANGELOG.md)。
