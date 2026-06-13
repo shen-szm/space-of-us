@@ -11,12 +11,7 @@ import {
   toPublicAccount,
 } from "@/data/accounts";
 import { getPrivateDataFilePath } from "@/lib/server/dataDir";
-import {
-  assertWritableStorageConfigured,
-  getSupabaseAdmin,
-  readJsonValue,
-  writeJsonValue,
-} from "@/lib/server/supabase";
+import { assertWritableStorageConfigured, getSupabaseAdmin, readJsonValue, writeJsonValue } from "@/lib/server/supabase";
 
 const storeKey = "accounts";
 const localFileName = "accounts.json";
@@ -25,7 +20,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
 const normalizeUsername = (value: string) => value.trim().toLowerCase();
-
+const normalizeEmail = (value: string) => value.trim().toLowerCase();
 const requestStatuses = new Set<BindingRequestStatus>(["pending", "accepted", "declined", "cancelled"]);
 
 const cleanBindingRequest = (value: unknown): AccountBindingRequest | null => {
@@ -81,11 +76,14 @@ const cleanAccount = (value: unknown): UserAccount | null => {
     id: value.id,
     username: normalizeUsername(value.username),
     displayName: value.displayName,
+    email: typeof value.email === "string" ? normalizeEmail(value.email) : undefined,
+    emailVerifiedAt: typeof value.emailVerifiedAt === "string" ? value.emailVerifiedAt : undefined,
     passwordHash: value.passwordHash,
     recoveryHash: value.recoveryHash,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
     lastLoginAt: typeof value.lastLoginAt === "string" ? value.lastLoginAt : undefined,
+    passwordUpdatedAt: typeof value.passwordUpdatedAt === "string" ? value.passwordUpdatedAt : undefined,
     bindingInviteCodeHash: typeof value.bindingInviteCodeHash === "string" ? value.bindingInviteCodeHash : undefined,
     bindingInviteCodePreview:
       typeof value.bindingInviteCodePreview === "string" ? value.bindingInviteCodePreview : undefined,
@@ -124,8 +122,7 @@ const legacyHashSecrets = () =>
 const hashWithSecret = (value: string, salt: string, secret: string) =>
   createHmac("sha256", secret).update(`${salt}:${value}`).digest("base64url");
 
-export const hashAccountSecret = (value: string, salt: string) =>
-  hashWithSecret(value, salt, accountHashSecret());
+export const hashAccountSecret = (value: string, salt: string) => hashWithSecret(value, salt, accountHashSecret());
 
 const verifyAccountSecret = (value: string, salt: string, hash: string) =>
   legacyHashSecrets().some((secret) => safeEqual(hashWithSecret(value, salt, secret), hash));
@@ -185,6 +182,12 @@ export const findAccount = async (username: string) => {
   return store.users.find((account) => account.username === normalized) ?? null;
 };
 
+export const findAccountByEmail = async (email: string) => {
+  const normalized = normalizeEmail(email);
+  const store = await readAccountStore();
+  return store.users.find((account) => account.email === normalized) ?? null;
+};
+
 export const findPublicAccount = async (username: string) => {
   const account = await findAccount(username);
   return account ? toPublicAccount(account) : null;
@@ -210,36 +213,49 @@ export const verifyAccountPassword = async (username: string, password: string) 
   return verifyAccountSecret(password, account.id, account.passwordHash) ? account : null;
 };
 
+const verifyPasswordAgainstAccount = (account: UserAccount, password: string) =>
+  verifyAccountSecret(password, account.id, account.passwordHash);
+
 export const registerAccount = async ({
   username,
   displayName,
+  email,
   password,
   recoveryPhrase,
 }: {
   username: string;
   displayName: string;
+  email: string;
   password: string;
-  recoveryPhrase: string;
+  recoveryPhrase?: string;
 }) => {
-  const normalized = normalizeUsername(username);
+  const normalizedUsername = normalizeUsername(username);
+  const normalizedEmail = normalizeEmail(email);
   const store = await readAccountStore();
-  if (store.users.some((account) => account.username === normalized)) {
+  if (store.users.some((account) => account.username === normalizedUsername)) {
     throw new Error("Account already exists");
+  }
+  if (store.users.some((account) => account.email === normalizedEmail)) {
+    throw new Error("Email already exists");
   }
 
   const timestamp = new Date().toISOString();
   const account: UserAccount = {
     id: `user-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    username: normalized,
+    username: normalizedUsername,
     displayName: displayName.trim() || username.trim(),
+    email: normalizedEmail,
+    emailVerifiedAt: timestamp,
     passwordHash: "",
     recoveryHash: "",
     createdAt: timestamp,
     updatedAt: timestamp,
+    passwordUpdatedAt: timestamp,
   };
 
+  const fallbackRecovery = recoveryPhrase?.trim() || normalizedEmail;
   account.passwordHash = hashAccountSecret(password, account.id);
-  account.recoveryHash = hashAccountSecret(recoveryPhrase, account.id);
+  account.recoveryHash = hashAccountSecret(fallbackRecovery, account.id);
   store.users = [account, ...store.users];
   await writeAccountStore(store);
 
@@ -267,12 +283,13 @@ export const resetAccountPassword = async ({
   const timestamp = new Date().toISOString();
   account.passwordHash = hashAccountSecret(newPassword, account.id);
   account.updatedAt = timestamp;
+  account.passwordUpdatedAt = timestamp;
   await writeAccountStore(store);
 
   return toPublicAccount(account);
 };
 
-export const adminResetAccountPassword = async ({
+export const resetAccountPasswordByUsername = async ({
   username,
   newPassword,
 }: {
@@ -287,8 +304,61 @@ export const adminResetAccountPassword = async ({
   const timestamp = new Date().toISOString();
   account.passwordHash = hashAccountSecret(newPassword, account.id);
   account.updatedAt = timestamp;
+  account.passwordUpdatedAt = timestamp;
   await writeAccountStore(store);
 
+  return toPublicAccount(account);
+};
+
+export const adminResetAccountPassword = resetAccountPasswordByUsername;
+
+export const changeOwnAccountPassword = async ({
+  username,
+  currentPassword,
+  newPassword,
+}: {
+  username: string;
+  currentPassword: string;
+  newPassword: string;
+}) => {
+  const normalized = normalizeUsername(username);
+  const store = await readAccountStore();
+  const account = store.users.find((item) => item.username === normalized);
+  if (!account) throw new Error("Account not found");
+  if (!verifyPasswordAgainstAccount(account, currentPassword)) {
+    throw new Error("Current password is incorrect");
+  }
+
+  const timestamp = new Date().toISOString();
+  account.passwordHash = hashAccountSecret(newPassword, account.id);
+  account.updatedAt = timestamp;
+  account.passwordUpdatedAt = timestamp;
+  await writeAccountStore(store);
+
+  return toPublicAccount(account);
+};
+
+export const updateAccountEmail = async ({
+  username,
+  email,
+}: {
+  username: string;
+  email: string;
+}) => {
+  const normalizedUsername = normalizeUsername(username);
+  const normalizedEmail = normalizeEmail(email);
+  const store = await readAccountStore();
+  const account = store.users.find((item) => item.username === normalizedUsername);
+  if (!account) throw new Error("Account not found");
+  const duplicated = store.users.find((item) => item.username !== normalizedUsername && item.email === normalizedEmail);
+  if (duplicated) throw new Error("Email already exists");
+
+  const timestamp = new Date().toISOString();
+  account.email = normalizedEmail;
+  account.emailVerifiedAt = timestamp;
+  account.updatedAt = timestamp;
+  account.recoveryHash = hashAccountSecret(normalizedEmail, account.id);
+  await writeAccountStore(store);
   return toPublicAccount(account);
 };
 

@@ -20,11 +20,14 @@ export type UserAccount = {
   id: string;
   username: string;
   displayName: string;
+  email?: string;
+  emailVerifiedAt?: string;
   passwordHash: string;
   recoveryHash: string;
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;
+  passwordUpdatedAt?: string;
   bindingInviteCodeHash?: string;
   bindingInviteCodePreview?: string;
   bindingInviteCreatedAt?: string;
@@ -41,6 +44,9 @@ export type PublicUserAccount = {
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;
+  passwordUpdatedAt?: string;
+  email?: string;
+  emailVerifiedAt?: string;
   bindingInviteCodePreview?: string;
   bindingInviteCreatedAt?: string;
   partnerUserId?: string;
@@ -64,6 +70,9 @@ export const toPublicAccount = (account: UserAccount): PublicUserAccount => ({
   createdAt: account.createdAt,
   updatedAt: account.updatedAt,
   lastLoginAt: account.lastLoginAt,
+  passwordUpdatedAt: account.passwordUpdatedAt,
+  email: account.email,
+  emailVerifiedAt: account.emailVerifiedAt,
   bindingInviteCodePreview: account.bindingInviteCodePreview,
   bindingInviteCreatedAt: account.bindingInviteCreatedAt,
   partnerUserId: account.partnerUserId,

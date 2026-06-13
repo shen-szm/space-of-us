@@ -10,8 +10,8 @@ import {
   Heart,
   Map as MapIcon,
   Settings,
-  Sparkles,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 
 export type MemoryNavKey =
@@ -46,7 +46,7 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
           <Heart className="h-10 w-10 fill-[#F5DCE0] text-[#E8B8C2]" />
         </div>
         <p className="mt-2 text-lg font-semibold text-[#5A6670]">我们的地图</p>
-        <p className="mt-1 text-xs text-[#5A6670]/52">沈先生和张小姐的专属空间</p>
+        <p className="mt-1 text-xs text-[#5A6670]/52">只属于两个人的回忆空间</p>
       </div>
 
       <nav className="mt-10 space-y-2">
@@ -59,7 +59,7 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
               key={item.key}
               className={`flex w-full items-center gap-3 rounded-[8px] border px-4 py-3 text-sm font-medium transition ${
                 selected
-                  ? "border-[#F5DCE0] bg-[#F5DCE0]/52 text-[#E8B8C2]"
+                  ? "border-[#F5DCE0] bg-[#F5DCE0]/52 text-[#D86F82]"
                   : "border-transparent text-[#5A6670]/72 hover:border-[#D8DDD8] hover:bg-[#FAFBF7]"
               }`}
               href={item.href}
@@ -72,30 +72,30 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
       </nav>
 
       <div className="mt-10 rounded-[8px] border border-[#D8DDD8]/72 bg-[#FAFBF7]/72 p-4 text-sm leading-7 text-[#5A6670]/62 shadow-[0_12px_26px_rgba(90,102,112,0.05)]">
-        在地图的每个角落，慢慢收藏沈先生和张小姐一起走过、想去、想记住的故事
+        在地图的每个角落，慢慢收藏你们一起走过、想去、想记住的故事。
         <Heart className="ml-1 inline h-3.5 w-3.5 fill-[#F5DCE0] text-[#E8B8C2]" />
       </div>
 
       <div className="mt-4 overflow-hidden rounded-[8px] border border-[#D8DDD8]/72 bg-[#FAFBF7]/72 p-4 shadow-[0_12px_26px_rgba(90,102,112,0.05)]">
         <div className="flex items-center gap-2">
           <Heart className="h-3.5 w-3.5 fill-[#F5DCE0] text-[#E8B8C2]" />
-          <p className="text-xs font-semibold text-[#5A6670]">关于这份地图</p>
+          <p className="text-xs font-semibold text-[#5A6670]">关于这个空间</p>
         </div>
         <p className="mt-2 text-xs leading-6 text-[#5A6670]/60">
-          这是沈先生和张小姐的专属回忆空间。它用来装下两个人的城市足迹、纪念日、心愿清单和那些只想留给彼此的小约定。
+          这里用来装下两个人的城市足迹、纪念日、心愿清单，还有那些只想留给彼此的小约定。
         </p>
 
         <div className="mt-3 border-t border-[#D8DDD8]/54 pt-3">
-          <p className="text-[11px] font-semibold text-[#5A6670]/48">这里记录什么</p>
+          <p className="text-[11px] font-semibold text-[#5A6670]/48">这里会记录什么</p>
           <p className="mt-1 text-xs leading-6 text-[#5A6670]/60">
-            想吃的店、想喝的奶茶、想一起去的远方、已经发生的瞬间，都可以被轻轻放进 Space of us。
+            想吃的小店、想喝的奶茶、想一起去的地方、已经发生的瞬间，都可以被轻轻放进 Space of us。
           </p>
         </div>
 
         <div className="mt-3 border-t border-[#D8DDD8]/54 pt-3">
           <p className="text-[11px] font-semibold text-[#5A6670]/48">我们的约定</p>
           <div className="mt-2 rounded-[7px] border border-[#F5DCE0]/70 bg-[#F5DCE0]/28 px-3 py-2 text-xs leading-6 text-[#5A6670]/64">
-            不赶时间，不怕遗忘。把喜欢的事一件件存下来，等有空的时候一起完成。
+            不赶时间，不怕遗忘。把喜欢的事情一件件存下来，等有空的时候一起完成。
           </div>
         </div>
 

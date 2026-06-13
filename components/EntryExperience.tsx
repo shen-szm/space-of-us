@@ -1,7 +1,8 @@
 "use client";
 
+import Image from "next/image";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   AlertTriangle,
@@ -10,10 +11,10 @@ import {
   Eye,
   EyeOff,
   Heart,
-  KeyRound,
   LayoutDashboard,
   LockKeyhole,
   LogOut,
+  Mail,
   MapPinned,
   RefreshCcw,
   ShieldCheck,
@@ -30,7 +31,12 @@ const loginPhotoVersion = "placeholder-20260601";
 const loginPhotoPath = (fileName: string) => `/photos/login/${fileName}.jpg?v=${loginPhotoVersion}`;
 
 type AuthMode = "login" | "register" | "recover";
+type RecoverStage = "request-code" | "verify-code" | "reset-password";
 type Status = "idle" | "checking" | "wrong" | "done";
+type CaptchaState = {
+  token: string;
+  svg: string;
+};
 
 const authModes: Array<{ key: AuthMode; label: string }> = [
   { key: "login", label: "登录" },
@@ -56,48 +62,40 @@ const formatDateTime = (value?: string) => {
   return date.toLocaleString("zh-CN");
 };
 
-const postJson = async (url: string, payload: Record<string, unknown>) => {
+const cleanErrorMessage = (value: string) => {
+  if (!value) return "";
+  if (value.includes("Mail service is not configured")) return "邮件服务还没有配置完成，请先补齐 Resend 环境变量并重新部署。";
+  if (value.includes("Database is not configured")) return "数据库还没有连接完成，请先完成 Supabase 配置并重新部署。";
+  if (value.includes("Load users failed")) return "用户列表加载失败，请稍后刷新后台。";
+  if (value.includes("Invalid API key")) return "Supabase 密钥无效，请检查生产环境变量。";
+  return value;
+};
+
+const postJson = async <T,>(url: string, payload: Record<string, unknown>) => {
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 
+  const data = (await response.json().catch(() => null)) as { error?: string } & T;
   if (!response.ok) {
-    const errorPayload = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(errorPayload?.error ?? "Request failed");
+    throw new Error(cleanErrorMessage(data?.error ?? "Request failed"));
   }
-  return response.json() as Promise<unknown>;
+  return data as T;
 };
 
 const getJson = async <T,>(url: string) => {
   const response = await fetch(url, { cache: "no-store", credentials: "same-origin" });
+  const data = (await response.json().catch(() => null)) as { error?: string } & T;
   if (!response.ok) {
-    const errorPayload = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(errorPayload?.error ?? `Request failed (${response.status})`);
+    throw new Error(cleanErrorMessage(data?.error ?? `Request failed (${response.status})`));
   }
-  return response.json() as Promise<T>;
+  return data as T;
 };
 
-const surfaceMessage = (mode: AuthMode, detail: string) => {
-  if (detail.includes("Database is not configured")) {
-    return "数据库还没有连接完成，请先配置 Supabase 并重新部署。";
-  }
-  if (detail.includes("Supabase API key is invalid")) {
-    return "Supabase 密钥或项目地址不匹配，请检查生产环境变量。";
-  }
-  if (mode === "register") {
-    if (detail === "Account already exists") return "注册失败：用户名已经存在。";
-    if (detail.includes("Invalid account fields")) return "注册失败：用户名至少 2 位，密码至少 4 位。";
-    return detail ? `注册失败：${detail}` : "注册失败，请稍后重试。";
-  }
-  if (mode === "recover") {
-    return detail ? `找回失败：${detail}` : "找回失败，请确认用户名、找回口令和新密码。";
-  }
-  if (detail.includes("Invalid admin")) return "管理员账号或密码不正确。";
-  if (detail.includes("Invalid account")) return "账号或密码不正确，请重新确认。";
-  return detail ? `登录失败：${detail}` : "登录失败，请稍后重试。";
-};
+const captchaToSrc = (svg?: string) =>
+  svg ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}` : "";
 
 function BrandHeart() {
   return (
@@ -110,11 +108,17 @@ function BrandHeart() {
 export default function EntryExperience() {
   const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("login");
+  const [recoverStage, setRecoverStage] = useState<RecoverStage>("request-code");
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [email, setEmail] = useState("");
+  const [emailCode, setEmailCode] = useState("");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [recoveryPhrase, setRecoveryPhrase] = useState("");
+  const [captchaAnswer, setCaptchaAnswer] = useState("");
+  const [captcha, setCaptcha] = useState<CaptchaState | null>(null);
+  const [recoverMaskedEmail, setRecoverMaskedEmail] = useState("");
+  const [recoverGrantToken, setRecoverGrantToken] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
@@ -123,6 +127,26 @@ export default function EntryExperience() {
   const [adminPanel, setAdminPanel] = useState(false);
   const [resetUser, setResetUser] = useState("");
   const [resetPassword, setResetPassword] = useState("");
+
+  const captchaSrc = useMemo(() => captchaToSrc(captcha?.svg), [captcha?.svg]);
+
+  const resetTransient = () => {
+    setStatus("idle");
+    setMessage("");
+    setEmailCode("");
+    setCaptchaAnswer("");
+    setRecoverMaskedEmail("");
+    setRecoverGrantToken("");
+    setNewPassword("");
+    setCaptcha(null);
+    setRecoverStage("request-code");
+  };
+
+  const ensureCaptcha = async () => {
+    const next = await getJson<CaptchaState>("/api/auth/captcha");
+    setCaptcha(next);
+    return next;
+  };
 
   const loadUsers = async () => {
     const payload = await getJson<{ users?: PublicUserAccount[] }>("/api/accounts");
@@ -145,6 +169,121 @@ export default function EntryExperience() {
     }
   };
 
+  const surfaceLoginMessage = (detail: string) => {
+    if (detail.includes("Invalid admin")) return "管理员账号或密码不正确。";
+    if (detail.includes("Invalid account")) return "账号或密码不正确，请重新确认。";
+    return detail ? `登录失败：${detail}` : "登录失败，请稍后重试。";
+  };
+
+  const submitLogin = async () => {
+    const adminLogin = isAdminName(username);
+    await postJson("/api/auth/login", {
+      mode: adminLogin ? "admin" : "site",
+      username,
+      password,
+    });
+
+    if (adminLogin) {
+      setAdminPanel(true);
+      setStatus("done");
+      setMessage("管理员已登录，正在读取后台数据。");
+      void loadAdminData()
+        .then(() => setMessage("管理员已登录。"))
+        .catch((error) => {
+          const detail = error instanceof Error ? error.message : "Load users failed";
+          setMessage(`管理员已登录，但后台数据加载失败：${cleanErrorMessage(detail)}`);
+        });
+      return;
+    }
+
+    setStatus("done");
+    router.push("/map");
+  };
+
+  const sendRegisterCode = async () => {
+    setStatus("checking");
+    setMessage("");
+    try {
+      const currentCaptcha = captcha ?? (await ensureCaptcha());
+      await postJson("/api/auth/email-code", {
+        purpose: "register",
+        email,
+        captchaToken: currentCaptcha.token,
+        captchaAnswer,
+      });
+      setStatus("done");
+      setMessage("邮箱验证码已发送，请查收邮件后继续完成注册。");
+      await ensureCaptcha();
+      setCaptchaAnswer("");
+    } catch (error) {
+      setStatus("wrong");
+      setMessage(error instanceof Error ? `发送失败：${error.message}` : "验证码发送失败。");
+      await ensureCaptcha().catch(() => undefined);
+    }
+  };
+
+  const submitRegister = async () => {
+    await postJson("/api/accounts", {
+      action: "register",
+      username,
+      displayName: displayName.trim() || username.trim(),
+      email,
+      password,
+      emailCode,
+    });
+    setStatus("done");
+    setMode("login");
+    setPassword("");
+    setEmailCode("");
+    setCaptchaAnswer("");
+    setCaptcha(null);
+    setMessage("注册成功，现在可以使用这个账号登录了。");
+  };
+
+  const sendRecoverCode = async () => {
+    const currentCaptcha = captcha ?? (await ensureCaptcha());
+    const payload = await postJson<{ maskedEmail?: string }>("/api/auth/email-code", {
+      purpose: "recover",
+      identifier: username,
+      captchaToken: currentCaptcha.token,
+      captchaAnswer,
+    });
+    setRecoverMaskedEmail(payload.maskedEmail ?? "");
+    setRecoverStage("verify-code");
+    setEmailCode("");
+    setCaptchaAnswer("");
+    await ensureCaptcha();
+  };
+
+  const verifyRecoverCode = async () => {
+    const payload = await postJson<{ grantToken: string }>("/api/auth/password-recovery", {
+      action: "verifyCode",
+      identifier: username,
+      emailCode,
+    });
+    setRecoverGrantToken(payload.grantToken);
+    setRecoverStage("reset-password");
+    setStatus("done");
+    setMessage("邮箱验证通过，现在可以设置新密码。");
+  };
+
+  const submitRecoverPassword = async () => {
+    await postJson("/api/accounts", {
+      action: "resetPassword",
+      grantToken: recoverGrantToken,
+      newPassword,
+    });
+    setStatus("done");
+    setMode("login");
+    setRecoverStage("request-code");
+    setPassword(newPassword);
+    setNewPassword("");
+    setEmailCode("");
+    setRecoverGrantToken("");
+    setRecoverMaskedEmail("");
+    setMessage("密码已经重置，请使用新密码登录。");
+  };
+
   const submit = async () => {
     if (status === "checking") return;
     setStatus("checking");
@@ -152,62 +291,34 @@ export default function EntryExperience() {
 
     try {
       if (mode === "register") {
-        await postJson("/api/accounts", {
-          action: "register",
-          username,
-          displayName: displayName.trim() || username.trim(),
-          password,
-          recoveryPhrase: recoveryPhrase.trim() || password,
-        });
-        setStatus("done");
-        setMode("login");
-        setPassword("");
-        setNewPassword("");
-        setMessage("注册成功，现在可以用这个账号登录了。");
+        await submitRegister();
         return;
       }
 
       if (mode === "recover") {
-        await postJson("/api/accounts", {
-          action: "resetPassword",
-          username,
-          recoveryPhrase,
-          newPassword,
-        });
-        setStatus("done");
-        setMode("login");
-        setPassword(newPassword);
-        setNewPassword("");
-        setMessage("密码已经重置，请使用新密码登录。");
+        if (recoverStage === "request-code") {
+          await sendRecoverCode();
+          return;
+        }
+        if (recoverStage === "verify-code") {
+          await verifyRecoverCode();
+          return;
+        }
+        await submitRecoverPassword();
         return;
       }
 
-      const adminLogin = isAdminName(username);
-      await postJson("/api/auth/login", {
-        mode: adminLogin ? "admin" : "site",
-        username,
-        password,
-      });
-
-      if (adminLogin) {
-        setAdminPanel(true);
-        setStatus("done");
-        setMessage("管理员已登录，正在读取后台数据。");
-        void loadAdminData()
-          .then(() => setMessage("管理员已登录。"))
-          .catch((error) => {
-            const detail = error instanceof Error ? error.message : "Load users failed";
-            setMessage(`管理员已登录，但用户列表加载失败：${detail}`);
-          });
-        return;
-      }
-
-      setStatus("done");
-      router.push("/map");
+      await submitLogin();
     } catch (error) {
       const detail = error instanceof Error ? error.message : "";
       setStatus("wrong");
-      setMessage(surfaceMessage(mode, detail));
+      if (mode === "login") {
+        setMessage(surfaceLoginMessage(detail));
+      } else if (mode === "register") {
+        setMessage(detail ? `注册失败：${detail}` : "注册失败，请稍后重试。");
+      } else {
+        setMessage(detail ? `找回失败：${detail}` : "找回失败，请稍后重试。");
+      }
       window.setTimeout(() => setStatus("idle"), 900);
     }
   };
@@ -244,15 +355,27 @@ export default function EntryExperience() {
     setAlerts([]);
     setUsername("");
     setPassword("");
-    setRecoveryPhrase("");
+    setEmail("");
+    setDisplayName("");
     setResetUser("");
     setResetPassword("");
-    setStatus("idle");
-    setMessage("");
+    resetTransient();
   };
 
   const primaryLabel =
-    mode === "register" ? "创建账号" : mode === "recover" ? "重置密码" : "进入网站";
+    mode === "register" ? "创建账号" : mode === "recover" ? "继续处理" : "进入网站";
+
+  const renderRecoverHint = () => {
+    if (recoverStage === "verify-code") {
+      return recoverMaskedEmail
+        ? `验证码已发送到 ${recoverMaskedEmail}，先完成邮箱验证，再进行密码重置。`
+        : "验证码已发送到绑定邮箱，先完成邮箱验证，再进行密码重置。";
+    }
+    if (recoverStage === "reset-password") {
+      return "邮箱验证成功，请输入新的登录密码。";
+    }
+    return "输入用户名或邮箱，先完成图形验证，再向绑定邮箱发送验证码。";
+  };
 
   return (
     <main className="login-stage relative min-h-[100dvh] overflow-x-hidden overflow-y-auto bg-[#F9F6EC] text-[#344451]">
@@ -290,7 +413,7 @@ export default function EntryExperience() {
 
         <section className="flex min-h-[calc(100dvh-32px)] items-center justify-center">
           <motion.div
-            className="w-full max-w-[620px] rounded-[8px] border border-white/76 bg-white/66 p-5 shadow-[0_34px_100px_rgba(91,71,50,0.14)] backdrop-blur-2xl sm:p-7"
+            className="w-full max-w-[720px] rounded-[8px] border border-white/76 bg-white/66 p-5 shadow-[0_34px_100px_rgba(91,71,50,0.14)] backdrop-blur-2xl sm:p-7"
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.48 }}
@@ -325,8 +448,7 @@ export default function EntryExperience() {
                         type="button"
                         onClick={() => {
                           setMode(item.key);
-                          setStatus("idle");
-                          setMessage("");
+                          resetTransient();
                         }}
                       >
                         {item.label}
@@ -341,41 +463,59 @@ export default function EntryExperience() {
                   </h1>
                   <p className="mt-2 text-sm leading-6 text-[#5A6670]/62">
                     {mode === "register"
-                      ? "注册普通用户，设置密码和找回口令。"
+                      ? "注册普通用户时，需要先通过图形验证码并完成邮箱验证。"
                       : mode === "recover"
-                        ? "使用注册时设置的找回口令重置密码。"
+                        ? renderRecoverHint()
                         : "输入你的账号信息，继续回到属于你们的地图。"}
                   </p>
                 </div>
 
                 <div className="mt-6 grid gap-3">
                   <label className="block">
-                    <span className="mb-2 block text-xs font-semibold text-[#5A6670]/52">用户名</span>
+                    <span className="mb-2 block text-xs font-semibold text-[#5A6670]/52">
+                      {mode === "recover" ? "用户名或邮箱" : "用户名"}
+                    </span>
                     <span className="flex min-h-12 items-center gap-3 rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/74 px-3 transition focus-within:border-[#E8B8C2]">
                       <UserRound className="h-4 w-4 text-[#5A6670]/42" />
                       <input
                         className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[#344451] outline-none placeholder:text-[#5A6670]/36"
                         value={username}
                         onChange={(event) => setUsername(event.target.value)}
-                        placeholder="输入用户名"
+                        placeholder={mode === "recover" ? "输入用户名或邮箱" : "输入用户名"}
                         autoComplete="username"
                       />
                     </span>
                   </label>
 
                   {mode === "register" && (
-                    <label className="block">
-                      <span className="mb-2 block text-xs font-semibold text-[#5A6670]/52">昵称</span>
-                      <span className="flex min-h-12 items-center gap-3 rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/74 px-3 transition focus-within:border-[#E8B8C2]">
-                        <UserPlus className="h-4 w-4 text-[#5A6670]/42" />
-                        <input
-                          className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[#344451] outline-none placeholder:text-[#5A6670]/36"
-                          value={displayName}
-                          onChange={(event) => setDisplayName(event.target.value)}
-                          placeholder="显示给对方看的名字"
-                        />
-                      </span>
-                    </label>
+                    <>
+                      <label className="block">
+                        <span className="mb-2 block text-xs font-semibold text-[#5A6670]/52">昵称</span>
+                        <span className="flex min-h-12 items-center gap-3 rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/74 px-3 transition focus-within:border-[#E8B8C2]">
+                          <UserPlus className="h-4 w-4 text-[#5A6670]/42" />
+                          <input
+                            className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[#344451] outline-none placeholder:text-[#5A6670]/36"
+                            value={displayName}
+                            onChange={(event) => setDisplayName(event.target.value)}
+                            placeholder="显示给对方看的昵称"
+                          />
+                        </span>
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-2 block text-xs font-semibold text-[#5A6670]/52">邮箱</span>
+                        <span className="flex min-h-12 items-center gap-3 rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/74 px-3 transition focus-within:border-[#E8B8C2]">
+                          <Mail className="h-4 w-4 text-[#5A6670]/42" />
+                          <input
+                            className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[#344451] outline-none placeholder:text-[#5A6670]/36"
+                            value={email}
+                            onChange={(event) => setEmail(event.target.value)}
+                            placeholder="用于注册验证和密码找回"
+                            autoComplete="email"
+                          />
+                        </span>
+                      </label>
+                    </>
                   )}
 
                   {mode !== "recover" && (
@@ -406,22 +546,84 @@ export default function EntryExperience() {
                     </label>
                   )}
 
-                  {(mode === "register" || mode === "recover") && (
+                  {(mode === "register" || recoverStage === "request-code") && mode !== "login" && (
+                    <div className="grid gap-3 rounded-[8px] border border-[#E9E2D6] bg-[#FAFBF7]/66 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs font-semibold text-[#5A6670]/56">图形验证码</p>
+                        <button
+                          className="inline-flex items-center gap-1 rounded-full border border-[#D8DDD8]/80 px-3 py-1 text-xs font-semibold text-[#5A6670]/58"
+                          type="button"
+                          onClick={() => void ensureCaptcha()}
+                        >
+                          <RefreshCcw className="h-3.5 w-3.5" />
+                          换一张
+                        </button>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-[160px_1fr]">
+                        <button
+                          className="overflow-hidden rounded-[8px] border border-[#D8DDD8]/80 bg-white/70 p-0"
+                          type="button"
+                          onClick={() => void ensureCaptcha()}
+                        >
+                          {captchaSrc ? (
+                            <Image alt="图形验证码" src={captchaSrc} width={150} height={52} className="h-14 w-full object-cover" unoptimized />
+                          ) : (
+                            <span className="grid h-14 place-items-center text-xs text-[#5A6670]/52">点击加载验证码</span>
+                          )}
+                        </button>
+                        <label className="block">
+                          <span className="mb-2 block text-xs font-semibold text-[#5A6670]/52">输入验证码</span>
+                          <input
+                            className="min-h-12 w-full rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/74 px-3 text-sm font-medium text-[#344451] outline-none transition focus:border-[#E8B8C2]"
+                            value={captchaAnswer}
+                            onChange={(event) => setCaptchaAnswer(event.target.value)}
+                            placeholder="不区分大小写"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  {mode === "register" && (
+                    <div className="grid gap-3 rounded-[8px] border border-[#E9E2D6] bg-[#FAFBF7]/66 p-4">
+                      <div className="flex flex-wrap items-end gap-3 sm:grid sm:grid-cols-[1fr_auto]">
+                        <label className="block">
+                          <span className="mb-2 block text-xs font-semibold text-[#5A6670]/52">邮箱验证码</span>
+                          <input
+                            className="min-h-12 w-full rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/74 px-3 text-sm font-medium text-[#344451] outline-none transition focus:border-[#E8B8C2]"
+                            value={emailCode}
+                            onChange={(event) => setEmailCode(event.target.value.toUpperCase())}
+                            placeholder="输入收到的验证码"
+                          />
+                        </label>
+                        <button
+                          className="inline-flex min-h-12 items-center justify-center rounded-[8px] border border-[#D8DDD8]/82 bg-white/70 px-4 text-sm font-semibold text-[#5A6670] transition hover:border-[#E8B8C2] hover:text-[#D86F82]"
+                          type="button"
+                          onClick={() => void sendRegisterCode()}
+                          disabled={!email.trim() || !captchaAnswer.trim() || status === "checking"}
+                        >
+                          获取邮箱验证码
+                        </button>
+                      </div>
+                      <p className="text-xs leading-6 text-[#5A6670]/50">
+                        发送验证码前会先校验图形验证码；同一个邮箱需要等待短暂冷却后才能再次发送。
+                      </p>
+                    </div>
+                  )}
+
+                  {mode === "recover" && recoverStage === "verify-code" && (
                     <label className="block">
-                      <span className="mb-2 block text-xs font-semibold text-[#5A6670]/52">找回口令</span>
-                      <span className="flex min-h-12 items-center gap-3 rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/74 px-3 transition focus-within:border-[#E8B8C2]">
-                        <KeyRound className="h-4 w-4 text-[#5A6670]/42" />
-                        <input
-                          className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[#344451] outline-none placeholder:text-[#5A6670]/36"
-                          value={recoveryPhrase}
-                          onChange={(event) => setRecoveryPhrase(event.target.value)}
-                          placeholder="只要你自己记得住就行"
-                        />
-                      </span>
+                      <span className="mb-2 block text-xs font-semibold text-[#5A6670]/52">邮箱验证码</span>
+                      <input
+                        className="min-h-12 w-full rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/74 px-3 text-sm font-medium text-[#344451] outline-none transition focus:border-[#E8B8C2]"
+                        value={emailCode}
+                        onChange={(event) => setEmailCode(event.target.value.toUpperCase())}
+                        placeholder="输入邮箱里收到的验证码"
+                      />
                     </label>
                   )}
 
-                  {mode === "recover" && (
+                  {mode === "recover" && recoverStage === "reset-password" && (
                     <label className="block">
                       <span className="mb-2 block text-xs font-semibold text-[#5A6670]/52">新密码</span>
                       <span className="flex min-h-12 items-center gap-3 rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/74 px-3 transition focus-within:border-[#E8B8C2]">
@@ -430,7 +632,7 @@ export default function EntryExperience() {
                           className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[#344451] outline-none placeholder:text-[#5A6670]/36"
                           value={newPassword}
                           onChange={(event) => setNewPassword(event.target.value)}
-                          placeholder="设置新密码"
+                          placeholder="设置新的登录密码"
                           type={showPassword ? "text" : "password"}
                         />
                       </span>
@@ -454,8 +656,26 @@ export default function EntryExperience() {
                   <ArrowRight className="h-4 w-4" />
                 </button>
 
+                {mode === "recover" && recoverStage !== "request-code" && (
+                  <button
+                    className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-[8px] border border-[#D8DDD8]/80 bg-[#FAFBF7]/70 px-4 text-sm font-semibold text-[#5A6670]"
+                    type="button"
+                    onClick={() => {
+                      setRecoverStage("request-code");
+                      setEmailCode("");
+                      setRecoverGrantToken("");
+                      setRecoverMaskedEmail("");
+                      setNewPassword("");
+                      setMessage("");
+                    }}
+                  >
+                    <RefreshCcw className="h-4 w-4" />
+                    重新开始找回流程
+                  </button>
+                )}
+
                 <div className="mt-3 rounded-[8px] border border-[#F0E6D8] bg-[#FAFBF7]/76 px-4 py-3 text-xs leading-6 text-[#5A6670]/58">
-                  当前公开入口仍是国际托管。换设备登录后，数据会从云端同步；若中国大陆网络访问慢，可稍后重试或切换网络。
+                  当前公开入口仍然是国际托管。换设备登录后，数据会从云端同步；若中国大陆网络访问偏慢，可以稍后重试或切换网络。
                 </div>
 
                 <AccountBindingPanel compact className="mt-4" />
@@ -468,7 +688,7 @@ export default function EntryExperience() {
                       管理界面
                     </h1>
                     <p className="mt-2 text-sm leading-6 text-[#5A6670]/62">
-                      管理员可进入主站功能，并查看注册用户、绑定状态和系统提醒。
+                      管理员可以进入主站功能，并查看注册用户、绑定状态和系统提醒。
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -546,7 +766,7 @@ export default function EntryExperience() {
                     </span>
                     <div>
                       <p className="text-sm font-semibold text-[#344451]">主站功能</p>
-                      <p className="mt-1 text-xs text-[#5A6670]/50">管理员也可以直接进入站内页面进行检查。</p>
+                      <p className="mt-1 text-xs text-[#5A6670]/50">像启动台一样快速进入每个页面。</p>
                     </div>
                   </div>
                   <div className="relative mt-4 grid gap-3 sm:grid-cols-5">
@@ -605,7 +825,7 @@ export default function EntryExperience() {
                     <span className="text-xs font-semibold text-[#5A6670]/48">{users.length} 人</span>
                   </div>
                   <p className="mt-2 text-xs leading-5 text-[#5A6670]/48">
-                    后台不会显示用户密码、找回口令或哈希值，只显示账号、绑定和邀请状态。
+                    后台不会显示用户密码，只显示账号、邮箱、绑定和邀请状态。
                   </p>
                   <div className="mt-3 max-h-[420px] space-y-3 overflow-auto pr-1">
                     {users.length === 0 && (
@@ -618,7 +838,7 @@ export default function EntryExperience() {
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
                             <p className="text-sm font-semibold text-[#344451]">{user.displayName}</p>
-                            <p className="mt-1 text-xs text-[#5A6670]/48">{user.username}</p>
+                            <p className="mt-1 text-xs text-[#5A6670]/48">@{user.username}</p>
                           </div>
                           <button
                             className="rounded-[7px] border border-[#D8DDD8]/80 bg-[#FAFBF7]/70 px-3 py-2 text-xs font-semibold text-[#5A6670]"
@@ -634,8 +854,16 @@ export default function EntryExperience() {
                             <span className="select-all">{user.id}</span>
                           </p>
                           <p>
-                            <span className="font-semibold text-[#344451]">显示名：</span>
-                            {user.displayName || "未设置"}
+                            <span className="font-semibold text-[#344451]">邮箱：</span>
+                            {user.email || "未绑定"}
+                          </p>
+                          <p>
+                            <span className="font-semibold text-[#344451]">邮箱验证：</span>
+                            {user.emailVerifiedAt ? `已验证 · ${formatDateTime(user.emailVerifiedAt)}` : "未验证"}
+                          </p>
+                          <p>
+                            <span className="font-semibold text-[#344451]">密码更新时间：</span>
+                            {formatDateTime(user.passwordUpdatedAt)}
                           </p>
                           <p>
                             <span className="font-semibold text-[#344451]">注册时间：</span>
@@ -644,10 +872,6 @@ export default function EntryExperience() {
                           <p>
                             <span className="font-semibold text-[#344451]">最近登录：</span>
                             {formatDateTime(user.lastLoginAt)}
-                          </p>
-                          <p>
-                            <span className="font-semibold text-[#344451]">邀请码尾号：</span>
-                            {user.bindingInviteCodePreview ? `**${user.bindingInviteCodePreview}` : "未生成"}
                           </p>
                           <p>
                             <span className="font-semibold text-[#344451]">绑定对象：</span>
