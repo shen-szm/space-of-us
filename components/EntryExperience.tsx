@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -64,10 +64,16 @@ const formatDateTime = (value?: string) => {
 
 const cleanErrorMessage = (value: string) => {
   if (!value) return "";
-  if (value.includes("Mail service is not configured")) return "邮件服务还没有配置完成，请先补齐 Resend 环境变量并重新部署。";
-  if (value.includes("Database is not configured")) return "数据库还没有连接完成，请先完成 Supabase 配置并重新部署。";
-  if (value.includes("Load users failed")) return "用户列表加载失败，请稍后刷新后台。";
-  if (value.includes("Invalid API key")) return "Supabase 密钥无效，请检查生产环境变量。";
+  if (value.includes("Mail service is not configured")) return "邮件服务尚未配置，请先检查 Resend 环境变量。";
+  if (value.includes("Database is not configured")) return "数据库尚未配置，请先完成 Supabase 连接配置。";
+  if (value.includes("Load users failed")) return "加载用户列表失败，请稍后再试。";
+  if (value.includes("Invalid API key")) return "Supabase API Key 无效，请检查线上环境变量。";
+  if (value.includes("Email already exists")) return "该邮箱已被使用，请换一个。";
+  if (value.includes("Account already exists")) return "该用户名已存在，请换一个。";
+  if (value.includes("Invalid captcha")) return "图形验证码错误，请重新输入。";
+  if (value.includes("Captcha expired")) return "图形验证码已过期，请重新获取。";
+  if (value.includes("Please wait before requesting another code")) return "请等待 1 分钟后再重新发送验证码。";
+  if (value.includes("Daily email limit reached")) return "当天验证码发送次数已达上限，请明天再试。";
   return value;
 };
 
@@ -119,6 +125,7 @@ export default function EntryExperience() {
   const [captcha, setCaptcha] = useState<CaptchaState | null>(null);
   const [recoverMaskedEmail, setRecoverMaskedEmail] = useState("");
   const [recoverGrantToken, setRecoverGrantToken] = useState("");
+  const [registerCodeCooldown, setRegisterCodeCooldown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
@@ -137,6 +144,7 @@ export default function EntryExperience() {
     setCaptchaAnswer("");
     setRecoverMaskedEmail("");
     setRecoverGrantToken("");
+    setRegisterCodeCooldown(0);
     setNewPassword("");
     setCaptcha(null);
     setRecoverStage("request-code");
@@ -147,6 +155,38 @@ export default function EntryExperience() {
     setCaptcha(next);
     return next;
   };
+
+  useEffect(() => {
+    if (registerCodeCooldown <= 0) return;
+    const timer = window.setTimeout(() => {
+      setRegisterCodeCooldown((current) => (current > 0 ? current - 1 : 0));
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [registerCodeCooldown]);
+
+  useEffect(() => {
+    const needsRegisterCaptcha = mode === "register" && Boolean(email.trim());
+    const needsRecoverCaptcha =
+      mode === "recover" && recoverStage === "request-code" && Boolean(username.trim());
+
+    if (needsRegisterCaptcha || needsRecoverCaptcha) {
+      if (!captcha) {
+        const timer = window.setTimeout(() => {
+          void ensureCaptcha().catch(() => undefined);
+        }, 0);
+        return () => window.clearTimeout(timer);
+      }
+      return;
+    }
+
+    if (captcha) {
+      const timer = window.setTimeout(() => {
+        setCaptcha(null);
+        setCaptchaAnswer("");
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
+  }, [mode, recoverStage, email, username, captcha]);
 
   const loadUsers = async () => {
     const payload = await getJson<{ users?: PublicUserAccount[] }>("/api/accounts");
@@ -213,6 +253,7 @@ export default function EntryExperience() {
       });
       setStatus("done");
       setMessage("邮箱验证码已发送，请查收邮件后继续完成注册。");
+      setRegisterCodeCooldown(60);
       await ensureCaptcha();
       setCaptchaAnswer("");
     } catch (error) {
@@ -252,6 +293,8 @@ export default function EntryExperience() {
     setRecoverStage("verify-code");
     setEmailCode("");
     setCaptchaAnswer("");
+    setStatus("done");
+    setMessage("验证码已发送到绑定邮箱，请先完成邮箱验证，再继续密码重置。");
     await ensureCaptcha();
   };
 
@@ -546,7 +589,8 @@ export default function EntryExperience() {
                     </label>
                   )}
 
-                  {(mode === "register" || recoverStage === "request-code") && mode !== "login" && (
+                  {((mode === "register" && email.trim()) ||
+                    (mode === "recover" && recoverStage === "request-code" && username.trim())) && (
                     <div className="grid gap-3 rounded-[8px] border border-[#E9E2D6] bg-[#FAFBF7]/66 p-4">
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-xs font-semibold text-[#5A6670]/56">图形验证码</p>
@@ -600,13 +644,13 @@ export default function EntryExperience() {
                           className="inline-flex min-h-12 items-center justify-center rounded-[8px] border border-[#D8DDD8]/82 bg-white/70 px-4 text-sm font-semibold text-[#5A6670] transition hover:border-[#E8B8C2] hover:text-[#D86F82]"
                           type="button"
                           onClick={() => void sendRegisterCode()}
-                          disabled={!email.trim() || !captchaAnswer.trim() || status === "checking"}
+                          disabled={!email.trim() || !captchaAnswer.trim() || status === "checking" || registerCodeCooldown > 0}
                         >
-                          获取邮箱验证码
+                          {registerCodeCooldown > 0 ? `${registerCodeCooldown}s 后重发` : "获取邮箱验证码"}
                         </button>
                       </div>
                       <p className="text-xs leading-6 text-[#5A6670]/50">
-                        发送验证码前会先校验图形验证码；同一个邮箱需要等待短暂冷却后才能再次发送。
+                        发送验证码前会先校验图形验证码；同一个邮箱需要等待 1 分钟冷却后才能再次发送。
                       </p>
                     </div>
                   )}
@@ -678,7 +722,7 @@ export default function EntryExperience() {
                   当前公开入口仍然是国际托管。换设备登录后，数据会从云端同步；若中国大陆网络访问偏慢，可以稍后重试或切换网络。
                 </div>
 
-                <AccountBindingPanel compact className="mt-4" />
+                {mode !== "recover" && <AccountBindingPanel compact className="mt-4" />}
               </>
             ) : (
               <div className="mt-7">
