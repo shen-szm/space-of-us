@@ -206,8 +206,8 @@ export const getAccountScopeKey = async (username: string) => {
   };
 };
 
-export const verifyAccountPassword = async (username: string, password: string) => {
-  const account = await findAccount(username);
+export const verifyAccountPassword = async (identifier: string, password: string) => {
+  const account = identifier.includes("@") ? await findAccountByEmail(identifier) : await findAccount(identifier);
   if (!account) return null;
 
   return verifyAccountSecret(password, account.id, account.passwordHash) ? account : null;

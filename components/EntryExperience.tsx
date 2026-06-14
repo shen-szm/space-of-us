@@ -516,7 +516,7 @@ export default function EntryExperience() {
                 <div className="mt-6 grid gap-3">
                   <label className="block">
                     <span className="mb-2 block text-xs font-semibold text-[#5A6670]/52">
-                      {mode === "recover" ? "用户名或邮箱" : "用户名"}
+                      {mode === "login" || mode === "recover" ? "用户名或邮箱" : "用户名"}
                     </span>
                     <span className="flex min-h-12 items-center gap-3 rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/74 px-3 transition focus-within:border-[#E8B8C2]">
                       <UserRound className="h-4 w-4 text-[#5A6670]/42" />
@@ -524,7 +524,7 @@ export default function EntryExperience() {
                         className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[#344451] outline-none placeholder:text-[#5A6670]/36"
                         value={username}
                         onChange={(event) => setUsername(event.target.value)}
-                        placeholder={mode === "recover" ? "输入用户名或邮箱" : "输入用户名"}
+                        placeholder={mode === "login" || mode === "recover" ? "输入用户名或邮箱" : "输入用户名"}
                         autoComplete="username"
                       />
                     </span>
