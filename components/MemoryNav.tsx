@@ -1,17 +1,21 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import {
   Archive,
+  ExternalLink,
   BookOpen,
   CalendarDays,
+  HandHeart,
   Heart,
   Map as MapIcon,
   Settings,
   ShieldCheck,
   Sparkles,
+  X,
 } from "lucide-react";
 
 export type MemoryNavKey =
@@ -39,6 +43,21 @@ const navItems = [
 }>;
 
 export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
+  const [supportOpen, setSupportOpen] = useState(false);
+
+  useEffect(() => {
+    if (!supportOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSupportOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [supportOpen]);
+
   return (
     <aside className="hidden min-h-screen w-[260px] shrink-0 border-r border-[#D8DDD8]/78 bg-[#FAFBF7]/78 px-5 py-8 shadow-[12px_0_34px_rgba(90,102,112,0.04)] backdrop-blur lg:block">
       <div className="text-center">
@@ -99,11 +118,81 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
           </div>
         </div>
 
-        <div className="mt-3 flex items-center gap-2 border-t border-[#D8DDD8]/54 pt-3 text-[11px] font-semibold text-[#E8B8C2]">
-          <Sparkles className="h-3.5 w-3.5" />
-          <span>Space of us</span>
+        <div className="mt-3 border-t border-[#D8DDD8]/54 pt-3">
+          <p className="text-[11px] font-semibold text-[#5A6670]/48">灵感来源</p>
+          <div className="mt-2 space-y-2 text-xs leading-6 text-[#5A6670]/60">
+            <p>
+              GitHub：
+              <a
+                className="ml-1 inline-flex items-center gap-1 text-[#D86F82] underline decoration-[#F5DCE0] underline-offset-2 transition hover:text-[#C95A70]"
+                href="https://github.com/zkeyoned/map-of-us-template"
+                rel="noreferrer"
+                target="_blank"
+              >
+                github.com/zkeyoned/map-of-us-template
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </p>
+            <p>抖音 ID：Zz00726yd</p>
+          </div>
+        </div>
+
+        <div className="mt-3 border-t border-[#D8DDD8]/54 pt-3">
+          <p className="text-[11px] font-semibold text-[#5A6670]/48">赞助支持</p>
+          <p className="mt-2 text-xs leading-6 text-[#5A6670]/60">
+            如果这个项目对你有帮助，愿意的话可以通过赞助支持继续完善 Space of us。
+          </p>
+          <button
+            className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-[7px] border border-[#F5DCE0] bg-[#F5DCE0]/34 px-3 py-2 text-xs font-semibold text-[#D86F82] transition hover:border-[#E8B8C2] hover:bg-[#F5DCE0]/52"
+            type="button"
+            onClick={() => setSupportOpen(true)}
+          >
+            <HandHeart className="h-3.5 w-3.5" />
+            愿意支持
+          </button>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between gap-3 border-t border-[#D8DDD8]/54 pt-3 text-[11px] font-semibold text-[#E8B8C2]">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>Space of us</span>
+          </div>
+          <span className="rounded-full border border-[#F5DCE0]/80 bg-[#F5DCE0]/24 px-2 py-0.5 text-[10px] font-semibold tracking-[0.08em] text-[#D86F82]">
+            V3.2
+          </span>
         </div>
       </div>
+
+      {supportOpen && (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-[#344451]/66 px-6 py-10 backdrop-blur-sm"
+          onClick={() => setSupportOpen(false)}
+        >
+          <div
+            className="relative max-h-full w-full max-w-[980px] overflow-auto rounded-[12px] bg-white p-3 shadow-[0_28px_80px_rgba(52,68,81,0.28)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              aria-label="关闭赞助图片"
+              className="absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#D8DDD8]/80 bg-white/88 text-[#5A6670] transition hover:border-[#E8B8C2] hover:text-[#D86F82]"
+              type="button"
+              onClick={() => setSupportOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="relative mx-auto w-full max-w-[920px]">
+              <Image
+                alt="赞助支持收款码"
+                className="h-auto w-full rounded-[8px]"
+                height={1599}
+                priority
+                src="/photos/support-qr.jpg"
+                width={1280}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

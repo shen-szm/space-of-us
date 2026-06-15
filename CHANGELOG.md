@@ -2,6 +2,18 @@
 
 这个文件记录 `Space of us` 在 V3 整理阶段之后的正式改动。从这一版开始，我们按“日期 + 阶段 + 结果”持续补录，后续每次更新都继续往下追加。
 
+## 2026-06-15 · V3.2 灵感来源、赞助支持与版本标识
+
+### Added
+
+- 在侧边栏“关于这个空间”卡片中新增灵感来源说明，展示原项目 GitHub 地址和抖音 ID。
+- 新增赞助支持区块与赞助图片弹窗，支持点击按钮打开、点击遮罩关闭和按 `Esc` 关闭。
+- 将赞助图片纳入项目静态资源，供页面弹窗直接展示。
+
+### Changed
+
+- 在页面左侧卡片底部新增 `V3.2` 版本标识，和 `Space of us` 品牌行一并展示。
+
 ## 2026-06-15 · V3.1.2 阿里云邮件部署诊断
 
 ### Added
@@ -13,6 +25,17 @@
 ### Changed
 
 - 更新阿里云交接命令，减少手动 `source .env.production.local` 后 PM2 环境变量丢失导致邮件服务未配置的风险。
+
+### Deployment
+
+- 阿里云服务器完成 `space-of-us.online` 与 `www.space-of-us.online` 域名绑定，Nginx 已返回 HTTPS `200 OK`。
+- 使用 Certbot/Let's Encrypt 为 `space-of-us.online` 和 `www.space-of-us.online` 签发并部署 HTTPS 证书，证书自动续期由 `certbot.timer` 管理。
+- Resend 发件域名 `space-of-us.online` 已验证，可将 `RESEND_FROM_EMAIL` 切换为 `Space of us <noreply@space-of-us.online>`。
+
+### UI
+
+- 在侧边栏“关于这个空间”卡片中新增灵感来源说明，展示原项目 GitHub 地址和抖音 ID。
+- 新增赞助支持区块与赞助图片弹窗，支持点击按钮打开、点击遮罩关闭和按 `Esc` 关闭。
 
 ## 2026-06-13 · V3.1.1 认证交互修正
 
