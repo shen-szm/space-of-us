@@ -1,6 +1,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { loadProductionEnvFile } from "./production-env.mjs";
+import { prepareStandaloneAssets } from "./standalone-assets.mjs";
 
 const root = process.cwd();
 const result = await loadProductionEnvFile(root);
@@ -29,5 +30,7 @@ if (missing.length > 0) {
 
 process.env.PORT = process.env.PORT || "3000";
 process.env.HOSTNAME = process.env.HOSTNAME || "127.0.0.1";
+
+await prepareStandaloneAssets(root);
 
 await import(pathToFileURL(path.join(root, ".next", "standalone", "server.js")).href);

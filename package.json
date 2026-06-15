@@ -16,6 +16,7 @@
     "lint": "eslint",
     "check:production-mail": "node scripts/check-production-mail.mjs",
     "verify:production-env": "node scripts/verify-production-env-loader.mjs",
+    "verify:standalone-assets": "node scripts/verify-start-production-assets.mjs",
     "desktop": "electron electron/main.js",
     "dist:dir": "npm run desktop:prepare && electron-builder --dir",
     "dist:mac": "npm run desktop:prepare && electron-builder --mac dmg",

@@ -14,6 +14,11 @@
 
 - 在页面左侧卡片底部新增 `V3.2` 版本标识，和 `Space of us` 品牌行一并展示。
 
+### Fixed
+
+- 修复 `npm run start:production` 启动后 `/_next/static/*` 资源未自动准备的问题，避免阿里云上 `/map` 等页面返回 HTML 但所需 JS/CSS chunk 加载失败。
+- 新增 `npm run verify:standalone-assets` 验证脚本，用于在本地模拟生产启动并检查 `/map` 及其引用静态资源是否全部返回 `200`。
+
 ## 2026-06-15 · V3.1.2 阿里云邮件部署诊断
 
 ### Added
