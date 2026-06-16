@@ -2,14 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Camera, MapPin, RefreshCw } from "lucide-react";
+import { Camera, ExternalLink, Headphones, MapPin, Play, RefreshCw, SkipForward } from "lucide-react";
+import { LocalPrivacyImage, LocalPrivacyImg } from "@/components/LocalPrivacyImage";
 import { cities } from "@/data/cities";
 import { memories, type Memory } from "@/data/memories";
-import {
-  memoryStoreUpdatedEvent,
-  type LocalMemoryStore,
-} from "@/data/progress";
-import { LocalPrivacyImage, LocalPrivacyImg } from "@/components/LocalPrivacyImage";
+import { memoryStoreUpdatedEvent, type LocalMemoryStore } from "@/data/progress";
+import { musicRecommendations, type MusicRecommendation } from "@/lib/musicRecommendations";
 
 interface RandomPhoto {
   id: string;
@@ -37,23 +35,33 @@ function PhotoImage({ photo }: Readonly<{ photo: RandomPhoto }>) {
   const className = "h-full w-full object-cover";
 
   if (isBrowserImageUrl(photo.src)) {
-    return <LocalPrivacyImg className={className} src={photo.src} alt={`${photo.city} 的随机照片`} />;
+    return <LocalPrivacyImg className={className} src={photo.src} alt={`${photo.city} 的回忆照片`} />;
   }
 
   return (
     <LocalPrivacyImage
       className={className}
       src={photo.src}
-      alt={`${photo.city} 的随机照片`}
+      alt={`${photo.city} 的回忆照片`}
       fill
-      sizes="190px"
+      sizes="(min-width: 1280px) 220px, 100vw"
     />
   );
+}
+
+function pickAnother<T extends { id: string }>(current: T | null, items: T[]) {
+  if (!current || items.length === 0) return items[0] ?? null;
+  const candidates = items.filter((item) => item.id !== current.id);
+  const source = candidates.length > 0 ? candidates : items;
+  return source[Math.floor(Math.random() * source.length)] ?? null;
 }
 
 export default function RandomPhotoCard() {
   const [photo, setPhoto] = useState<RandomPhoto | null>(null);
   const [photos, setPhotos] = useState<RandomPhoto[]>([]);
+  const [track, setTrack] = useState<MusicRecommendation>(
+    () => musicRecommendations[Math.floor(Math.random() * musicRecommendations.length)] ?? musicRecommendations[0],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -87,7 +95,6 @@ export default function RandomPhotoCard() {
       }
 
       const data = (await response.json().catch(() => null)) as { memories?: LocalMemoryStore } | null;
-
       if (!cancelled) applyMemories(data?.memories ?? {});
     }
 
@@ -106,67 +113,129 @@ export default function RandomPhotoCard() {
     return city ? `/province/${city.provinceId}?city=${photo.cityId}` : "/memories";
   }, [photo]);
 
-  const shufflePhoto = () => {
-    if (!photo || photos.length === 0) return;
-    const candidates = photos.filter((candidate) => candidate.id !== photo.id);
-    const source = candidates.length > 0 ? candidates : photos;
-    setPhoto(source[Math.floor(Math.random() * source.length)]);
-  };
+  const shufflePhoto = () => setPhoto((current) => pickAnother(current, photos));
+  const shuffleTrack = () => setTrack((current) => pickAnother(current, musicRecommendations) ?? musicRecommendations[0]);
 
   return (
-    <aside className="absolute bottom-[4.75rem] right-[2.5rem] z-30 hidden w-[248px] rotate-[-1.5deg] xl:block">
-      <div className="rounded-[8px] border border-[#D8DDD8]/80 bg-[#FAFBF7]/86 p-3 shadow-[0_22px_58px_rgba(90,102,112,0.15)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:rotate-0 hover:border-[#F5DCE0]">
-        <div className="mb-2.5 flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[6px] border border-[#F5DCE0] bg-[#F5DCE0]/62 text-[#E8B8C2] shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
-              <Camera className="h-4 w-4" />
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-[#5A6670]">随机相框</p>
-              <p className="truncate text-xs font-medium text-[#5A6670]/48">点照片回到那座城市</p>
-            </div>
-          </div>
-          <button
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#A8C8DC] transition hover:bg-[#D6E8F0]/48 hover:text-[#5A6670]"
-            type="button"
-            onClick={shufflePhoto}
-            disabled={!photo}
-            aria-label="换一张随机照片"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </button>
-        </div>
-
-        {photo ? (
-          <Link className="group block" href={href} aria-label={`查看 ${photo.city} ${photo.date} 的随机照片`}>
-            <div className="relative aspect-[4/3] overflow-hidden rounded-[6px] border border-[#D8DDD8]/80 bg-[#D6E8F0]/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
-              <PhotoImage photo={photo} />
-              <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#344451]/42 to-transparent opacity-80 transition group-hover:opacity-55" />
-            </div>
-            <div className="mt-3 flex items-start gap-2.5">
-              <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-[6px] border border-[#D6E8F0] bg-[#D6E8F0]/48 text-[#A8C8DC]">
-                <MapPin className="h-3.5 w-3.5" />
+    <aside className="absolute bottom-[4.75rem] right-[2.5rem] z-30 hidden w-[372px] xl:block">
+      <div className="grid gap-4">
+        <div className="theme-card theme-floating-shadow-strong overflow-hidden rounded-[22px] border p-4 backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="theme-icon-chip grid h-10 w-10 shrink-0 place-items-center rounded-[12px]">
+                <Camera className="h-4 w-4" />
               </span>
               <div className="min-w-0">
-                <p className="truncate text-[13px] font-semibold leading-5 text-[#5A6670]">
-                  {photo.city}
-                  <span className="ml-1.5 text-xs font-normal text-[#5A6670]/48">{photo.date}</span>
-                </p>
-                <p className="mt-0.5 line-clamp-1 text-xs leading-5 text-[#5A6670]/58">{photo.text}</p>
+                <p className="theme-text-main truncate text-sm font-semibold">随机回忆</p>
+                <p className="theme-text-soft truncate text-xs">从已经点亮的城市里抽一张照片出来</p>
               </div>
             </div>
-          </Link>
-        ) : (
-          <div className="rounded-[6px] border border-dashed border-[#D8DDD8]/90 bg-[#FAFBF7]/72 p-3">
-            <div className="grid aspect-[4/3] place-items-center rounded-[5px] bg-[#D6E8F0]/34 text-center">
-              <div>
-                <Camera className="mx-auto h-7 w-7 text-[#E8B8C2]" />
-                <p className="mt-2 text-sm font-semibold text-[#5A6670]">相框在等照片</p>
-                <p className="mt-1 text-xs leading-5 text-[#5A6670]/52">点亮一座城市并写下回忆后，这里会随机展示。</p>
+            <button
+              className="theme-subtle-button grid h-9 w-9 place-items-center rounded-full transition"
+              type="button"
+              onClick={shufflePhoto}
+              disabled={!photo}
+              aria-label="换一张回忆照片"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
+          </div>
+
+          {photo ? (
+            <Link className="mt-4 block" href={href} aria-label={`查看 ${photo.city} 的回忆`}>
+              <div className="theme-muted relative aspect-[5/4] overflow-hidden rounded-[18px] border">
+                <PhotoImage photo={photo} />
+                <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/22 to-transparent" />
+              </div>
+              <div className="mt-4 flex items-start gap-3">
+                <span className="theme-icon-chip mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-[10px]">
+                  <MapPin className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="theme-text-main truncate text-[15px] font-semibold leading-6">
+                    {photo.city}
+                    <span className="theme-text-soft ml-2 text-xs font-medium">{photo.date}</span>
+                  </p>
+                  <p className="theme-text-muted mt-1 line-clamp-2 text-sm leading-6">{photo.text}</p>
+                </div>
+              </div>
+            </Link>
+          ) : (
+            <div className="theme-muted mt-4 rounded-[18px] border p-4">
+              <div className="grid aspect-[5/4] place-items-center rounded-[16px] border border-dashed border-[var(--border-soft)] bg-[color-mix(in_srgb,var(--surface-card)_72%,white)] text-center">
+                <div>
+                  <Camera className="mx-auto h-8 w-8 text-[var(--accent-primary)]" />
+                  <p className="theme-text-main mt-3 text-sm font-semibold">这里还没有随机回忆</p>
+                  <p className="theme-text-soft mt-1 text-xs leading-6">先去点亮城市、上传照片和文字，右下角就会自动开始轮播。</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="theme-card theme-floating-shadow overflow-hidden rounded-[24px] border p-4 backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="theme-icon-chip grid h-11 w-11 shrink-0 place-items-center rounded-[14px]">
+                <Headphones className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="theme-text-main truncate text-sm font-semibold">今日音乐推荐</p>
+                <p className="theme-text-soft truncate text-xs">给地图配一首合适的歌</p>
+              </div>
+            </div>
+            <button
+              className="theme-subtle-button inline-flex h-9 items-center gap-1 rounded-full px-3 text-xs font-semibold transition"
+              type="button"
+              onClick={shuffleTrack}
+            >
+              <SkipForward className="h-3.5 w-3.5" />
+              换一首
+            </button>
+          </div>
+
+          <div className="mt-4 rounded-[20px] border border-[var(--border-soft)] bg-[linear-gradient(140deg,color-mix(in_srgb,var(--accent-wash)_88%,white),color-mix(in_srgb,var(--accent-secondary)_22%,white))] p-4">
+            <div className="flex items-start gap-4">
+              <div className="flex h-20 w-20 shrink-0 items-end rounded-[18px] border border-white/70 bg-[linear-gradient(160deg,color-mix(in_srgb,var(--accent-primary)_16%,white),color-mix(in_srgb,var(--accent-secondary)_34%,white))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-white/72 text-[var(--hero-ink)] shadow-[0_8px_20px_rgba(70,82,92,0.12)]">
+                  <Play className="ml-0.5 h-4 w-4 fill-current" />
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="theme-text-soft text-[11px] font-semibold uppercase tracking-[0.18em]">music recommendation</p>
+                <p className="theme-text-main mt-1 truncate text-xl font-semibold">{track.title}</p>
+                <p className="theme-text-muted mt-1 truncate text-sm font-medium">{track.artist}</p>
+                <p className="theme-text-soft mt-3 text-xs leading-6">{track.note}</p>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <div className="h-1.5 overflow-hidden rounded-full bg-white/68">
+                <div
+                  className="h-full rounded-full bg-[var(--accent-primary)]"
+                  style={{ width: `${42 + (track.title.length % 4) * 12}%` }}
+                />
+              </div>
+              <div className="theme-text-soft mt-2 flex items-center justify-between text-[11px] font-medium">
+                <span>{track.mood}</span>
+                <span>外链播放</span>
               </div>
             </div>
           </div>
-        )}
+
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <div className="theme-text-soft text-xs leading-6">点击后跳转到外部平台继续听，不在站内播放。</div>
+            <a
+              className="theme-accent-button inline-flex min-h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold transition hover:-translate-y-0.5"
+              href={track.href}
+              rel="noreferrer"
+              target="_blank"
+            >
+              去听这首
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </div>
+        </div>
       </div>
     </aside>
   );

@@ -10,13 +10,13 @@ function BrandMark() {
     <svg className="h-11 w-11 pixelated" viewBox="0 0 22 22" aria-hidden="true">
       <path
         d="M5 3h4v2h2V3h4v2h2v6h-2v2h-2v2h-2v2H9v-2H7v-2H5v-2H3V5h2z"
-        fill="#F5DCE0"
+        fill="var(--accent-highlight)"
       />
       <path
         d="M5 3h4v2H5v6H3V5h2zm10 0v2h2v6h-2V5h-4V3zm0 8v2h-2v2h-2v2H9v-2H7v-2H5v-2h2v2h2v2h2v-2h2v-2z"
-        fill="#E8B8C2"
+        fill="color-mix(in srgb, var(--accent-primary) 68%, white)"
       />
-      <path d="M7 5h2v2H7zm8 2h-2V5h2z" fill="#FAFBF7" />
+      <path d="M7 5h2v2H7zm8 2h-2V5h2z" fill="var(--surface-card-strong)" />
     </svg>
   );
 }
@@ -43,14 +43,11 @@ function Cloud({
 
 function PixelSparkle({ className }: Readonly<{ className: string }>) {
   return (
-    <span
-      className={`pointer-events-none absolute h-4 w-4 opacity-75 ${className}`}
-      aria-hidden="true"
-    >
-      <span className="absolute left-1.5 top-0 h-1.5 w-1.5 bg-[#D4E8D0]" />
-      <span className="absolute left-1.5 bottom-0 h-1.5 w-1.5 bg-[#D4E8D0]" />
-      <span className="absolute left-0 top-1.5 h-1.5 w-1.5 bg-[#D4E8D0]" />
-      <span className="absolute right-0 top-1.5 h-1.5 w-1.5 bg-[#D4E8D0]" />
+    <span className={`pointer-events-none absolute h-4 w-4 opacity-75 ${className}`} aria-hidden="true">
+      <span className="absolute left-1.5 top-0 h-1.5 w-1.5 rounded-full bg-[var(--accent-secondary)]" />
+      <span className="absolute left-1.5 bottom-0 h-1.5 w-1.5 rounded-full bg-[var(--accent-secondary)]" />
+      <span className="absolute left-0 top-1.5 h-1.5 w-1.5 rounded-full bg-[var(--accent-secondary)]" />
+      <span className="absolute right-0 top-1.5 h-1.5 w-1.5 rounded-full bg-[var(--accent-secondary)]" />
     </span>
   );
 }
@@ -58,13 +55,13 @@ function PixelSparkle({ className }: Readonly<{ className: string }>) {
 function Legend() {
   return (
     <div className="space-y-5">
-      <div className="w-fit rounded-[8px] border border-[#D8DDD8]/80 bg-[#FAFBF7]/70 px-5 py-4 text-sm text-[#5A6670]/78 shadow-[0_10px_28px_rgba(90,102,112,0.08)] backdrop-blur">
+      <div className="theme-card theme-floating-shadow w-fit rounded-[8px] border px-5 py-4 text-sm theme-text-muted backdrop-blur">
         <div className="flex items-center gap-3">
-          <span className="h-4 w-4 rounded-[2px] border border-[#E8B8C2] bg-[#F5DCE0] shadow-[0_0_10px_rgba(232,184,194,0.42)]" />
+          <span className="h-4 w-4 rounded-[2px] border border-[color-mix(in_srgb,var(--accent-primary)_35%,white)] bg-[var(--accent-highlight)]" />
           <span>已点亮</span>
         </div>
         <div className="mt-3 flex items-center gap-3">
-          <span className="h-4 w-4 rounded-[2px] border border-[#C8CEC8] bg-[#D8DDD8]/55" />
+          <span className="h-4 w-4 rounded-[2px] border border-[var(--border-soft)] bg-[var(--surface-muted)]" />
           <span>未点亮</span>
         </div>
       </div>
@@ -75,7 +72,7 @@ function Legend() {
 
 export default function MapPage() {
   return (
-    <main className="relative h-[100dvh] max-h-[100dvh] overflow-hidden bg-[#FAFBF7] text-[#5A6670]">
+    <main className="theme-page relative h-[100dvh] max-h-[100dvh] overflow-hidden">
       <div className="map-mist-band" aria-hidden="true" />
       <Cloud src="/sprites/decorations/cloud-medium.png" className="left-[18%] top-[12%] w-28" />
       <Cloud src="/sprites/decorations/cloud-large.png" className="left-[43%] top-[11%] w-36" />
@@ -85,8 +82,8 @@ export default function MapPage() {
       <PixelSparkle className="left-[7%] top-[22%]" />
       <PixelSparkle className="left-[19%] bottom-[16%]" />
       <PixelSparkle className="right-[24%] top-[42%]" />
-      <span className="absolute left-[28%] bottom-[7%] h-2 w-2 bg-[#D4E8D0]" aria-hidden="true" />
-      <span className="absolute right-[11%] top-[19%] h-2 w-2 bg-[#D6E8F0]" aria-hidden="true" />
+      <span className="absolute left-[28%] bottom-[7%] h-2 w-2 rounded-full bg-[var(--accent-highlight)]" aria-hidden="true" />
+      <span className="absolute right-[11%] top-[19%] h-2 w-2 rounded-full bg-[var(--accent-secondary)]" aria-hidden="true" />
 
       <div className="relative z-10 flex h-full">
         <section className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden px-6 py-7 sm:px-9">
@@ -94,10 +91,10 @@ export default function MapPage() {
             <div className="flex items-start gap-4">
               <BrandMark />
               <div>
-                <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.01em] text-[#5A6670]">
+                <h1 className="theme-text-main text-[28px] font-semibold leading-tight tracking-[-0.01em]">
                   Space of us
                 </h1>
-                <p className="mt-1 text-base font-medium text-[#5A6670]/62">我们的地图</p>
+                <p className="theme-text-muted mt-1 text-base font-medium">我们的地图</p>
               </div>
               <ProgressBadge />
             </div>

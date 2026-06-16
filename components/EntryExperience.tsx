@@ -494,13 +494,13 @@ export default function EntryExperience() {
   };
 
   return (
-    <main className="theme-shell login-stage relative min-h-[100dvh] overflow-x-hidden overflow-y-auto text-[#344451]">
+    <main className="theme-page login-stage relative min-h-[100dvh] overflow-x-hidden overflow-y-auto theme-text-main">
       <LocalPrivacyBadge />
       <div className="login-paper absolute inset-0" />
       <div className="login-grid absolute inset-0" aria-hidden="true" />
 
       <div className="relative z-10 mx-auto grid min-h-[100dvh] w-full max-w-[1540px] gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(420px,0.95fr)_minmax(560px,1.05fr)] lg:px-8">
-        <section className="theme-hero-glow relative hidden min-h-0 overflow-hidden rounded-[8px] border border-white/60 shadow-[0_28px_80px_rgba(91,71,50,0.12)] lg:block">
+        <section className="theme-card theme-floating-shadow-strong theme-hero-glow relative hidden min-h-0 overflow-hidden rounded-[28px] border lg:block">
           <LocalPrivacyImage
             className="h-full w-full object-cover opacity-42 saturate-[1.08]"
             src={heroPhotoSrc}
@@ -511,16 +511,16 @@ export default function EntryExperience() {
           />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(22,31,39,0.86),rgba(22,31,39,0.24)_50%,rgba(22,31,39,0.72)),radial-gradient(circle_at_72%_22%,rgba(245,220,224,0.24),transparent_34%)]" />
           <div className="absolute inset-x-8 inset-y-8 flex flex-col justify-between pb-8">
-            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/14 bg-white/10 px-3 py-2 text-xs font-semibold text-white/76 backdrop-blur">
-              <MapPinned className="h-4 w-4 text-[#F5DCE0]" />
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/14 px-3 py-2 text-xs font-semibold text-white/78 backdrop-blur-xl">
+              <MapPinned className="h-4 w-4 text-white/80" />
               {heroBadgeLabel}
             </div>
             <div>
               <p className="max-w-[440px] text-[clamp(42px,4.8vw,72px)] font-semibold leading-[0.92] tracking-normal text-white">
                 旧照片
-                <span className="block text-[#F5AFC0]">新地图</span>
+                <span className="block text-[var(--accent-highlight)]">新地图</span>
               </p>
-              <p className="mt-4 max-w-[380px] text-sm font-medium leading-7 text-white/68">
+              <p className="mt-4 max-w-[380px] text-sm font-medium leading-7 text-white/70">
                 左侧保留原来的回忆照片氛围，右侧是更清爽的账号入口，属于沈先生和张小姐的 Space of us。
               </p>
             </div>
@@ -529,7 +529,7 @@ export default function EntryExperience() {
 
         <section className="flex min-h-[calc(100dvh-32px)] items-center justify-center">
           <motion.div
-            className="theme-card w-full max-w-[760px] p-5 shadow-[0_34px_100px_rgba(91,71,50,0.14)] backdrop-blur-2xl sm:p-7"
+            className="theme-card-strong theme-floating-shadow-strong w-full max-w-[760px] rounded-[30px] border p-5 backdrop-blur-2xl sm:p-7"
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.48 }}
@@ -538,28 +538,28 @@ export default function EntryExperience() {
               <div className="flex items-center gap-3">
                 <BrandHeart />
                 <div>
-                  <p className="text-lg font-semibold text-[#273846]">Space of us</p>
-                  <p className="text-xs font-semibold text-[#5A6670]/52">
+                  <p className="theme-text-main text-[28px] font-semibold leading-none">Space of us</p>
+                  <p className="theme-text-soft mt-1 text-xs font-semibold">
                     {adminPanel ? "Admin Console" : "Private Couple Space"}
                   </p>
                 </div>
               </div>
-              <span className="grid h-11 w-11 place-items-center rounded-full border border-[#D8DDD8]/80 bg-[#FAFBF7]/70 text-[#5A6670]/56">
+              <span className="theme-soft theme-text-soft grid h-11 w-11 place-items-center rounded-full border">
                 {adminPanel ? <ShieldCheck className="h-5 w-5" /> : <LockKeyhole className="h-5 w-5" />}
               </span>
             </div>
 
             {!adminPanel ? (
               <>
-                <div className="theme-soft mt-7 w-fit rounded-[8px] border p-1">
+                <div className="theme-soft mt-7 w-fit rounded-full border p-1">
                   <div className="grid grid-cols-3 gap-1">
                     {authModes.map((item) => (
                       <button
                         key={item.key}
-                        className={`min-h-10 min-w-20 rounded-[7px] px-3 text-sm font-semibold transition ${
+                        className={`min-h-10 min-w-20 rounded-full px-4 text-sm font-semibold transition ${
                           mode === item.key
-                            ? "bg-white text-[#D86F82] shadow-[0_10px_24px_rgba(90,102,112,0.08)]"
-                            : "text-[#5A6670]/58 hover:bg-white/58 hover:text-[#344451]"
+                            ? "bg-white text-[var(--accent-primary)] shadow-[0_10px_24px_rgba(90,102,112,0.08)]"
+                            : "theme-text-muted hover:bg-white/58 hover:text-[var(--foreground)]"
                         }`}
                         type="button"
                         onClick={() => {
@@ -574,24 +574,10 @@ export default function EntryExperience() {
                 </div>
 
                 <div className="mt-7">
-                  <div className="mb-4 grid gap-3 sm:grid-cols-3">
-                    <div className="theme-soft rounded-[8px] border px-4 py-3">
-                      <p className="text-xs font-semibold text-[#5A6670]/48">入口整合</p>
-                      <p className="mt-2 text-sm font-semibold text-[#344451]">登录、注册、找回放在同一面板</p>
-                    </div>
-                    <div className="theme-soft rounded-[8px] border px-4 py-3">
-                      <p className="text-xs font-semibold text-[#5A6670]/48">情侣绑定</p>
-                      <p className="mt-2 text-sm font-semibold text-[#344451]">登录后直接进入情侣关系和共享空间</p>
-                    </div>
-                    <div className="theme-soft rounded-[8px] border px-4 py-3">
-                      <p className="text-xs font-semibold text-[#5A6670]/48">跨设备恢复</p>
-                      <p className="mt-2 text-sm font-semibold text-[#344451]">个人主题和内容偏好会跟随账号恢复</p>
-                    </div>
-                  </div>
-                  <h1 className="text-[clamp(32px,5vw,54px)] font-semibold leading-tight tracking-normal text-[#273846]">
+                  <h1 className="theme-text-main text-[clamp(32px,5vw,54px)] font-semibold leading-[1.02] tracking-normal">
                     {mode === "register" ? "创建账号" : mode === "recover" ? "找回密码" : "欢迎回来"}
                   </h1>
-                  <p className="mt-2 text-sm leading-6 text-[#5A6670]/62">
+                  <p className="theme-text-muted mt-3 max-w-[560px] text-sm leading-7">
                     {mode === "register"
                       ? "注册普通用户时，需要先通过图形验证码并完成邮箱验证。"
                       : mode === "recover"
@@ -602,13 +588,13 @@ export default function EntryExperience() {
 
                 <div className="mt-6 grid gap-3">
                   <label className="block">
-                    <span className="mb-2 block text-xs font-semibold text-[#5A6670]/52">
+                    <span className="theme-text-soft mb-2 block text-xs font-semibold">
                       {mode === "login" || mode === "recover" ? "用户名或邮箱" : "用户名"}
                     </span>
-                    <span className="flex min-h-12 items-center gap-3 rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/74 px-3 transition focus-within:border-[#E8B8C2]">
-                      <UserRound className="h-4 w-4 text-[#5A6670]/42" />
+                    <span className="theme-input flex min-h-12 items-center gap-3 rounded-[16px] px-3 transition">
+                      <UserRound className="theme-text-soft h-4 w-4" />
                       <input
-                        className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[#344451] outline-none placeholder:text-[#5A6670]/36"
+                        className="theme-text-main min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[var(--text-soft)]"
                         value={username}
                         onChange={(event) => setUsername(event.target.value)}
                         placeholder={mode === "login" || mode === "recover" ? "输入用户名或邮箱" : "输入用户名"}
@@ -620,11 +606,11 @@ export default function EntryExperience() {
                   {mode === "register" && (
                     <>
                       <label className="block">
-                        <span className="mb-2 block text-xs font-semibold text-[#5A6670]/52">昵称</span>
-                        <span className="flex min-h-12 items-center gap-3 rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/74 px-3 transition focus-within:border-[#E8B8C2]">
-                          <UserPlus className="h-4 w-4 text-[#5A6670]/42" />
+                        <span className="theme-text-soft mb-2 block text-xs font-semibold">昵称</span>
+                        <span className="theme-input flex min-h-12 items-center gap-3 rounded-[16px] px-3 transition">
+                          <UserPlus className="theme-text-soft h-4 w-4" />
                           <input
-                            className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[#344451] outline-none placeholder:text-[#5A6670]/36"
+                            className="theme-text-main min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[var(--text-soft)]"
                             value={displayName}
                             onChange={(event) => setDisplayName(event.target.value)}
                             placeholder="显示给对方看的昵称"
@@ -633,11 +619,11 @@ export default function EntryExperience() {
                       </label>
 
                       <label className="block">
-                        <span className="mb-2 block text-xs font-semibold text-[#5A6670]/52">邮箱</span>
-                        <span className="flex min-h-12 items-center gap-3 rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/74 px-3 transition focus-within:border-[#E8B8C2]">
-                          <Mail className="h-4 w-4 text-[#5A6670]/42" />
+                        <span className="theme-text-soft mb-2 block text-xs font-semibold">邮箱</span>
+                        <span className="theme-input flex min-h-12 items-center gap-3 rounded-[16px] px-3 transition">
+                          <Mail className="theme-text-soft h-4 w-4" />
                           <input
-                            className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[#344451] outline-none placeholder:text-[#5A6670]/36"
+                            className="theme-text-main min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[var(--text-soft)]"
                             value={email}
                             onChange={(event) => setEmail(event.target.value)}
                             placeholder="用于注册验证和密码找回"
@@ -650,11 +636,11 @@ export default function EntryExperience() {
 
                   {mode !== "recover" && (
                     <label className="block">
-                      <span className="mb-2 block text-xs font-semibold text-[#5A6670]/52">密码</span>
-                      <span className="flex min-h-12 items-center gap-3 rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/74 px-3 transition focus-within:border-[#E8B8C2]">
-                        <LockKeyhole className="h-4 w-4 text-[#5A6670]/42" />
+                      <span className="theme-text-soft mb-2 block text-xs font-semibold">密码</span>
+                      <span className="theme-input flex min-h-12 items-center gap-3 rounded-[16px] px-3 transition">
+                        <LockKeyhole className="theme-text-soft h-4 w-4" />
                         <input
-                          className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[#344451] outline-none placeholder:text-[#5A6670]/36"
+                          className="theme-text-main min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[var(--text-soft)]"
                           value={password}
                           onChange={(event) => setPassword(event.target.value)}
                           onKeyDown={(event) => {
@@ -665,7 +651,7 @@ export default function EntryExperience() {
                           autoComplete={mode === "register" ? "new-password" : "current-password"}
                         />
                         <button
-                          className="grid h-8 w-8 place-items-center rounded-full text-[#5A6670]/46 transition hover:bg-[#D8DDD8]/30 hover:text-[#344451]"
+                          className="theme-text-soft grid h-8 w-8 place-items-center rounded-full transition hover:bg-[var(--accent-wash)] hover:text-[var(--foreground)]"
                           type="button"
                           onClick={() => setShowPassword((current) => !current)}
                           aria-label={showPassword ? "隐藏密码" : "显示密码"}
@@ -678,11 +664,11 @@ export default function EntryExperience() {
 
                   {((mode === "register" && email.trim()) ||
                     (mode === "recover" && recoverStage === "request-code" && username.trim())) && (
-                    <div className="grid gap-3 rounded-[8px] border border-[#E9E2D6] bg-[#FAFBF7]/66 p-4">
+                    <div className="theme-soft grid gap-3 rounded-[20px] border p-4">
                       <div className="flex items-center justify-between gap-3">
-                        <p className="text-xs font-semibold text-[#5A6670]/56">图形验证码</p>
+                        <p className="theme-text-soft text-xs font-semibold">图形验证码</p>
                         <button
-                          className="inline-flex items-center gap-1 rounded-full border border-[#D8DDD8]/80 px-3 py-1 text-xs font-semibold text-[#5A6670]/58"
+                          className="theme-subtle-button inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold"
                           type="button"
                           onClick={() => void ensureCaptcha()}
                         >
@@ -692,20 +678,20 @@ export default function EntryExperience() {
                       </div>
                       <div className="grid gap-3 sm:grid-cols-[160px_1fr]">
                         <button
-                          className="overflow-hidden rounded-[8px] border border-[#D8DDD8]/80 bg-white/70 p-0"
+                          className="theme-card-strong overflow-hidden rounded-[16px] border p-0"
                           type="button"
                           onClick={() => void ensureCaptcha()}
                         >
                           {captchaSrc ? (
                             <Image alt="图形验证码" src={captchaSrc} width={150} height={52} className="h-14 w-full object-cover" unoptimized />
                           ) : (
-                            <span className="grid h-14 place-items-center text-xs text-[#5A6670]/52">点击加载验证码</span>
+                            <span className="theme-text-soft grid h-14 place-items-center text-xs">点击加载验证码</span>
                           )}
                         </button>
                         <label className="block">
-                          <span className="mb-2 block text-xs font-semibold text-[#5A6670]/52">输入验证码</span>
+                          <span className="theme-text-soft mb-2 block text-xs font-semibold">输入验证码</span>
                           <input
-                            className="min-h-12 w-full rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/74 px-3 text-sm font-medium text-[#344451] outline-none transition focus:border-[#E8B8C2]"
+                            className="theme-input min-h-12 w-full rounded-[16px] px-3 text-sm font-medium transition"
                             value={captchaAnswer}
                             onChange={(event) => setCaptchaAnswer(event.target.value)}
                             placeholder="不区分大小写"
@@ -716,19 +702,19 @@ export default function EntryExperience() {
                   )}
 
                   {mode === "register" && (
-                    <div className="grid gap-3 rounded-[8px] border border-[#E9E2D6] bg-[#FAFBF7]/66 p-4">
+                    <div className="theme-soft grid gap-3 rounded-[20px] border p-4">
                       <div className="flex flex-wrap items-end gap-3 sm:grid sm:grid-cols-[1fr_auto]">
                         <label className="block">
-                          <span className="mb-2 block text-xs font-semibold text-[#5A6670]/52">邮箱验证码</span>
+                          <span className="theme-text-soft mb-2 block text-xs font-semibold">邮箱验证码</span>
                           <input
-                            className="min-h-12 w-full rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/74 px-3 text-sm font-medium text-[#344451] outline-none transition focus:border-[#E8B8C2]"
+                            className="theme-input min-h-12 w-full rounded-[16px] px-3 text-sm font-medium transition"
                             value={emailCode}
                             onChange={(event) => setEmailCode(event.target.value.toUpperCase())}
                             placeholder="输入收到的验证码"
                           />
                         </label>
                         <button
-                          className="inline-flex min-h-12 items-center justify-center rounded-[8px] border border-[#D8DDD8]/82 bg-white/70 px-4 text-sm font-semibold text-[#5A6670] transition hover:border-[#E8B8C2] hover:text-[#D86F82]"
+                          className="theme-subtle-button inline-flex min-h-12 items-center justify-center rounded-[16px] px-4 text-sm font-semibold transition"
                           type="button"
                           onClick={() => void sendRegisterCode()}
                           disabled={!email.trim() || !captchaAnswer.trim() || status === "checking" || registerCodeCooldown > 0}
@@ -736,7 +722,7 @@ export default function EntryExperience() {
                           {registerCodeCooldown > 0 ? `${registerCodeCooldown}s 后重发` : "获取邮箱验证码"}
                         </button>
                       </div>
-                      <p className="text-xs leading-6 text-[#5A6670]/50">
+                      <p className="theme-text-soft text-xs leading-6">
                         发送验证码前会先校验图形验证码；同一个邮箱需要等待 1 分钟冷却后才能再次发送。
                       </p>
                     </div>
@@ -744,9 +730,9 @@ export default function EntryExperience() {
 
                   {mode === "recover" && recoverStage === "verify-code" && (
                     <label className="block">
-                      <span className="mb-2 block text-xs font-semibold text-[#5A6670]/52">邮箱验证码</span>
+                      <span className="theme-text-soft mb-2 block text-xs font-semibold">邮箱验证码</span>
                       <input
-                        className="min-h-12 w-full rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/74 px-3 text-sm font-medium text-[#344451] outline-none transition focus:border-[#E8B8C2]"
+                        className="theme-input min-h-12 w-full rounded-[16px] px-3 text-sm font-medium transition"
                         value={emailCode}
                         onChange={(event) => setEmailCode(event.target.value.toUpperCase())}
                         placeholder="输入邮箱里收到的验证码"
@@ -756,11 +742,11 @@ export default function EntryExperience() {
 
                   {mode === "recover" && recoverStage === "reset-password" && (
                     <label className="block">
-                      <span className="mb-2 block text-xs font-semibold text-[#5A6670]/52">新密码</span>
-                      <span className="flex min-h-12 items-center gap-3 rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/74 px-3 transition focus-within:border-[#E8B8C2]">
-                        <LockKeyhole className="h-4 w-4 text-[#5A6670]/42" />
+                      <span className="theme-text-soft mb-2 block text-xs font-semibold">新密码</span>
+                      <span className="theme-input flex min-h-12 items-center gap-3 rounded-[16px] px-3 transition">
+                        <LockKeyhole className="theme-text-soft h-4 w-4" />
                         <input
-                          className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[#344451] outline-none placeholder:text-[#5A6670]/36"
+                          className="theme-text-main min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[var(--text-soft)]"
                           value={newPassword}
                           onChange={(event) => setNewPassword(event.target.value)}
                           placeholder="设置新的登录密码"
@@ -771,8 +757,16 @@ export default function EntryExperience() {
                   )}
                 </div>
 
-                <div className="mt-4 min-h-6 text-xs font-semibold text-[#5A6670]/52">
-                  <span className={status === "wrong" ? "text-[#D86F82]" : status === "done" ? "text-[#6E9B7C]" : ""}>
+                <div className="theme-text-soft mt-4 min-h-6 text-xs font-semibold">
+                  <span
+                    className={
+                      status === "wrong"
+                        ? "text-[var(--accent-primary)]"
+                        : status === "done"
+                          ? "text-[#7d9b84]"
+                          : ""
+                    }
+                  >
                     {message}
                   </span>
                 </div>
@@ -789,10 +783,10 @@ export default function EntryExperience() {
 
                 {mode === "recover" && recoverStage !== "request-code" && (
                   <button
-                    className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-[8px] border border-[#D8DDD8]/80 bg-[#FAFBF7]/70 px-4 text-sm font-semibold text-[#5A6670]"
-                    type="button"
-                    onClick={() => {
-                      setRecoverStage("request-code");
+                  className="theme-subtle-button mt-3 inline-flex min-h-10 items-center gap-2 rounded-[16px] px-4 text-sm font-semibold"
+                  type="button"
+                  onClick={() => {
+                    setRecoverStage("request-code");
                       setEmailCode("");
                       setRecoverGrantToken("");
                       setRecoverMaskedEmail("");
@@ -805,15 +799,11 @@ export default function EntryExperience() {
                   </button>
                 )}
 
-                <div className="hidden rounded-[8px] border border-[#F0E6D8] bg-[#FAFBF7]/76 px-4 py-3 text-xs leading-6 text-[#5A6670]/58">
-                  当前公开入口仍然是国际托管。换设备登录后，数据会从云端同步；若中国大陆网络访问偏慢，可以稍后重试或切换网络。
-                </div>
-
                 {mode !== "recover" && (
-                  <div className="theme-soft mt-5 rounded-[8px] border p-4">
+                  <div className="theme-soft mt-6 rounded-[24px] border p-5">
                     <div className="mb-3">
-                      <p className="text-sm font-semibold text-[#344451]">情侣绑定入口</p>
-                      <p className="mt-1 text-xs leading-6 text-[#5A6670]/54">登录后先发起绑定，再一起进入地图、约定、菜单和订单流。</p>
+                      <p className="theme-text-main text-sm font-semibold">情侣绑定入口</p>
+                      <p className="theme-text-soft mt-1 text-xs leading-6">登录后先发起绑定，再一起进入地图、约定、菜单和订单流。</p>
                     </div>
                     <AccountBindingPanel compact />
                   </div>

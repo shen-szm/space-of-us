@@ -322,7 +322,7 @@ export default function SettingsExperience() {
       </header>
 
       <section className="mt-10 grid gap-5">
-        <div className="theme-card p-5 shadow-[0_12px_28px_rgba(90,102,112,0.06)]">
+        <div className="theme-card theme-floating-shadow p-5">
           <div className="flex items-center gap-3">
             <Settings className="h-5 w-5 text-[#E8B8C2]" />
             <div>
@@ -343,15 +343,15 @@ export default function SettingsExperience() {
                   onClick={() => void updateThemePreset(preset.id)}
                   className={`rounded-[8px] border p-4 text-left transition ${
                     active
-                      ? "border-[#E8B8C2] bg-white/82 shadow-[0_16px_38px_rgba(216,111,130,0.12)]"
-                      : "border-[#D8DDD8]/75 bg-white/54 hover:-translate-y-0.5 hover:border-[#E8B8C2]"
+                      ? "border-[color-mix(in_srgb,var(--accent-primary)_22%,white)] bg-[color-mix(in_srgb,var(--surface-card-strong)_82%,white)] shadow-[0_16px_38px_rgba(140,110,102,0.10)]"
+                      : "border-[var(--border-soft)] bg-[color-mix(in_srgb,var(--surface-card)_74%,white)] hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--accent-primary)_18%,white)]"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-[#344451]">{preset.label}</p>
                     <span
                       className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                        active ? "bg-[#F5DCE0]/78 text-[#D86F82]" : "bg-[#FAFBF7]/88 text-[#5A6670]/56"
+                        active ? "bg-[var(--accent-wash)] text-[var(--accent-primary)]" : "theme-muted theme-text-soft"
                       }`}
                     >
                       {active ? "使用中" : "切换"}
@@ -369,12 +369,12 @@ export default function SettingsExperience() {
             })}
           </div>
 
-          <div className="mt-4 rounded-[8px] border border-[#F0E6D8] bg-[#FAFBF7]/78 px-4 py-3 text-sm text-[#5A6670]/64">
+          <div className="theme-soft theme-text-muted mt-4 rounded-[8px] border px-4 py-3 text-sm">
             {themeStatus || `当前主题：${themePresets[themePreset].label}`}
           </div>
         </div>
 
-        <div className="rounded-[8px] border border-[#D8DDD8]/78 bg-[#FAFBF7]/76 p-5 shadow-[0_12px_28px_rgba(90,102,112,0.06)]">
+        <div className="theme-card theme-floating-shadow rounded-[8px] border p-5">
           <div className="flex items-center gap-3">
             <ShieldCheck className="h-5 w-5 text-[#E8B8C2]" />
             <div>
@@ -386,7 +386,7 @@ export default function SettingsExperience() {
           </div>
 
           <div className="mt-5 grid gap-5 lg:grid-cols-2">
-            <div className="rounded-[8px] border border-[#D8DDD8]/70 bg-white/50 p-4">
+            <div className="theme-soft rounded-[8px] border p-4">
               <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-[#D86F82]" />
                 <p className="text-sm font-semibold text-[#344451]">邮箱状态</p>
@@ -398,14 +398,14 @@ export default function SettingsExperience() {
 
               <div className="mt-4 grid gap-3">
                 <input
-                  className="min-h-11 rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/76 px-3 text-sm outline-none transition focus:border-[#E8B8C2]"
+                  className="theme-input min-h-11 rounded-[8px] px-3 text-sm transition"
                   value={nextEmail}
                   onChange={(event) => setNextEmail(event.target.value)}
                   placeholder="输入新的邮箱地址"
                 />
                 <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                   <input
-                    className="min-h-11 rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/76 px-3 text-sm outline-none transition focus:border-[#E8B8C2]"
+                    className="theme-input min-h-11 rounded-[8px] px-3 text-sm transition"
                     value={emailCode}
                     onChange={(event) => setEmailCode(event.target.value.toUpperCase())}
                     placeholder="输入邮箱验证码"
@@ -430,21 +430,21 @@ export default function SettingsExperience() {
               </div>
             </div>
 
-            <div className="rounded-[8px] border border-[#D8DDD8]/70 bg-white/50 p-4">
+            <div className="theme-soft rounded-[8px] border p-4">
               <div className="flex items-center gap-2">
                 <KeyRound className="h-4 w-4 text-[#D86F82]" />
                 <p className="text-sm font-semibold text-[#344451]">修改密码</p>
               </div>
               <div className="mt-4 grid gap-3">
                 <input
-                  className="min-h-11 rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/76 px-3 text-sm outline-none transition focus:border-[#E8B8C2]"
+                  className="theme-input min-h-11 rounded-[8px] px-3 text-sm transition"
                   value={currentPassword}
                   onChange={(event) => setCurrentPassword(event.target.value)}
                   placeholder="当前密码"
                   type="password"
                 />
                 <input
-                  className="min-h-11 rounded-[8px] border border-[#D8DDD8]/88 bg-[#FAFBF7]/76 px-3 text-sm outline-none transition focus:border-[#E8B8C2]"
+                  className="theme-input min-h-11 rounded-[8px] px-3 text-sm transition"
                   value={newPassword}
                   onChange={(event) => setNewPassword(event.target.value)}
                   placeholder="新的密码"
@@ -462,12 +462,12 @@ export default function SettingsExperience() {
             </div>
           </div>
 
-          <div className="mt-4 rounded-[8px] border border-[#F0E6D8] bg-[#FAFBF7]/78 px-4 py-3 text-sm text-[#5A6670]/64">
+          <div className="theme-soft theme-text-muted mt-4 rounded-[8px] border px-4 py-3 text-sm">
             {securityStatus || "账号安全信息已接入云端，支持多设备同步使用。"}
           </div>
         </div>
 
-        <div className="rounded-[8px] border border-[#D8DDD8]/78 bg-[#FAFBF7]/76 p-5 shadow-[0_12px_28px_rgba(90,102,112,0.06)]">
+        <div className="theme-card theme-floating-shadow rounded-[8px] border p-5">
           <div className="flex items-center gap-3">
             <CalendarDays className="h-5 w-5 text-[#E8B8C2]" />
             <div>
@@ -540,7 +540,7 @@ export default function SettingsExperience() {
           </div>
         </div>
 
-        <div className="rounded-[8px] border border-[#D8DDD8]/78 bg-[#FAFBF7]/76 p-5 shadow-[0_12px_28px_rgba(90,102,112,0.06)]">
+        <div className="theme-card theme-floating-shadow rounded-[8px] border p-5">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-[#5A6670]">登录照片</p>
@@ -617,7 +617,7 @@ export default function SettingsExperience() {
           </div>
         </div>
 
-        <div className="rounded-[8px] border border-[#D8DDD8]/78 bg-[#FAFBF7]/76 px-4 py-3 text-sm text-[#5A6670]/68 shadow-[0_12px_28px_rgba(90,102,112,0.06)]">
+        <div className="theme-soft theme-text-muted rounded-[8px] border px-4 py-3 text-sm shadow-[0_12px_28px_rgba(90,102,112,0.06)]">
           {isSaving ? "正在同步到云端…" : status || "设置页已接入云端同步。"}
         </div>
       </section>

@@ -1,69 +1,91 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fafbf7;
-  --foreground: #5a6670;
-  --surface-shell: rgb(250 251 247 / 0.78);
-  --surface-card: rgb(255 255 255 / 0.62);
-  --surface-card-strong: rgb(255 255 255 / 0.76);
-  --surface-soft: rgb(250 251 247 / 0.76);
-  --border-soft: rgb(216 221 216 / 0.78);
-  --accent-primary: #d86f82;
-  --accent-secondary: #a8c8dc;
-  --accent-highlight: #f5dce0;
-  --hero-ink: #273846;
-  --hero-glow-a: rgb(245 220 224 / 0.58);
-  --hero-glow-b: rgb(214 232 240 / 0.7);
+  --background: #f5f0ea;
+  --foreground: #5f6670;
+  --surface-shell: rgb(245 240 234 / 0.84);
+  --surface-card: rgb(255 252 249 / 0.78);
+  --surface-card-strong: rgb(255 254 252 / 0.9);
+  --surface-soft: rgb(243 237 232 / 0.9);
+  --surface-muted: rgb(238 232 226 / 0.72);
+  --border-soft: rgb(214 204 196 / 0.76);
+  --border-strong: rgb(198 186 177 / 0.84);
+  --accent-primary: #bf7b7b;
+  --accent-secondary: #9eb0bc;
+  --accent-highlight: #e6d5d1;
+  --accent-wash: rgb(230 213 209 / 0.34);
+  --text-muted: rgb(95 102 112 / 0.72);
+  --text-soft: rgb(95 102 112 / 0.54);
+  --hero-ink: #3f4d58;
+  --hero-glow-a: rgb(230 213 209 / 0.74);
+  --hero-glow-b: rgb(208 218 226 / 0.72);
+  --shadow-soft: 0 18px 48px rgb(98 88 80 / 0.08);
+  --shadow-strong: 0 30px 82px rgb(98 88 80 / 0.14);
   --font-geist-sans: system-ui, "Segoe UI", Arial, Helvetica, sans-serif;
   --font-geist-mono: "Cascadia Mono", Consolas, "Courier New", monospace;
 }
 
 :root[data-ui-theme="peach-sky"] {
-  --background: #fffaf6;
-  --foreground: #596776;
-  --surface-shell: rgb(255 250 246 / 0.8);
-  --surface-card: rgb(255 255 255 / 0.68);
-  --surface-card-strong: rgb(255 255 255 / 0.84);
-  --surface-soft: rgb(255 245 240 / 0.8);
-  --border-soft: rgb(234 215 207 / 0.88);
-  --accent-primary: #dd7b86;
-  --accent-secondary: #8fbedb;
-  --accent-highlight: #ffe0d3;
-  --hero-ink: #30404d;
-  --hero-glow-a: rgb(255 225 211 / 0.62);
-  --hero-glow-b: rgb(202 232 247 / 0.68);
+  --background: #f7efe8;
+  --foreground: #5c6672;
+  --surface-shell: rgb(247 239 232 / 0.86);
+  --surface-card: rgb(255 251 247 / 0.82);
+  --surface-card-strong: rgb(255 253 249 / 0.92);
+  --surface-soft: rgb(245 235 228 / 0.9);
+  --surface-muted: rgb(240 228 219 / 0.76);
+  --border-soft: rgb(221 205 194 / 0.8);
+  --border-strong: rgb(206 190 180 / 0.86);
+  --accent-primary: #c98c84;
+  --accent-secondary: #a5b7c6;
+  --accent-highlight: #ead6cb;
+  --accent-wash: rgb(234 214 203 / 0.36);
+  --text-muted: rgb(92 102 114 / 0.72);
+  --text-soft: rgb(92 102 114 / 0.54);
+  --hero-ink: #42505d;
+  --hero-glow-a: rgb(234 214 203 / 0.76);
+  --hero-glow-b: rgb(219 227 235 / 0.74);
 }
 
 :root[data-ui-theme="mint-cherry"] {
-  --background: #f8fbf8;
-  --foreground: #52636a;
-  --surface-shell: rgb(248 251 248 / 0.8);
-  --surface-card: rgb(255 255 255 / 0.66);
-  --surface-card-strong: rgb(255 255 255 / 0.82);
-  --surface-soft: rgb(242 250 245 / 0.8);
-  --border-soft: rgb(205 225 214 / 0.9);
-  --accent-primary: #db7b99;
-  --accent-secondary: #95ccbb;
-  --accent-highlight: #f8dbe3;
-  --hero-ink: #294045;
-  --hero-glow-a: rgb(248 219 227 / 0.58);
-  --hero-glow-b: rgb(208 244 229 / 0.68);
+  --background: #eef2ee;
+  --foreground: #596660;
+  --surface-shell: rgb(238 242 238 / 0.86);
+  --surface-card: rgb(250 252 250 / 0.82);
+  --surface-card-strong: rgb(253 254 253 / 0.92);
+  --surface-soft: rgb(232 238 233 / 0.9);
+  --surface-muted: rgb(224 231 226 / 0.8);
+  --border-soft: rgb(196 207 199 / 0.82);
+  --border-strong: rgb(181 193 185 / 0.88);
+  --accent-primary: #b9808f;
+  --accent-secondary: #9db8ae;
+  --accent-highlight: #dfd0d7;
+  --accent-wash: rgb(223 208 215 / 0.34);
+  --text-muted: rgb(89 102 96 / 0.72);
+  --text-soft: rgb(89 102 96 / 0.54);
+  --hero-ink: #44534c;
+  --hero-glow-a: rgb(223 208 215 / 0.74);
+  --hero-glow-b: rgb(211 223 217 / 0.72);
 }
 
 :root[data-ui-theme="butter-garden"] {
-  --background: #fffdf4;
-  --foreground: #5d6456;
-  --surface-shell: rgb(255 253 244 / 0.82);
-  --surface-card: rgb(255 255 255 / 0.68);
-  --surface-card-strong: rgb(255 255 255 / 0.84);
-  --surface-soft: rgb(255 250 232 / 0.82);
-  --border-soft: rgb(225 223 194 / 0.92);
-  --accent-primary: #c98e6d;
-  --accent-secondary: #adc992;
-  --accent-highlight: #f8ead0;
-  --hero-ink: #445041;
-  --hero-glow-a: rgb(248 234 208 / 0.64);
-  --hero-glow-b: rgb(221 238 205 / 0.72);
+  --background: #f4efe6;
+  --foreground: #666358;
+  --surface-shell: rgb(244 239 230 / 0.86);
+  --surface-card: rgb(255 252 246 / 0.82);
+  --surface-card-strong: rgb(255 254 250 / 0.92);
+  --surface-soft: rgb(240 234 223 / 0.9);
+  --surface-muted: rgb(233 226 214 / 0.78);
+  --border-soft: rgb(212 205 187 / 0.8);
+  --border-strong: rgb(196 188 170 / 0.88);
+  --accent-primary: #b88f73;
+  --accent-secondary: #a9b59b;
+  --accent-highlight: #e6dbc8;
+  --accent-wash: rgb(230 219 200 / 0.38);
+  --text-muted: rgb(102 99 88 / 0.72);
+  --text-soft: rgb(102 99 88 / 0.54);
+  --hero-ink: #4d5247;
+  --hero-glow-a: rgb(230 219 200 / 0.74);
+  --hero-glow-b: rgb(215 223 206 / 0.74);
 }
 
 @theme {
@@ -109,6 +131,126 @@ body {
   border-color: var(--border-soft);
 }
 
+.theme-muted {
+  background: var(--surface-muted);
+  border-color: var(--border-soft);
+}
+
+.theme-page {
+  background:
+    radial-gradient(circle at 12% 0%, var(--hero-glow-a), transparent 26%),
+    radial-gradient(circle at 88% 20%, var(--hero-glow-b), transparent 32%),
+    var(--background);
+  color: var(--foreground);
+}
+
+.theme-text-main {
+  color: var(--foreground);
+}
+
+.theme-text-muted {
+  color: var(--text-muted);
+}
+
+.theme-text-soft {
+  color: var(--text-soft);
+}
+
+.theme-divider {
+  border-color: var(--border-soft);
+}
+
+.theme-input {
+  border: 1px solid var(--border-soft);
+  background: color-mix(in srgb, var(--surface-card-strong) 78%, white);
+  color: var(--foreground);
+}
+
+.theme-input::placeholder {
+  color: var(--text-soft);
+}
+
+.theme-input:focus,
+.theme-input:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent-primary) 46%, var(--border-strong));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-wash) 92%, white);
+}
+
+.theme-card input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
+.theme-card select,
+.theme-card textarea,
+.theme-card-strong input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
+.theme-card-strong select,
+.theme-card-strong textarea,
+.theme-soft input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
+.theme-soft select,
+.theme-soft textarea {
+  border-color: var(--border-soft);
+  background: color-mix(in srgb, var(--surface-card-strong) 78%, white);
+  color: var(--foreground);
+}
+
+.theme-card input::placeholder,
+.theme-card select::placeholder,
+.theme-card textarea::placeholder,
+.theme-card-strong input::placeholder,
+.theme-card-strong select::placeholder,
+.theme-card-strong textarea::placeholder,
+.theme-soft input::placeholder,
+.theme-soft select::placeholder,
+.theme-soft textarea::placeholder {
+  color: var(--text-soft);
+}
+
+.theme-card input:focus,
+.theme-card input:focus-visible,
+.theme-card select:focus,
+.theme-card select:focus-visible,
+.theme-card textarea:focus,
+.theme-card textarea:focus-visible,
+.theme-card-strong input:focus,
+.theme-card-strong input:focus-visible,
+.theme-card-strong select:focus,
+.theme-card-strong select:focus-visible,
+.theme-card-strong textarea:focus,
+.theme-card-strong textarea:focus-visible,
+.theme-soft input:focus,
+.theme-soft input:focus-visible,
+.theme-soft select:focus,
+.theme-soft select:focus-visible,
+.theme-soft textarea:focus,
+.theme-soft textarea:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent-primary) 46%, var(--border-strong));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-wash) 92%, white);
+}
+
+.theme-subtle-button {
+  border: 1px solid var(--border-soft);
+  background: color-mix(in srgb, var(--surface-card-strong) 70%, white);
+  color: var(--foreground);
+}
+
+.theme-subtle-button:hover {
+  border-color: color-mix(in srgb, var(--accent-primary) 34%, var(--border-strong));
+  background: color-mix(in srgb, var(--accent-wash) 56%, var(--surface-card-strong));
+}
+
+.theme-icon-chip {
+  background: color-mix(in srgb, var(--accent-wash) 74%, white);
+  color: var(--accent-primary);
+  border: 1px solid color-mix(in srgb, var(--accent-highlight) 84%, white);
+}
+
+.theme-floating-shadow {
+  box-shadow: var(--shadow-soft);
+}
+
+.theme-floating-shadow-strong {
+  box-shadow: var(--shadow-strong);
+}
+
 .theme-accent-button {
   background: var(--hero-ink);
   color: white;
@@ -131,6 +273,11 @@ body {
 }
 
 .theme-preview-swatch {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border-soft) 92%, white);
   background:
     radial-gradient(circle at 22% 18%, color-mix(in srgb, var(--accent-highlight) 86%, white), transparent 24%),
     linear-gradient(135deg, color-mix(in srgb, var(--accent-secondary) 44%, white), var(--background));
@@ -251,10 +398,10 @@ button {
 
 .login-paper {
   background:
-    radial-gradient(circle at 14% 18%, rgb(245 220 224 / 0.8), transparent 26%),
-    radial-gradient(circle at 82% 78%, rgb(214 232 240 / 0.78), transparent 30%),
+    radial-gradient(circle at 14% 18%, color-mix(in srgb, var(--hero-glow-a) 92%, white), transparent 26%),
+    radial-gradient(circle at 82% 78%, color-mix(in srgb, var(--hero-glow-b) 92%, white), transparent 30%),
     linear-gradient(135deg, rgb(255 255 255 / 0.62), transparent 40%),
-    #f9f6ec;
+    var(--background);
 }
 
 .login-paper::before {
@@ -574,10 +721,10 @@ button {
 
 .entry-paper {
   background:
-    radial-gradient(circle at 15% 18%, rgb(244 180 192 / 0.42), transparent 24%),
-    radial-gradient(circle at 86% 72%, rgb(117 165 168 / 0.32), transparent 28%),
+    radial-gradient(circle at 15% 18%, color-mix(in srgb, var(--hero-glow-a) 86%, white), transparent 24%),
+    radial-gradient(circle at 86% 72%, color-mix(in srgb, var(--hero-glow-b) 72%, white), transparent 28%),
     linear-gradient(135deg, rgb(255 255 255 / 0.58), transparent 36%),
-    #f9f6ec;
+    var(--background);
 }
 
 .entry-paper::before {

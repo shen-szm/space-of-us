@@ -65,13 +65,13 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
   }, [supportOpen, supportPreviewOpen]);
 
   return (
-    <aside className="hidden min-h-screen w-[260px] shrink-0 border-r border-[#D8DDD8]/78 bg-[#FAFBF7]/78 px-5 py-8 shadow-[12px_0_34px_rgba(90,102,112,0.04)] backdrop-blur lg:block">
+    <aside className="theme-shell hidden min-h-screen w-[260px] shrink-0 border-r px-5 py-8 shadow-[12px_0_34px_rgba(90,102,112,0.04)] backdrop-blur lg:block">
       <div className="text-center">
         <div className="mx-auto grid h-14 w-14 place-items-center">
-          <Heart className="h-10 w-10 fill-[#F5DCE0] text-[#E8B8C2]" />
+          <Heart className="h-10 w-10 fill-[var(--accent-highlight)] text-[color-mix(in_srgb,var(--accent-primary)_72%,white)]" />
         </div>
-        <p className="mt-2 text-lg font-semibold text-[#5A6670]">我们的地图</p>
-        <p className="mt-1 text-xs text-[#5A6670]/52">只属于两个人的回忆空间</p>
+        <p className="theme-text-main mt-2 text-lg font-semibold">我们的地图</p>
+        <p className="theme-text-soft mt-1 text-xs">只属于两个人的回忆空间</p>
       </div>
 
       <nav className="mt-10 space-y-2">
@@ -84,8 +84,8 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
               key={item.key}
               className={`flex w-full items-center gap-3 rounded-[8px] border px-4 py-3 text-sm font-medium transition ${
                 selected
-                  ? "border-[#F5DCE0] bg-[#F5DCE0]/52 text-[#D86F82]"
-                  : "border-transparent text-[#5A6670]/72 hover:border-[#D8DDD8] hover:bg-[#FAFBF7]"
+                  ? "border-[color-mix(in_srgb,var(--accent-primary)_18%,white)] bg-[var(--accent-wash)] text-[var(--accent-primary)]"
+                  : "border-transparent theme-text-muted hover:border-[var(--border-soft)] hover:bg-[color-mix(in_srgb,var(--surface-card)_58%,white)]"
               }`}
               href={item.href}
             >
@@ -96,41 +96,41 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
         })}
       </nav>
 
-      <div className="mt-10 rounded-[8px] border border-[#D8DDD8]/72 bg-[#FAFBF7]/72 p-4 text-sm leading-7 text-[#5A6670]/62 shadow-[0_12px_26px_rgba(90,102,112,0.05)]">
+      <div className="theme-card theme-floating-shadow mt-10 rounded-[8px] border p-4 text-sm leading-7 theme-text-muted">
         在地图的每个角落，慢慢收藏你们一起走过、想去、想记住的故事。
-        <Heart className="ml-1 inline h-3.5 w-3.5 fill-[#F5DCE0] text-[#E8B8C2]" />
+        <Heart className="ml-1 inline h-3.5 w-3.5 fill-[var(--accent-highlight)] text-[color-mix(in_srgb,var(--accent-primary)_72%,white)]" />
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-[8px] border border-[#D8DDD8]/72 bg-[#FAFBF7]/72 p-4 shadow-[0_12px_26px_rgba(90,102,112,0.05)]">
+      <div className="theme-card theme-floating-shadow mt-4 overflow-hidden rounded-[8px] border p-4">
         <div className="flex items-center gap-2">
-          <Heart className="h-3.5 w-3.5 fill-[#F5DCE0] text-[#E8B8C2]" />
-          <p className="text-xs font-semibold text-[#5A6670]">关于这个空间</p>
+          <Heart className="h-3.5 w-3.5 fill-[var(--accent-highlight)] text-[color-mix(in_srgb,var(--accent-primary)_72%,white)]" />
+          <p className="theme-text-main text-xs font-semibold">关于这个空间</p>
         </div>
-        <p className="mt-2 text-xs leading-6 text-[#5A6670]/60">
+        <p className="theme-text-muted mt-2 text-xs leading-6">
           这里用来装下两个人的城市足迹、纪念日、心愿清单，还有那些只想留给彼此的小约定。
         </p>
 
-        <div className="mt-3 border-t border-[#D8DDD8]/54 pt-3">
-          <p className="text-[11px] font-semibold text-[#5A6670]/48">这里会记录什么</p>
-          <p className="mt-1 text-xs leading-6 text-[#5A6670]/60">
+        <div className="theme-divider mt-3 border-t pt-3">
+          <p className="theme-text-soft text-[11px] font-semibold">这里会记录什么</p>
+          <p className="theme-text-muted mt-1 text-xs leading-6">
             想吃的小店、想喝的奶茶、想一起去的地方、已经发生的瞬间，都可以被轻轻放进 Space of us。
           </p>
         </div>
 
-        <div className="mt-3 border-t border-[#D8DDD8]/54 pt-3">
-          <p className="text-[11px] font-semibold text-[#5A6670]/48">我们的约定</p>
-          <div className="mt-2 rounded-[7px] border border-[#F5DCE0]/70 bg-[#F5DCE0]/28 px-3 py-2 text-xs leading-6 text-[#5A6670]/64">
+        <div className="theme-divider mt-3 border-t pt-3">
+          <p className="theme-text-soft text-[11px] font-semibold">我们的约定</p>
+          <div className="mt-2 rounded-[7px] border border-[color-mix(in_srgb,var(--accent-primary)_18%,white)] bg-[var(--accent-wash)] px-3 py-2 text-xs leading-6 theme-text-muted">
             不赶时间，不怕遗忘。把喜欢的事情一件件存下来，等有空的时候一起完成。
           </div>
         </div>
 
-        <div className="mt-3 border-t border-[#D8DDD8]/54 pt-3">
-          <p className="text-[11px] font-semibold text-[#5A6670]/48">灵感来源</p>
-          <div className="mt-2 space-y-2 text-xs leading-6 text-[#5A6670]/60">
+        <div className="theme-divider mt-3 border-t pt-3">
+          <p className="theme-text-soft text-[11px] font-semibold">灵感来源</p>
+          <div className="theme-text-muted mt-2 space-y-2 text-xs leading-6">
             <p>
               GitHub：
               <a
-                className="ml-1 inline-flex items-center gap-1 text-[#D86F82] underline decoration-[#F5DCE0] underline-offset-2 transition hover:text-[#C95A70]"
+                className="ml-1 inline-flex items-center gap-1 text-[var(--accent-primary)] underline decoration-[var(--accent-highlight)] underline-offset-2 transition hover:opacity-80"
                 href="https://github.com/zkeyoned/map-of-us-template"
                 rel="noreferrer"
                 target="_blank"
@@ -143,13 +143,13 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
           </div>
         </div>
 
-        <div className="mt-3 border-t border-[#D8DDD8]/54 pt-3">
-          <p className="text-[11px] font-semibold text-[#5A6670]/48">赞助支持</p>
-          <p className="mt-2 text-xs leading-6 text-[#5A6670]/60">
+        <div className="theme-divider mt-3 border-t pt-3">
+          <p className="theme-text-soft text-[11px] font-semibold">赞助支持</p>
+          <p className="theme-text-muted mt-2 text-xs leading-6">
             如果这个项目对你有帮助，愿意的话可以通过赞助支持继续完善 Space of us。
           </p>
           <button
-            className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-[7px] border border-[#F5DCE0] bg-[#F5DCE0]/34 px-3 py-2 text-xs font-semibold text-[#D86F82] transition hover:border-[#E8B8C2] hover:bg-[#F5DCE0]/52"
+            className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-[7px] border border-[color-mix(in_srgb,var(--accent-primary)_18%,white)] bg-[var(--accent-wash)] px-3 py-2 text-xs font-semibold text-[var(--accent-primary)] transition hover:opacity-88"
             type="button"
             onClick={() => setSupportOpen(true)}
           >
@@ -158,12 +158,12 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
           </button>
         </div>
 
-        <div className="mt-3 flex items-center justify-between gap-3 border-t border-[#D8DDD8]/54 pt-3 text-[11px] font-semibold text-[#E8B8C2]">
+        <div className="theme-divider mt-3 flex items-center justify-between gap-3 border-t pt-3 text-[11px] font-semibold text-[color-mix(in_srgb,var(--accent-primary)_70%,white)]">
           <div className="flex items-center gap-2">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Space of us</span>
           </div>
-          <span className="rounded-full border border-[#F5DCE0]/80 bg-[#F5DCE0]/24 px-2 py-0.5 text-[10px] font-semibold tracking-[0.08em] text-[#D86F82]">
+          <span className="rounded-full border border-[color-mix(in_srgb,var(--accent-primary)_18%,white)] bg-[var(--accent-wash)] px-2 py-0.5 text-[10px] font-semibold tracking-[0.08em] text-[var(--accent-primary)]">
             {APP_VERSION}
           </span>
         </div>
@@ -186,11 +186,7 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
             >
               <X className="h-4 w-4" />
             </button>
-            <button
-              className="relative mx-auto block w-full max-w-[920px]"
-              type="button"
-              onClick={() => setSupportPreviewOpen(true)}
-            >
+            <button className="relative mx-auto block w-full max-w-[920px]" type="button" onClick={() => setSupportPreviewOpen(true)}>
               <Image
                 alt="赞助支持收款码"
                 className="h-auto w-full rounded-[8px]"
@@ -218,13 +214,7 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
           </button>
           <div className="max-h-full w-full overflow-auto" onClick={(event) => event.stopPropagation()}>
             <div className="mx-auto w-full max-w-[1280px]">
-              <Image
-                alt="Support QR preview"
-                className="h-auto w-full rounded-[10px]"
-                height={1599}
-                src="/photos/support-qr.jpg"
-                width={1280}
-              />
+              <Image alt="Support QR preview" className="h-auto w-full rounded-[10px]" height={1599} src="/photos/support-qr.jpg" width={1280} />
             </div>
           </div>
         </div>
@@ -259,17 +249,17 @@ export function MemoryPageShell({
   }, []);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#FAFBF7] text-[#5A6670]">
+    <main className="theme-page relative min-h-screen overflow-hidden">
       <div className="map-mist-band" aria-hidden="true" />
-      <span className="absolute left-[38%] top-[9%] h-2 w-2 bg-[#F5DCE0]" aria-hidden="true" />
-      <span className="absolute right-[17%] top-[15%] h-2 w-2 bg-[#D6E8F0]" aria-hidden="true" />
+      <span className="absolute left-[38%] top-[9%] h-2 w-2 rounded-full bg-[var(--accent-highlight)]" aria-hidden="true" />
+      <span className="absolute right-[17%] top-[15%] h-2 w-2 rounded-full bg-[var(--accent-secondary)]" aria-hidden="true" />
       <div className="relative z-10 flex min-h-screen">
         <MemorySidebar active={active} />
         <section className="min-w-0 flex-1 px-6 py-8 sm:px-10">{children}</section>
       </div>
       {adminSession && (
         <Link
-          className="fixed bottom-5 right-5 z-50 inline-flex min-h-11 items-center gap-2 rounded-full border border-white/72 bg-white/70 px-4 text-sm font-semibold text-[#344451] shadow-[0_18px_46px_rgba(90,102,112,0.18)] backdrop-blur-2xl transition hover:-translate-y-0.5 hover:border-[#E8B8C2] hover:text-[#D86F82]"
+          className="theme-card theme-floating-shadow fixed bottom-5 right-5 z-50 inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold theme-text-main backdrop-blur-2xl transition hover:-translate-y-0.5 hover:text-[var(--accent-primary)]"
           href="/"
         >
           <ShieldCheck className="h-4 w-4" />
