@@ -4,12 +4,13 @@ import path from "path";
 import {
   type AccountBindingRequest,
   type AccountStore,
-  type BindingRequestStatus,
   type PublicUserAccount,
+  type BindingRequestStatus,
   type UserAccount,
   defaultAccountStore,
   toPublicAccount,
 } from "@/data/accounts";
+import type { PartnerRole } from "@/data/couple";
 import { getPrivateDataFilePath } from "@/lib/server/dataDir";
 import { assertWritableStorageConfigured, getSupabaseAdmin, readJsonValue, writeJsonValue } from "@/lib/server/supabase";
 
@@ -414,6 +415,31 @@ export const getAccountBindingProfile = async (username: string) => {
   };
 };
 
+export const getAccountBindingContext = async (username: string): Promise<{
+  user: PublicUserAccount;
+  partner: PublicUserAccount | null;
+  role: PartnerRole;
+  isBound: boolean;
+}> => {
+  const profile = await getAccountBindingProfile(username);
+  if (!profile.partner) {
+    return {
+      ...profile,
+      role: "a",
+      isBound: false,
+    };
+  }
+
+  const sortedIds = [profile.user.id, profile.partner.id].sort();
+  const role: PartnerRole = sortedIds[0] === profile.user.id ? "a" : "b";
+
+  return {
+    ...profile,
+    role,
+    isBound: true,
+  };
+};
+
 export const generateAccountBindingInvite = async (username: string) => {
   const normalized = normalizeUsername(username);
   const store = await readAccountStore();
@@ -525,6 +551,33 @@ export const respondToAccountBindingRequest = async ({
   }
 
   syncRequestForUsers(store, nextRequest);
+  await writeAccountStore(store);
+  return getAccountBindingProfile(username);
+};
+
+const clearBindingFields = (account: UserAccount, timestamp: string) => {
+  account.partnerUserId = undefined;
+  account.partnerUsername = undefined;
+  account.partnerDisplayName = undefined;
+  account.bindingInviteCodeHash = undefined;
+  account.bindingInviteCodePreview = undefined;
+  account.bindingInviteCreatedAt = undefined;
+  account.updatedAt = timestamp;
+};
+
+export const unbindAccountPair = async (username: string) => {
+  const normalized = normalizeUsername(username);
+  const store = await readAccountStore();
+  const account = findAccountInStore(store, normalized);
+  if (!account) throw new Error("Account not found");
+  if (!account.partnerUserId) throw new Error("Not bound");
+
+  const timestamp = new Date().toISOString();
+  const partner = store.users.find((item) => item.id === account.partnerUserId) ?? null;
+
+  clearBindingFields(account, timestamp);
+  if (partner) clearBindingFields(partner, timestamp);
+
   await writeAccountStore(store);
   return getAccountBindingProfile(username);
 };

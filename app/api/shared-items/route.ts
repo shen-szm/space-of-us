@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionUsername, requireSiteSession } from "@/lib/server/auth";
-import { getAccountScopeKey } from "@/lib/server/accountStore";
+import { getAccountBindingContext, getAccountScopeKey } from "@/lib/server/accountStore";
 import { assertWritableStorageConfigured, readJsonValue, writeJsonValue } from "@/lib/server/supabase";
 
 export const dynamic = "force-dynamic";
@@ -147,6 +147,11 @@ export async function PUT(request: NextRequest) {
   const payload = await request.json().catch(() => null);
   const kind = getKind(request, payload);
   if (!kind || !isRecord(payload)) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+
+  const binding = await getAccountBindingContext(username);
+  if (!binding.isBound) {
+    return NextResponse.json({ error: "请先完成情侣绑定后再编辑共享内容" }, { status: 403 });
+  }
 
   try {
     const store = await readScopedStore(scope.scopeKey);

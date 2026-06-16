@@ -5,6 +5,7 @@ import {
   generateAccountBindingInvite,
   getAccountBindingProfile,
   respondToAccountBindingRequest,
+  unbindAccountPair,
 } from "@/lib/server/accountStore";
 
 export const dynamic = "force-dynamic";
@@ -78,6 +79,10 @@ export async function POST(request: NextRequest) {
           accept: payload.accept === true,
         }),
       );
+    }
+
+    if (payload.action === "unbind") {
+      return NextResponse.json(await unbindAccountPair(session.username));
     }
   } catch (error) {
     return NextResponse.json(

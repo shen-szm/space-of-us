@@ -26,9 +26,9 @@ import type { PublicUserAccount } from "@/data/accounts";
 import type { AdminAlert } from "@/data/adminAlerts";
 import AccountBindingPanel from "@/components/AccountBindingPanel";
 import { LocalPrivacyBadge, LocalPrivacyImage } from "@/components/LocalPrivacyImage";
+import { withVersion } from "@/lib/appVersion";
 
-const loginPhotoVersion = "placeholder-20260601";
-const loginPhotoPath = (fileName: string) => `/photos/login/${fileName}.jpg?v=${loginPhotoVersion}`;
+const loginPhotoPath = (fileName: string) => withVersion(`/photos/login/${fileName}.jpg`);
 
 type AuthMode = "login" | "register" | "recover";
 type RecoverStage = "request-code" | "verify-code" | "reset-password";

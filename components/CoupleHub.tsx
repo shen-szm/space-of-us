@@ -46,7 +46,7 @@ type ApiResponse = CoupleHubStore & {
 const fetchStore = async () => {
   const response = await fetch("/api/couple", { cache: "no-store" });
   if (!response.ok) throw new Error("Load failed");
-  return (await response.json()) as CoupleHubStore;
+  return (await response.json()) as ApiResponse;
 };
 
 const postAction = async (payload: Record<string, unknown>) => {
@@ -158,8 +158,12 @@ export default function CoupleHub({ embedded = false }: Readonly<{ embedded?: bo
   const [orderNote, setOrderNote] = useState("");
 
   const refresh = async () => {
-    const nextStore = await fetchStore();
-    setStore(nextStore);
+    const next = await fetchStore();
+    setStore(next.store ?? next);
+    if (next.role) {
+      setRole(next.role);
+      window.localStorage.setItem(roleStorageKey, next.role);
+    }
   };
 
   useEffect(() => {

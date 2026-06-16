@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ImagePlus,
@@ -647,7 +647,7 @@ export default function ProvinceMap({ province, width = 1120, height = 760 }: Pr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapData.cities, provinceCities]);
 
-  const zoomAt = (clientX: number, clientY: number, delta: number) => {
+  const zoomAt = useCallback((clientX: number, clientY: number, delta: number) => {
     const frame = frameRef.current;
     if (!frame) return;
 
@@ -666,7 +666,7 @@ export default function ProvinceMap({ province, width = 1120, height = 760 }: Pr
         y: pointerY - mapY * nextScale,
       };
     });
-  };
+  }, [frameScale]);
 
   const zoomFromCenter = (delta: number) => {
     const frame = frameRef.current;
@@ -682,6 +682,23 @@ export default function ProvinceMap({ province, width = 1120, height = 760 }: Pr
     const delta = event.deltaY < 0 ? 1.12 : 0.88;
     zoomAt(event.clientX, event.clientY, delta);
   };
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return;
+
+    const handleNativeWheel = (event: WheelEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("aside, article, [data-map-scroll='self']")) return;
+
+      event.preventDefault();
+      const delta = event.deltaY < 0 ? 1.12 : 0.88;
+      zoomAt(event.clientX, event.clientY, delta);
+    };
+
+    frame.addEventListener("wheel", handleNativeWheel, { passive: false });
+    return () => frame.removeEventListener("wheel", handleNativeWheel);
+  }, [zoomAt]);
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
@@ -864,6 +881,7 @@ export default function ProvinceMap({ province, width = 1120, height = 760 }: Pr
       </div>
 
       <aside
+        data-map-scroll="self"
         className="absolute right-0 top-3 z-40 w-[230px] rounded-[8px] border border-[#D8DDD8]/85 bg-[#FAFBF7]/90 p-3 shadow-[0_16px_34px_rgba(90,102,112,0.10)] backdrop-blur"
         onClick={(event) => event.stopPropagation()}
         onPointerDown={(event) => event.stopPropagation()}
@@ -1224,7 +1242,7 @@ function MemoryCard({
     const file = event.target.files?.[0];
     if (!isAdmin) {
       if (landmarkInputRef.current) landmarkInputRef.current.value = "";
-      setLandmarkError("请先进入管理员模式");
+      setLandmarkError("当前账号暂无编辑权限");
       return;
     }
     if (!file || !file.type.startsWith("image/") || landmarkSaving) return;
@@ -1240,8 +1258,8 @@ function MemoryCard({
           quality: landmarkPhotoQuality,
         }),
       );
-    } catch {
-      setLandmarkError("地标图片保存失败，请重新选择");
+    } catch (error) {
+      setLandmarkError(error instanceof Error ? error.message : "地标图片保存失败，请稍后再试");
     } finally {
       if (mountedRef.current) setLandmarkSaving(false);
       if (landmarkInputRef.current) landmarkInputRef.current.value = "";
@@ -1250,7 +1268,7 @@ function MemoryCard({
 
   const handleDeleteLandmark = async () => {
     if (!isAdmin) {
-      setLandmarkError("请先进入管理员模式");
+      setLandmarkError("当前账号暂无编辑权限");
       return;
     }
 
@@ -1337,6 +1355,7 @@ function MemoryCard({
 
   return (
     <motion.article
+      data-map-scroll="self"
       className={`absolute z-50 overflow-y-auto rounded-[8px] border border-[#D8DDD8] bg-[#FAFBF7]/94 text-[#5A6670] shadow-[0_18px_42px_rgba(90,102,112,0.18)] backdrop-blur ${
         expanded
           ? "max-h-[min(720px,calc(100vh-92px))] w-[390px] p-6"
@@ -1369,7 +1388,7 @@ function MemoryCard({
             {memory?.date ?? "添加回忆后点亮"}
           </p>
           {!isAdmin && (
-            <p className="mt-2 text-xs font-semibold text-[#5A6670]/42">管理员锁定，无法修改回忆</p>
+            <p className="mt-2 text-xs font-semibold text-[#5A6670]/42">当前账号暂无编辑权限</p>
           )}
         </div>
         <div className="flex items-center gap-1">

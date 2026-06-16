@@ -100,9 +100,29 @@ const signCityAssetStore = (store: CityAssetStore) => createSignedImageMap(store
 
 const quotaErrorResponse = () =>
   NextResponse.json(
-    { error: "存储空间已满，暂时无法上传文件。管理员已收到提醒。" },
+    { error: "存储空间已满，暂时无法上传文件，请稍后再试。" },
     { status: 507 },
   );
+
+const mapCityAssetError = (error: unknown) => {
+  if (!(error instanceof Error)) return null;
+
+  const message = error.message.toLowerCase();
+  if (message.includes("supabase is required")) {
+    return NextResponse.json({ error: "线上图片存储尚未配置完成，请先补齐 Supabase 可写存储。" }, { status: 503 });
+  }
+  if (message.includes("invalid api key")) {
+    return NextResponse.json({ error: "图片存储配置无效，Supabase API Key 不正确。" }, { status: 503 });
+  }
+  if (message.includes("permission") || message.includes("not allowed")) {
+    return NextResponse.json({ error: "当前图片存储权限不足，暂时无法保存地标图片。" }, { status: 403 });
+  }
+  if (message.includes("data url")) {
+    return NextResponse.json({ error: "图片数据格式不正确，请重新选择图片后再试。" }, { status: 400 });
+  }
+
+  return null;
+};
 
 function parseCityAssetPayload(payload: unknown) {
   if (!isRecord(payload)) return null;
@@ -157,7 +177,7 @@ export async function PUT(request: NextRequest) {
   try {
     assertWritableStorageConfigured();
   } catch {
-    return NextResponse.json({ error: "Supabase is required to save city assets in production" }, { status: 503 });
+    return NextResponse.json({ error: "线上图片存储尚未配置完成，请先补齐 Supabase 可写存储。" }, { status: 503 });
   }
 
   const payload = parseCityAssetPayload(await request.json().catch(() => null));
@@ -176,6 +196,8 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ assets: await signCityAssetStore(nextAssets) });
   } catch (error) {
     if (isStorageQuotaExceededError(error)) return quotaErrorResponse();
+    const mapped = mapCityAssetError(error);
+    if (mapped) return mapped;
     throw error;
   }
 }
@@ -191,7 +213,7 @@ export async function PATCH(request: NextRequest) {
   try {
     assertWritableStorageConfigured();
   } catch {
-    return NextResponse.json({ error: "Supabase is required to import city assets in production" }, { status: 503 });
+    return NextResponse.json({ error: "线上图片存储尚未配置完成，请先补齐 Supabase 可写存储。" }, { status: 503 });
   }
 
   const payload = await request.json().catch(() => null);
@@ -216,6 +238,8 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ assets: await signCityAssetStore(nextAssets) });
   } catch (error) {
     if (isStorageQuotaExceededError(error)) return quotaErrorResponse();
+    const mapped = mapCityAssetError(error);
+    if (mapped) return mapped;
     throw error;
   }
 }
@@ -231,7 +255,7 @@ export async function DELETE(request: NextRequest) {
   try {
     assertWritableStorageConfigured();
   } catch {
-    return NextResponse.json({ error: "Supabase is required to delete city assets in production" }, { status: 503 });
+    return NextResponse.json({ error: "线上图片存储尚未配置完成，请先补齐 Supabase 可写存储。" }, { status: 503 });
   }
 
   const payload = parseCityPayload(await request.json().catch(() => null));

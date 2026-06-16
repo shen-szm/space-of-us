@@ -52,9 +52,14 @@ import {
   writeAdminMode,
 } from "@/data/adminMode";
 import { LocalPrivacyImage } from "@/components/LocalPrivacyImage";
+import { withVersion } from "@/lib/appVersion";
 
 type StoredItem = SharedItem;
 type CityAssetStore = Record<string, string>;
+type BindingProfile = {
+  user: { id: string; displayName?: string; username: string };
+  partner: { id: string; displayName?: string; username: string } | null;
+};
 
 type ToolConfig = {
   active: MemoryNavKey;
@@ -93,8 +98,7 @@ const configs = {
 } satisfies Record<string, ToolConfig>;
 
 const auxiliaryStorageKeys = ["mapofus:favorites", "mapofus:anniversaries", "mapofus:capsules"] as const;
-const loginPhotoVersion = "placeholder-20260601";
-const loginPhotoFallback = (fileName: string) => `/photos/login/${fileName}.jpg?v=${loginPhotoVersion}`;
+const loginPhotoFallback = (fileName: string) => withVersion(`/photos/login/${fileName}.jpg`);
 
 const loginPhotoSlots = [
   { id: "hangzhou", city: "杭州", label: "春日湖畔", fallback: loginPhotoFallback("hangzhou") },
@@ -233,10 +237,26 @@ const daysUntil = (value?: string) => {
   return Math.ceil((target.getTime() - today.getTime()) / 86_400_000);
 };
 
+const normalizeDateInput = (value?: string) => {
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  if (/^\d{4}\.\d{2}\.\d{2}$/.test(value)) return value.replaceAll(".", "-");
+  return value;
+};
+
+const serializeDateInput = (value?: string) => {
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value.replaceAll("-", ".");
+  return value;
+};
+
 function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
   const Icon = config.icon;
   const isAdmin = useAdminMode();
-  const canEditShared = config.kind === "favorite" || config.kind === "anniversary";
+  const [binding, setBinding] = useState<BindingProfile | null>(null);
+  const canEditShared =
+    (config.kind === "favorite" || config.kind === "anniversary" || config.kind === "capsule") &&
+    Boolean(binding?.partner);
   const canEdit = isAdmin || canEditShared;
   const [items, setItems] = useState<StoredItem[]>([]);
   const [title, setTitle] = useState("");
@@ -245,6 +265,22 @@ function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
   const [cityId, setCityId] = useState(cities[0]?.id ?? "");
   const [editingId, setEditingId] = useState("");
   const [status, setStatus] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/account-binding", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        if (!cancelled && payload) setBinding(payload as BindingProfile);
+      })
+      .catch(() => {
+        if (!cancelled) setBinding(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const load = () => {
@@ -294,7 +330,7 @@ function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
     const item = {
       id: editingId || `${config.kind}-${Date.now()}`,
       title: title.trim(),
-      date: date.trim(),
+      date: serializeDateInput(date.trim()),
       note: note.trim(),
       cityId: config.kind === "favorite" ? cityId : undefined,
     };
@@ -320,7 +356,7 @@ function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
     if (!canEdit) return;
     setEditingId(item.id);
     setTitle(item.title);
-    setDate(item.date ?? "");
+    setDate(normalizeDateInput(item.date ?? ""));
     setNote(item.note);
     if (item.cityId) setCityId(item.cityId);
   };
@@ -367,20 +403,14 @@ function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
         <div className="h-fit overflow-hidden rounded-[8px] border border-white/72 bg-white/58 p-5 shadow-[0_24px_70px_rgba(90,102,112,0.10)] backdrop-blur-2xl">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-[#5A6670]">
-                {config.kind === "anniversary" ? "双方绑定窗口" : editingId ? "编辑" : "新增"}
-              </p>
+              <p className="text-sm font-semibold text-[#5A6670]">{editingId ? "编辑内容" : "新增内容"}</p>
               <p className="mt-1 text-xs leading-5 text-[#5A6670]/48">
-                {canEditShared ? "双方登录后都可以新增、编辑和同步这份内容。" : "需要管理员模式才能编辑。"}
+                {canEditShared
+                  ? "绑定后的双方都可以编辑，并会同步到同一个情侣空间。"
+                  : "请先完成情侣绑定后再编辑这部分共享内容。"}
               </p>
             </div>
-            {canEditShared ? (
-              <span className="max-w-[108px] rounded-full bg-[#D6E8F0]/58 px-3 py-1 text-xs font-semibold leading-4 text-[#5A6670]/62">
-                双方可操作
-              </span>
-            ) : (
-              !isAdmin && <span className="text-xs font-semibold text-[#5A6670]/42">管理员锁定</span>
-            )}
+            {!canEdit && !isAdmin && <span className="text-xs font-semibold text-[#5A6670]/42">等待绑定</span>}
           </div>
           <input
             className="mt-4 w-full rounded-[7px] border border-[#D8DDD8] bg-[#FAFBF7] px-3 py-2 text-sm outline-none transition focus:border-[#E8B8C2]"
@@ -408,8 +438,7 @@ function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
               className="mt-3 w-full rounded-[7px] border border-[#D8DDD8] bg-[#FAFBF7] px-3 py-2 text-sm outline-none transition focus:border-[#E8B8C2]"
               value={date}
               onChange={(event) => setDate(event.target.value)}
-              placeholder="2026.05.20"
-              maxLength={10}
+              type="date"
               disabled={!canEdit}
             />
           )}
@@ -456,9 +485,22 @@ function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
                 <div className="relative">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                        <h2 className="break-words text-lg font-semibold text-[#5A6670]">{item.title}</h2>
-                    {city && <p className="mt-1 text-sm text-[#A8C8DC]">{city.name}</p>}
-                    {item.date && <p className="mt-1 text-sm text-[#5A6670]/54">{item.date}</p>}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="break-words text-lg font-semibold text-[#5A6670]">{item.title}</h2>
+                      {city && (
+                        <span className="rounded-full bg-[#D6E8F0]/42 px-2.5 py-1 text-[11px] font-semibold text-[#5A6670]/72">
+                          {city.name}
+                        </span>
+                      )}
+                      {item.date && (
+                        <span className="rounded-full bg-[#F5DCE0]/36 px-2.5 py-1 text-[11px] font-semibold text-[#D86F82]">
+                          {item.date}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-[#5A6670]/68">
+                      {item.note || (config.kind === "capsule" ? "把想留给彼此的话，暂时轻轻放在这里。" : "这一条先留白，等下次再补完整。")}
+                    </p>
                   </div>
                   <div className="flex items-center gap-1">
                     <button
@@ -482,11 +524,10 @@ function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
                   </div>
                 </div>
                 {leftDays !== null && (
-                  <p className="mt-3 text-sm font-semibold text-[#E8B8C2]">
+                  <p className="mt-4 text-sm font-semibold text-[#E8B8C2]">
                     {leftDays >= 0 ? `还有 ${leftDays} 天` : `已经过去 ${Math.abs(leftDays)} 天`}
                   </p>
                 )}
-                {item.note && <p className="mt-3 break-words text-sm leading-6 text-[#5A6670]/68">{item.note}</p>}
                 </div>
               </article>
             );
@@ -497,8 +538,14 @@ function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
               <div className="relative mx-auto grid h-14 w-14 place-items-center rounded-full border border-white/78 bg-white/62 text-[#E8B8C2] shadow-[0_16px_40px_rgba(232,184,194,0.14)]">
                 <Icon className="h-6 w-6" />
               </div>
-              <p className="relative mt-4 font-semibold text-[#5A6670]">这里还空着</p>
-              <p className="relative mt-1">先放下第一条，一起把这里慢慢填满。</p>
+              <p className="relative mt-4 font-semibold text-[#5A6670]">
+                {config.kind === "capsule" ? "时光宝盒还没有第一条内容" : "这里还空着"}
+              </p>
+              <p className="relative mt-1">
+                {config.kind === "capsule"
+                  ? "可以写下一段只属于你们两个人的小秘密、约定或想留到以后再看的话。"
+                  : "先放下第一条，一起把这里慢慢填满。"}
+              </p>
             </div>
           )}
         </div>

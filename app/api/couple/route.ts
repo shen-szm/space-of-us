@@ -9,7 +9,7 @@ import {
   type OrderStatus,
   type PartnerRole,
 } from "@/data/couple";
-import { getAccountScopeKey } from "@/lib/server/accountStore";
+import { getAccountBindingContext, getAccountScopeKey } from "@/lib/server/accountStore";
 import { getSessionUsername, requireSiteSession } from "@/lib/server/auth";
 import {
   createInviteCode,
@@ -39,6 +39,53 @@ const asPartnerRole = (value: unknown): PartnerRole =>
 
 const now = () => new Date().toISOString();
 const id = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const otherRole = (role: PartnerRole): PartnerRole => (role === "a" ? "b" : "a");
+
+const syncStoreWithBinding = async (scopeKey: string, username: string) => {
+  const [store, binding] = await Promise.all([readCoupleStore(scopeKey), getAccountBindingContext(username)]);
+  const nextStore = {
+    ...store,
+    profile: {
+      ...store.profile,
+      partners: { ...store.profile.partners },
+    },
+  };
+
+  if (binding.isBound && binding.partner) {
+    nextStore.profile.partners = {
+      a:
+        binding.role === "a"
+          ? {
+              name: binding.user.displayName || binding.user.username,
+              joinedAt: store.profile.partners.a?.joinedAt ?? binding.user.createdAt,
+            }
+          : {
+              name: binding.partner.displayName || binding.partner.username,
+              joinedAt: store.profile.partners.a?.joinedAt ?? binding.partner.createdAt,
+            },
+      b:
+        binding.role === "a"
+          ? {
+              name: binding.partner.displayName || binding.partner.username,
+              joinedAt: store.profile.partners.b?.joinedAt ?? binding.partner.createdAt,
+            }
+          : {
+              name: binding.user.displayName || binding.user.username,
+              joinedAt: store.profile.partners.b?.joinedAt ?? binding.user.createdAt,
+            },
+    };
+    nextStore.profile.boundAt = store.profile.boundAt ?? now();
+  } else {
+    nextStore.profile.partners = {};
+    nextStore.profile.boundAt = undefined;
+  }
+
+  if (JSON.stringify(nextStore.profile) !== JSON.stringify(store.profile)) {
+    await writeCoupleStore(nextStore, scopeKey);
+  }
+
+  return { store: nextStore, role: binding.role, isBound: binding.isBound };
+};
 
 const resolveScope = async (request: NextRequest) => {
   const authError = requireSiteSession(request);
@@ -58,14 +105,15 @@ const resolveScope = async (request: NextRequest) => {
     };
   }
 
-  return { scopeKey: scope.scopeKey };
+  return { scopeKey: scope.scopeKey, username };
 };
 
 export async function GET(request: NextRequest) {
   const resolved = await resolveScope(request);
   if (resolved.authError) return resolved.authError;
 
-  return NextResponse.json(await readCoupleStore(resolved.scopeKey));
+  const synced = await syncStoreWithBinding(resolved.scopeKey, resolved.username);
+  return NextResponse.json({ ...synced.store, role: synced.role });
 }
 
 export async function POST(request: NextRequest) {
@@ -77,7 +125,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
-  const store = await readCoupleStore(resolved.scopeKey);
+  const synced = await syncStoreWithBinding(resolved.scopeKey, resolved.username);
+  const store = synced.store;
+  const currentRole = synced.role;
   const timestamp = now();
 
   if (payload.action === "createInvite") {
@@ -183,8 +233,12 @@ export async function POST(request: NextRequest) {
   }
 
   if (payload.action === "createOrder") {
-    const from = asPartnerRole(payload.from);
-    const to: PartnerRole = from === "a" ? "b" : "a";
+    if (!synced.isBound) {
+      return NextResponse.json({ error: "请先完成情侣绑定后再发送订单" }, { status: 403 });
+    }
+
+    const from = currentRole;
+    const to: PartnerRole = otherRole(from);
     const menuItem = store.menu.find((item) => item.id === cleanString(payload.itemId, 80));
     const title = cleanString(payload.title, 100) || menuItem?.name || "";
 
@@ -206,7 +260,7 @@ export async function POST(request: NextRequest) {
 
     store.orders = [order, ...store.orders];
     await writeCoupleStore(store, resolved.scopeKey);
-    return NextResponse.json(store);
+    return NextResponse.json({ ...store, role: currentRole });
   }
 
   if (payload.action === "updateOrderStatus") {
@@ -214,6 +268,22 @@ export async function POST(request: NextRequest) {
     const status: OrderStatus = orderStatuses.has(String(payload.status))
       ? (payload.status as OrderStatus)
       : "accepted";
+    const targetOrder = store.orders.find((order) => order.id === itemId);
+
+    if (!targetOrder) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    const canAccept = targetOrder.to === currentRole && targetOrder.status === "pending" && status === "accepted";
+    const canDecline = targetOrder.to === currentRole && targetOrder.status === "pending" && status === "declined";
+    const canAdvance =
+      targetOrder.from === currentRole &&
+      (targetOrder.status === "accepted" || targetOrder.status === "preparing") &&
+      (status === "preparing" || status === "completed" || status === "cancelled");
+
+    if (!canAccept && !canDecline && !canAdvance) {
+      return NextResponse.json({ error: "当前状态下无法执行这个订单操作" }, { status: 403 });
+    }
 
     store.orders = store.orders.map((order) =>
       order.id === itemId
@@ -227,7 +297,7 @@ export async function POST(request: NextRequest) {
     );
 
     await writeCoupleStore(store, resolved.scopeKey);
-    return NextResponse.json(store);
+    return NextResponse.json({ ...store, role: currentRole });
   }
 
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });

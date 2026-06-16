@@ -14,6 +14,7 @@ import {
 import { MemoryPageShell } from "@/components/MemoryNav";
 import { LocalPrivacyImage } from "@/components/LocalPrivacyImage";
 import { cities } from "@/data/cities";
+import { withVersion } from "@/lib/appVersion";
 import {
   type AppSettings,
   type LoginPhotoText,
@@ -36,8 +37,7 @@ import {
 } from "@/data/loginPhotoStore";
 import type { PublicUserAccount } from "@/data/accounts";
 
-const loginPhotoVersion = "placeholder-20260601";
-const loginPhotoFallback = (fileName: string) => `/photos/login/${fileName}.jpg?v=${loginPhotoVersion}`;
+const loginPhotoFallback = (fileName: string) => withVersion(`/photos/login/${fileName}.jpg`);
 
 const loginPhotoSlots = [
   { id: "hangzhou", city: "杭州", label: "春日湖边", fallback: loginPhotoFallback("hangzhou") },

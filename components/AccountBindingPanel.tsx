@@ -32,10 +32,10 @@ const requestTitle = (request: AccountBindingRequest, currentUserId: string) => 
       : request.fromDisplayName || request.fromUsername;
 
   if (request.status === "accepted") return `已和 ${other} 完成绑定`;
-  if (request.status === "declined") return `${other} 已拒绝`;
-  if (request.status === "cancelled") return "邀请已取消";
+  if (request.status === "declined") return `${other} 已拒绝这次绑定`;
+  if (request.status === "cancelled") return "这次邀请已取消";
 
-  return request.fromUserId === currentUserId ? `等待 ${other} 同意` : `${other} 想和你绑定`;
+  return request.fromUserId === currentUserId ? `等待 ${other} 同意` : `${other} 想和你完成绑定`;
 };
 
 export default function AccountBindingPanel({
@@ -51,7 +51,7 @@ export default function AccountBindingPanel({
 
   const loadProfile = async () => {
     const response = await fetch("/api/account-binding", { cache: "no-store" });
-    if (!response.ok) throw new Error("请先使用注册账号登录");
+    if (!response.ok) throw new Error("请先登录注册账号");
     return (await response.json()) as BindingPayload;
   };
 
@@ -59,7 +59,7 @@ export default function AccountBindingPanel({
     const timer = window.setTimeout(() => {
       loadProfile()
         .then((payload) => setProfile(payload))
-        .catch(() => setNotice("使用注册账号登录后，可以在这里进行情侣绑定。"))
+        .catch(() => setNotice("登录后即可在这里绑定情侣关系，并同步进入共享空间。"))
         .finally(() => setLoading(false));
     }, 0);
 
@@ -79,6 +79,7 @@ export default function AccountBindingPanel({
       const nextProfile = await postBinding(payload);
       setProfile(nextProfile);
       if (nextProfile.inviteCode) setInviteCode(nextProfile.inviteCode);
+      else setInviteCode("");
       setNotice(successText);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "操作失败，请稍后再试。");
@@ -103,7 +104,7 @@ export default function AccountBindingPanel({
           <p className="mt-1 text-xs leading-5 text-[#5A6670]/58">
             {profile?.partner
               ? `已绑定 ${profile.partner.displayName || profile.partner.username}`
-              : "输入邀请码后会先发送邀请，双方同意才正式绑定。"}
+              : "输入邀请码后会先发起邀请，双方确认后才会正式绑定。"}
           </p>
         </div>
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#F5DCE0]/70 text-[#D86F82]">
@@ -114,7 +115,7 @@ export default function AccountBindingPanel({
       {loading ? (
         <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-[#5A6670]/54">
           <Loader2 className="h-4 w-4 animate-spin" />
-          正在读取绑定状态
+          正在读取绑定状态...
         </div>
       ) : (
         <div className="mt-4 grid gap-3">
@@ -124,25 +125,47 @@ export default function AccountBindingPanel({
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-[#344451]">
-                      {profile.user.displayName || profile.user.username} / {profile.partner.displayName || profile.partner.username}
+                      {profile.user.displayName || profile.user.username} /{" "}
+                      {profile.partner.displayName || profile.partner.username}
                     </p>
-                    <p className="mt-1 text-xs leading-5 text-[#5A6670]/52">已完成绑定，可以直接进入情侣空间继续处理约定、菜单和订单。</p>
+                    <p className="mt-1 text-xs leading-5 text-[#5A6670]/52">
+                      已完成绑定，可以直接进入情侣空间继续处理约定、菜单和订单。
+                    </p>
                   </div>
-                  <span className="rounded-full bg-[#F5DCE0]/50 px-3 py-1 text-xs font-semibold text-[#D86F82]">已绑定</span>
+                  <span className="rounded-full bg-[#F5DCE0]/50 px-3 py-1 text-xs font-semibold text-[#D86F82]">
+                    已绑定
+                  </span>
                 </div>
                 <div className={`mt-3 grid gap-2 ${compact ? "" : "sm:grid-cols-3"}`}>
                   <div className="rounded-[7px] border border-white/70 bg-white/70 px-3 py-2">
                     <p className="text-[11px] font-semibold text-[#5A6670]/48">我的昵称</p>
-                    <p className="mt-1 text-sm font-semibold text-[#344451]">{profile.user.displayName || profile.user.username}</p>
+                    <p className="mt-1 text-sm font-semibold text-[#344451]">
+                      {profile.user.displayName || profile.user.username}
+                    </p>
                   </div>
                   <div className="rounded-[7px] border border-white/70 bg-white/70 px-3 py-2">
                     <p className="text-[11px] font-semibold text-[#5A6670]/48">对方昵称</p>
-                    <p className="mt-1 text-sm font-semibold text-[#344451]">{profile.partner.displayName || profile.partner.username}</p>
+                    <p className="mt-1 text-sm font-semibold text-[#344451]">
+                      {profile.partner.displayName || profile.partner.username}
+                    </p>
                   </div>
                   <div className="rounded-[7px] border border-white/70 bg-white/70 px-3 py-2">
                     <p className="text-[11px] font-semibold text-[#5A6670]/48">待处理邀请</p>
                     <p className="mt-1 text-sm font-semibold text-[#344451]">{pendingRequests.length} 条</p>
                   </div>
+                </div>
+                <div className="mt-3 flex justify-end">
+                  <button
+                    className="inline-flex min-h-9 items-center justify-center rounded-[7px] border border-[#F5DCE0] bg-[#F5DCE0]/34 px-3 text-xs font-semibold text-[#D86F82] transition hover:border-[#D86F82] hover:bg-[#F5DCE0]/56 disabled:opacity-50"
+                    type="button"
+                    onClick={() => {
+                      if (!window.confirm("确认解除当前情侣绑定吗？解绑后将停止继续写入共享内容。")) return;
+                      void run({ action: "unbind" }, "已解除绑定。");
+                    }}
+                    disabled={saving}
+                  >
+                    解除绑定
+                  </button>
                 </div>
               </div>
             </div>
@@ -205,7 +228,7 @@ export default function AccountBindingPanel({
                       {requestTitle(request, profile?.user.id ?? "")}
                     </p>
                     <p className="mt-1 text-xs text-[#5A6670]/52">
-                      {request.fromDisplayName} 与 {request.toDisplayName}
+                      {request.fromDisplayName} / {request.toDisplayName}
                     </p>
                     {needsMyApproval && (
                       <div className="mt-3 flex flex-wrap gap-2">

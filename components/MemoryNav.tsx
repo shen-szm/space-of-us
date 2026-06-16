@@ -17,6 +17,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import { APP_VERSION } from "@/lib/appVersion";
 
 export type MemoryNavKey =
   | "map"
@@ -163,7 +164,7 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
             <span>Space of us</span>
           </div>
           <span className="rounded-full border border-[#F5DCE0]/80 bg-[#F5DCE0]/24 px-2 py-0.5 text-[10px] font-semibold tracking-[0.08em] text-[#D86F82]">
-            V3.2
+            {APP_VERSION}
           </span>
         </div>
       </div>
