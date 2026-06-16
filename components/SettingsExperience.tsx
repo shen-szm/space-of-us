@@ -13,8 +13,10 @@ import {
 } from "lucide-react";
 import { MemoryPageShell } from "@/components/MemoryNav";
 import { LocalPrivacyImage } from "@/components/LocalPrivacyImage";
+import { themePresetUpdatedEvent, writeStoredThemePreset } from "@/components/ThemeController";
 import { cities } from "@/data/cities";
 import { withVersion } from "@/lib/appVersion";
+import { defaultThemePreset, themePresets, type ThemePresetId } from "@/lib/themePresets";
 import {
   type AppSettings,
   type LoginPhotoText,
@@ -93,6 +95,8 @@ export default function SettingsExperience() {
   const [nextEmail, setNextEmail] = useState("");
   const [emailCode, setEmailCode] = useState("");
   const [sendingEmailCode, setSendingEmailCode] = useState(false);
+  const [themePreset, setThemePreset] = useState<ThemePresetId>(defaultThemePreset);
+  const [themeStatus, setThemeStatus] = useState("");
 
   const anniversaryLabel = settings.anniversaryLabel ?? defaultAnniversaryLabel;
   const anniversaryDate = settings.anniversaryDate ?? defaultAnniversaryDate;
@@ -202,6 +206,7 @@ export default function SettingsExperience() {
     try {
       const payload = await getJson<{ user: PublicUserAccount }>("/api/account/security");
       setUser(payload.user);
+      setThemePreset((payload.user.themePreset as ThemePresetId) || defaultThemePreset);
       if (!payload.user.emailVerifiedAt) {
         setSecurityStatus("当前账号还没有完成邮箱验证，建议尽快补绑邮箱。");
       }
@@ -264,6 +269,24 @@ export default function SettingsExperience() {
     }
   };
 
+  const updateThemePreset = async (nextPreset: ThemePresetId) => {
+    setThemePreset(nextPreset);
+    writeStoredThemePreset(nextPreset);
+    window.dispatchEvent(new CustomEvent(themePresetUpdatedEvent));
+    setThemeStatus("正在同步个人主题…");
+    try {
+      const payload = await postJson<{ user: PublicUserAccount }>("/api/account/security", {
+        action: "updateThemePreset",
+        themePreset: nextPreset,
+      });
+      setUser(payload.user);
+      setThemePreset((payload.user.themePreset as ThemePresetId) || nextPreset);
+      setThemeStatus(`个人主题已切换为 ${themePresets[nextPreset].label}。`);
+    } catch (error) {
+      setThemeStatus(error instanceof Error ? error.message : "个人主题保存失败。");
+    }
+  };
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -299,6 +322,58 @@ export default function SettingsExperience() {
       </header>
 
       <section className="mt-10 grid gap-5">
+        <div className="theme-card p-5 shadow-[0_12px_28px_rgba(90,102,112,0.06)]">
+          <div className="flex items-center gap-3">
+            <Settings className="h-5 w-5 text-[#E8B8C2]" />
+            <div>
+              <p className="text-sm font-semibold text-[#5A6670]">个人主题预设</p>
+              <p className="mt-1 text-sm leading-6 text-[#5A6670]/62">
+                这些配色只影响当前账号自己的页面视觉，不会改动对方看到的主题。
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {Object.values(themePresets).map((preset) => {
+              const active = themePreset === preset.id;
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => void updateThemePreset(preset.id)}
+                  className={`rounded-[8px] border p-4 text-left transition ${
+                    active
+                      ? "border-[#E8B8C2] bg-white/82 shadow-[0_16px_38px_rgba(216,111,130,0.12)]"
+                      : "border-[#D8DDD8]/75 bg-white/54 hover:-translate-y-0.5 hover:border-[#E8B8C2]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-[#344451]">{preset.label}</p>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                        active ? "bg-[#F5DCE0]/78 text-[#D86F82]" : "bg-[#FAFBF7]/88 text-[#5A6670]/56"
+                      }`}
+                    >
+                      {active ? "使用中" : "切换"}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs leading-6 text-[#5A6670]/56">{preset.description}</p>
+                  <div className="mt-3 flex gap-2">
+                    <span className="theme-preview-swatch" style={{ background: preset.colors.shell }} />
+                    <span className="theme-preview-swatch" style={{ background: preset.colors.card }} />
+                    <span className="theme-preview-swatch" style={{ background: preset.colors.primary }} />
+                    <span className="theme-preview-swatch" style={{ background: preset.colors.secondary }} />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 rounded-[8px] border border-[#F0E6D8] bg-[#FAFBF7]/78 px-4 py-3 text-sm text-[#5A6670]/64">
+            {themeStatus || `当前主题：${themePresets[themePreset].label}`}
+          </div>
+        </div>
+
         <div className="rounded-[8px] border border-[#D8DDD8]/78 bg-[#FAFBF7]/76 p-5 shadow-[0_12px_28px_rgba(90,102,112,0.06)]">
           <div className="flex items-center gap-3">
             <ShieldCheck className="h-5 w-5 text-[#E8B8C2]" />

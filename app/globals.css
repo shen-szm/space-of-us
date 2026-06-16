@@ -3,8 +3,67 @@
 :root {
   --background: #fafbf7;
   --foreground: #5a6670;
+  --surface-shell: rgb(250 251 247 / 0.78);
+  --surface-card: rgb(255 255 255 / 0.62);
+  --surface-card-strong: rgb(255 255 255 / 0.76);
+  --surface-soft: rgb(250 251 247 / 0.76);
+  --border-soft: rgb(216 221 216 / 0.78);
+  --accent-primary: #d86f82;
+  --accent-secondary: #a8c8dc;
+  --accent-highlight: #f5dce0;
+  --hero-ink: #273846;
+  --hero-glow-a: rgb(245 220 224 / 0.58);
+  --hero-glow-b: rgb(214 232 240 / 0.7);
   --font-geist-sans: system-ui, "Segoe UI", Arial, Helvetica, sans-serif;
   --font-geist-mono: "Cascadia Mono", Consolas, "Courier New", monospace;
+}
+
+:root[data-ui-theme="peach-sky"] {
+  --background: #fffaf6;
+  --foreground: #596776;
+  --surface-shell: rgb(255 250 246 / 0.8);
+  --surface-card: rgb(255 255 255 / 0.68);
+  --surface-card-strong: rgb(255 255 255 / 0.84);
+  --surface-soft: rgb(255 245 240 / 0.8);
+  --border-soft: rgb(234 215 207 / 0.88);
+  --accent-primary: #dd7b86;
+  --accent-secondary: #8fbedb;
+  --accent-highlight: #ffe0d3;
+  --hero-ink: #30404d;
+  --hero-glow-a: rgb(255 225 211 / 0.62);
+  --hero-glow-b: rgb(202 232 247 / 0.68);
+}
+
+:root[data-ui-theme="mint-cherry"] {
+  --background: #f8fbf8;
+  --foreground: #52636a;
+  --surface-shell: rgb(248 251 248 / 0.8);
+  --surface-card: rgb(255 255 255 / 0.66);
+  --surface-card-strong: rgb(255 255 255 / 0.82);
+  --surface-soft: rgb(242 250 245 / 0.8);
+  --border-soft: rgb(205 225 214 / 0.9);
+  --accent-primary: #db7b99;
+  --accent-secondary: #95ccbb;
+  --accent-highlight: #f8dbe3;
+  --hero-ink: #294045;
+  --hero-glow-a: rgb(248 219 227 / 0.58);
+  --hero-glow-b: rgb(208 244 229 / 0.68);
+}
+
+:root[data-ui-theme="butter-garden"] {
+  --background: #fffdf4;
+  --foreground: #5d6456;
+  --surface-shell: rgb(255 253 244 / 0.82);
+  --surface-card: rgb(255 255 255 / 0.68);
+  --surface-card-strong: rgb(255 255 255 / 0.84);
+  --surface-soft: rgb(255 250 232 / 0.82);
+  --border-soft: rgb(225 223 194 / 0.92);
+  --accent-primary: #c98e6d;
+  --accent-secondary: #adc992;
+  --accent-highlight: #f8ead0;
+  --hero-ink: #445041;
+  --hero-glow-a: rgb(248 234 208 / 0.64);
+  --hero-glow-b: rgb(221 238 205 / 0.72);
 }
 
 @theme {
@@ -28,6 +87,53 @@ body {
 
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+.theme-shell {
+  background: var(--surface-shell);
+  border-color: var(--border-soft);
+}
+
+.theme-card {
+  background: var(--surface-card);
+  border-color: var(--border-soft);
+}
+
+.theme-card-strong {
+  background: var(--surface-card-strong);
+  border-color: var(--border-soft);
+}
+
+.theme-soft {
+  background: var(--surface-soft);
+  border-color: var(--border-soft);
+}
+
+.theme-accent-button {
+  background: var(--hero-ink);
+  color: white;
+}
+
+.theme-accent-button:hover {
+  background: var(--accent-primary);
+}
+
+.theme-outline-button {
+  border-color: color-mix(in srgb, var(--accent-highlight) 62%, white);
+  color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-highlight) 38%, transparent);
+}
+
+.theme-hero-glow {
+  background:
+    radial-gradient(circle at 16% 0%, var(--hero-glow-a), transparent 28%),
+    radial-gradient(circle at 92% 20%, var(--hero-glow-b), transparent 32%);
+}
+
+.theme-preview-swatch {
+  background:
+    radial-gradient(circle at 22% 18%, color-mix(in srgb, var(--accent-highlight) 86%, white), transparent 24%),
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-secondary) 44%, white), var(--background));
 }
 
 button {

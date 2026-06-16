@@ -677,29 +677,6 @@ export default function ProvinceMap({ province, width = 1120, height = 760 }: Pr
     zoomAt(centerX, centerY, delta);
   };
 
-  const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const delta = event.deltaY < 0 ? 1.12 : 0.88;
-    zoomAt(event.clientX, event.clientY, delta);
-  };
-
-  useEffect(() => {
-    const frame = frameRef.current;
-    if (!frame) return;
-
-    const handleNativeWheel = (event: WheelEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (target?.closest("aside, article, [data-map-scroll='self']")) return;
-
-      event.preventDefault();
-      const delta = event.deltaY < 0 ? 1.12 : 0.88;
-      zoomAt(event.clientX, event.clientY, delta);
-    };
-
-    frame.addEventListener("wheel", handleNativeWheel, { passive: false });
-    return () => frame.removeEventListener("wheel", handleNativeWheel);
-  }, [zoomAt]);
-
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
     if (target.closest("button, article, aside")) return;
@@ -744,7 +721,6 @@ export default function ProvinceMap({ province, width = 1120, height = 760 }: Pr
       className={`relative mx-auto aspect-[1120/760] w-[min(100%,1120px)] touch-none overflow-visible ${
         dragging ? "cursor-grabbing" : "cursor-grab"
       }`}
-      onWheel={handleWheel}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

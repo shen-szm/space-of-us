@@ -494,13 +494,13 @@ export default function EntryExperience() {
   };
 
   return (
-    <main className="login-stage relative min-h-[100dvh] overflow-x-hidden overflow-y-auto bg-[#F9F6EC] text-[#344451]">
+    <main className="theme-shell login-stage relative min-h-[100dvh] overflow-x-hidden overflow-y-auto text-[#344451]">
       <LocalPrivacyBadge />
       <div className="login-paper absolute inset-0" />
       <div className="login-grid absolute inset-0" aria-hidden="true" />
 
-      <div className="relative z-10 grid min-h-[100dvh] gap-5 px-4 py-4 sm:px-6 lg:grid-cols-[minmax(420px,0.9fr)_minmax(520px,1.1fr)] lg:px-8">
-        <section className="relative hidden min-h-0 overflow-hidden rounded-[8px] border border-[#DCCFC1]/86 bg-[#161F27] shadow-[0_28px_80px_rgba(91,71,50,0.12)] lg:block">
+      <div className="relative z-10 mx-auto grid min-h-[100dvh] w-full max-w-[1540px] gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(420px,0.95fr)_minmax(560px,1.05fr)] lg:px-8">
+        <section className="theme-hero-glow relative hidden min-h-0 overflow-hidden rounded-[8px] border border-white/60 shadow-[0_28px_80px_rgba(91,71,50,0.12)] lg:block">
           <LocalPrivacyImage
             className="h-full w-full object-cover opacity-42 saturate-[1.08]"
             src={heroPhotoSrc}
@@ -529,7 +529,7 @@ export default function EntryExperience() {
 
         <section className="flex min-h-[calc(100dvh-32px)] items-center justify-center">
           <motion.div
-            className="w-full max-w-[720px] rounded-[8px] border border-white/76 bg-white/66 p-5 shadow-[0_34px_100px_rgba(91,71,50,0.14)] backdrop-blur-2xl sm:p-7"
+            className="theme-card w-full max-w-[760px] p-5 shadow-[0_34px_100px_rgba(91,71,50,0.14)] backdrop-blur-2xl sm:p-7"
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.48 }}
@@ -551,7 +551,7 @@ export default function EntryExperience() {
 
             {!adminPanel ? (
               <>
-                <div className="mt-7 w-fit rounded-[8px] border border-[#D8DDD8]/74 bg-[#FAFBF7]/64 p-1">
+                <div className="theme-soft mt-7 w-fit rounded-[8px] border p-1">
                   <div className="grid grid-cols-3 gap-1">
                     {authModes.map((item) => (
                       <button
@@ -574,6 +574,20 @@ export default function EntryExperience() {
                 </div>
 
                 <div className="mt-7">
+                  <div className="mb-4 grid gap-3 sm:grid-cols-3">
+                    <div className="theme-soft rounded-[8px] border px-4 py-3">
+                      <p className="text-xs font-semibold text-[#5A6670]/48">入口整合</p>
+                      <p className="mt-2 text-sm font-semibold text-[#344451]">登录、注册、找回放在同一面板</p>
+                    </div>
+                    <div className="theme-soft rounded-[8px] border px-4 py-3">
+                      <p className="text-xs font-semibold text-[#5A6670]/48">情侣绑定</p>
+                      <p className="mt-2 text-sm font-semibold text-[#344451]">登录后直接进入情侣关系和共享空间</p>
+                    </div>
+                    <div className="theme-soft rounded-[8px] border px-4 py-3">
+                      <p className="text-xs font-semibold text-[#5A6670]/48">跨设备恢复</p>
+                      <p className="mt-2 text-sm font-semibold text-[#344451]">个人主题和内容偏好会跟随账号恢复</p>
+                    </div>
+                  </div>
                   <h1 className="text-[clamp(32px,5vw,54px)] font-semibold leading-tight tracking-normal text-[#273846]">
                     {mode === "register" ? "创建账号" : mode === "recover" ? "找回密码" : "欢迎回来"}
                   </h1>
@@ -764,7 +778,7 @@ export default function EntryExperience() {
                 </div>
 
                 <button
-                  className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-[8px] bg-[#273846] px-4 text-sm font-semibold text-white shadow-[0_20px_46px_rgba(39,56,70,0.18)] transition hover:-translate-y-0.5 hover:bg-[#D86F82] disabled:opacity-55"
+                  className="theme-accent-button mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-[8px] px-4 text-sm font-semibold text-white shadow-[0_20px_46px_rgba(39,56,70,0.18)] transition hover:-translate-y-0.5 disabled:opacity-55"
                   type="button"
                   onClick={() => void submit()}
                   disabled={status === "checking"}
@@ -795,7 +809,15 @@ export default function EntryExperience() {
                   当前公开入口仍然是国际托管。换设备登录后，数据会从云端同步；若中国大陆网络访问偏慢，可以稍后重试或切换网络。
                 </div>
 
-                {mode !== "recover" && <AccountBindingPanel compact className="mt-4" />}
+                {mode !== "recover" && (
+                  <div className="theme-soft mt-5 rounded-[8px] border p-4">
+                    <div className="mb-3">
+                      <p className="text-sm font-semibold text-[#344451]">情侣绑定入口</p>
+                      <p className="mt-1 text-xs leading-6 text-[#5A6670]/54">登录后先发起绑定，再一起进入地图、约定、菜单和订单流。</p>
+                    </div>
+                    <AccountBindingPanel compact />
+                  </div>
+                )}
               </>
             ) : (
               <div className="mt-7">

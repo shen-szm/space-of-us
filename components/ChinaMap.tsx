@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { Minus, Plus, RotateCcw } from "lucide-react";
@@ -94,6 +94,8 @@ export default function ChinaMap({ width = 1100, height = 860, className }: Chin
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [localMemories, setLocalMemories] = useState<LocalMemoryStore>({});
   const [zoom, setZoom] = useState(1);
+  const [transformOrigin, setTransformOrigin] = useState("55% 58%");
+  const frameRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -149,8 +151,21 @@ export default function ChinaMap({ width = 1100, height = 860, className }: Chin
 
   const hoveredPath = paths.find((path) => path.id === hoveredId);
   const zoomProgress = ((zoom - minZoom) / (maxZoom - minZoom)) * 100;
-  const setClampedZoom = (nextZoom: number) => {
-    setZoom(Math.min(Math.max(nextZoom, minZoom), maxZoom));
+  const setClampedZoom = (nextZoom: number | ((current: number) => number)) => {
+    setZoom((current) => {
+      const resolved = typeof nextZoom === "function" ? nextZoom(current) : nextZoom;
+      return Math.min(Math.max(resolved, minZoom), maxZoom);
+    });
+  };
+
+  const zoomAtPointer = (clientX: number, clientY: number, delta: number) => {
+    const frame = frameRef.current;
+    if (!frame) return;
+    const rect = frame.getBoundingClientRect();
+    const x = ((clientX - rect.left) / rect.width) * 100;
+    const y = ((clientY - rect.top) / rect.height) * 100;
+    setTransformOrigin(`${Math.min(Math.max(x, 8), 92)}% ${Math.min(Math.max(y, 8), 92)}%`);
+    setClampedZoom((current) => current * delta);
   };
 
   const goProvince = (id: string) => {
@@ -159,11 +174,17 @@ export default function ChinaMap({ width = 1100, height = 860, className }: Chin
 
   return (
     <motion.div
+      ref={frameRef}
       className={`relative ${className ?? ""}`}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 100, damping: 20 }}
       style={{ aspectRatio: `${width} / ${height}` }}
+      onWheel={(event) => {
+        event.preventDefault();
+        const delta = event.deltaY < 0 ? 1.12 : 0.9;
+        zoomAtPointer(event.clientX, event.clientY, delta);
+      }}
     >
       <div className="absolute left-3 top-1/2 z-20 flex -translate-y-1/2 flex-col items-center gap-2 rounded-full border border-[#D8DDD8]/85 bg-[#FAFBF7]/82 px-2 py-3 shadow-[0_12px_28px_rgba(90,102,112,0.1)] backdrop-blur sm:left-4">
         <button
@@ -203,7 +224,7 @@ export default function ChinaMap({ width = 1100, height = 860, className }: Chin
         <button
           className="grid h-9 w-9 place-items-center rounded-full text-[#5A6670] transition hover:bg-[#D4E8D0]/48 disabled:opacity-35"
           type="button"
-          onClick={() => setZoom(1)}
+          onClick={() => setClampedZoom(1)}
           disabled={zoom === 1}
           aria-label="重置中国地图缩放"
         >
@@ -215,7 +236,7 @@ export default function ChinaMap({ width = 1100, height = 860, className }: Chin
         className="map-visual-scale relative h-full w-full overflow-visible"
         animate={{ scale: zoom }}
         transition={{ type: "spring", stiffness: 100, damping: 20 }}
-        style={{ transformOrigin: "55% 58%" }}
+        style={{ transformOrigin }}
       >
         <svg
           className="h-full w-full overflow-visible drop-shadow-[0_16px_26px_rgba(168,200,220,0.18)]"

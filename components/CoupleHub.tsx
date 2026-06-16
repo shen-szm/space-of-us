@@ -72,7 +72,16 @@ const formatTime = (value?: string) => {
   });
 };
 
+const actionableOutgoingStatuses: OrderStatus[] = ["pending", "accepted", "preparing"];
+const readOnlyHistoryStatuses: OrderStatus[] = ["completed", "declined", "cancelled"];
+
 const otherRole = (role: PartnerRole): PartnerRole => (role === "a" ? "b" : "a");
+const getPartnerName = (store: CoupleHubStore, role: PartnerRole) => store.profile.partners[role]?.name ?? partnerLabels[role];
+const getOrderActionOwner = (order: CoupleHubStore["orders"][number]) => {
+  if (order.status === "pending") return order.to;
+  if (order.status === "accepted" || order.status === "preparing") return order.from;
+  return null;
+};
 
 function StatPill({ label, value }: Readonly<{ label: string; value: string | number }>) {
   return (
@@ -192,17 +201,25 @@ export default function CoupleHub({ embedded = false }: Readonly<{ embedded?: bo
     [role, store.orders],
   );
   const outgoingActiveOrders = useMemo(
-    () =>
-      store.orders.filter(
-        (order) => order.from === role && (order.status === "accepted" || order.status === "preparing"),
-      ),
+    () => store.orders.filter((order) => order.from === role && actionableOutgoingStatuses.includes(order.status)),
     [role, store.orders],
   );
   const visibleAgreements = useMemo(
     () => store.agreements.filter((item) => item.status !== "archived").slice(0, 6),
     [store.agreements],
   );
-  const recentOrders = useMemo(() => store.orders.slice(0, 8), [store.orders]);
+  const recentOrders = useMemo(
+    () => store.orders.filter((order) => readOnlyHistoryStatuses.includes(order.status)).slice(0, 8),
+    [store.orders],
+  );
+  const waitingForPartnerOrders = useMemo(
+    () => outgoingActiveOrders.filter((order) => order.status === "pending"),
+    [outgoingActiveOrders],
+  );
+  const readyToAdvanceOrders = useMemo(
+    () => outgoingActiveOrders.filter((order) => order.status === "accepted" || order.status === "preparing"),
+    [outgoingActiveOrders],
+  );
   const brandQuery = menuForm.brand.trim().toLowerCase();
   const catalogMatches = useMemo(() => {
     if (!brandQuery) return milkTeaCatalog.slice(0, 4);
@@ -326,7 +343,9 @@ export default function CoupleHub({ embedded = false }: Readonly<{ embedded?: bo
             </p>
           </div>
 
-          <AccountBindingPanel />
+          <div id="couple-binding">
+            <AccountBindingPanel />
+          </div>
         </div>
       </header>
 
@@ -337,7 +356,7 @@ export default function CoupleHub({ embedded = false }: Readonly<{ embedded?: bo
         <StatPill label="已完成订单" value={store.orders.filter((order) => order.status === "completed").length} />
       </div>
 
-      <section className="mt-5 rounded-[8px] border border-white/72 bg-white/58 p-5 shadow-[0_22px_64px_rgba(90,102,112,0.10)] backdrop-blur-2xl">
+      <section className="theme-card mt-5 rounded-[8px] border p-5 shadow-[0_22px_64px_rgba(90,102,112,0.10)] backdrop-blur-2xl">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-[#344451]">情侣总览</p>
@@ -349,22 +368,38 @@ export default function CoupleHub({ embedded = false }: Readonly<{ embedded?: bo
             {bound ? "已绑定" : "待绑定"}
           </div>
         </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <div className="rounded-[8px] border border-[#D8DDD8]/70 bg-[#FAFBF7]/78 p-4">
+        <div className="mt-4 grid gap-3 xl:grid-cols-[1.15fr_1fr_1fr]">
+          <div className="theme-soft rounded-[8px] border p-4">
             <p className="text-xs font-semibold text-[#5A6670]/48">双方昵称</p>
             <p className="mt-2 text-sm font-semibold text-[#344451]">
               {store.profile.partners.a?.name ?? "我"} / {store.profile.partners.b?.name ?? "TA"}
             </p>
-          </div>
-          <div className="rounded-[8px] border border-[#D8DDD8]/70 bg-[#FAFBF7]/78 p-4">
-            <p className="text-xs font-semibold text-[#5A6670]/48">待处理摘要</p>
-            <p className="mt-2 text-sm font-semibold text-[#344451]">
-              待接收 {incomingPendingOrders.length} 单，推进中 {outgoingActiveOrders.length} 单
+            <p className="mt-2 text-xs leading-6 text-[#5A6670]/54">
+              {bound
+                ? "绑定已经完成，订单、约定和地图回忆会继续按双方共享空间同步。"
+                : "先完成双方绑定，再继续一起管理订单、约定和地图内容。"}
             </p>
           </div>
-          <div className="rounded-[8px] border border-[#D8DDD8]/70 bg-[#FAFBF7]/78 p-4">
+          <div className="theme-soft rounded-[8px] border p-4">
+            <p className="text-xs font-semibold text-[#5A6670]/48">待处理摘要</p>
+            <p className="mt-2 text-sm font-semibold text-[#344451]">
+              待接收 {incomingPendingOrders.length} 单，等待对方 {waitingForPartnerOrders.length} 单
+            </p>
+            <p className="mt-2 text-xs leading-6 text-[#5A6670]/54">
+              已经接单并等待你继续推进的有 {readyToAdvanceOrders.length} 单。
+            </p>
+          </div>
+          <div className="theme-soft rounded-[8px] border p-4">
             <p className="text-xs font-semibold text-[#5A6670]/48">下一步</p>
-            <p className="mt-2 text-sm font-semibold text-[#344451]">{bound ? "继续处理订单和地图回忆" : "先完成绑定"}</p>
+            <p className="mt-2 text-sm font-semibold text-[#344451]">
+              {bound ? "先处理订单，再回到地图继续写回忆。" : "先完成绑定，再打开情侣空间。"}
+            </p>
+            <a
+              href={bound ? "#couple-order-flow" : "#couple-binding"}
+              className="mt-3 inline-flex min-h-10 items-center justify-center rounded-[8px] bg-[#273846] px-4 text-sm font-semibold text-white transition hover:-translate-y-0.5"
+            >
+              {bound ? "去看订单" : "去完成绑定"}
+            </a>
           </div>
         </div>
       </section>
@@ -559,7 +594,10 @@ export default function CoupleHub({ embedded = false }: Readonly<{ embedded?: bo
             </div>
           </section>
 
-          <section className="rounded-[8px] border border-white/70 bg-white/54 p-5 shadow-[0_22px_60px_rgba(90,102,112,0.08)] backdrop-blur-2xl xl:col-span-2">
+          <section
+            id="couple-order-flow"
+            className="rounded-[8px] border border-white/70 bg-white/54 p-5 shadow-[0_22px_60px_rgba(90,102,112,0.08)] backdrop-blur-2xl xl:col-span-2"
+          >
             <SectionHeader
               icon={Bell}
               title="订单流"
@@ -568,24 +606,36 @@ export default function CoupleHub({ embedded = false }: Readonly<{ embedded?: bo
 
             <div className="mt-5 grid gap-4 xl:grid-cols-3">
               <div className="rounded-[8px] border border-[#F5DCE0]/70 bg-[#F5DCE0]/28 p-4">
-                <p className="text-sm font-semibold text-[#D86F82]">1. 发给我的待处理</p>
+                <p className="text-sm font-semibold text-[#D86F82]">1. 我收到的待处理</p>
+                <p className="mt-2 text-xs leading-6 text-[#5A6670]/54">这里仅展示发给你的订单。你可以直接接收或拒绝，不再混进历史记录。</p>
                 <div className="mt-3 grid gap-3">
-                  {incomingPendingOrders.length === 0 && <p className="text-sm text-[#5A6670]/58">现在没有待接收订单。</p>}
+                  {incomingPendingOrders.length === 0 && <p className="text-sm text-[#5A6670]/58">现在没有需要你处理的新订单。</p>}
                   {incomingPendingOrders.map((order) => (
                     <article key={order.id} className="rounded-[8px] border border-white/72 bg-white/64 p-4">
-                      <h3 className="font-semibold text-[#344451]">{order.title}</h3>
-                      <p className="mt-1 text-sm text-[#5A6670]/62">{[order.brand, order.details, order.note].filter(Boolean).join(" · ")}</p>
-                      <p className="mt-2 text-xs font-semibold text-[#5A6670]/42">
-                        来自 {partnerLabels[order.from]} · {formatTime(order.updatedAt || order.createdAt)}
-                      </p>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h3 className="font-semibold text-[#344451]">{order.title}</h3>
+                          <p className="mt-1 text-sm text-[#5A6670]/62">{[order.brand, order.details, order.note].filter(Boolean).join(" · ")}</p>
+                        </div>
+                        <span className="rounded-full bg-white/76 px-2.5 py-1 text-xs font-semibold text-[#D86F82]">
+                          待你处理
+                        </span>
+                      </div>
+                      <div className="mt-3 space-y-1 text-xs font-semibold text-[#5A6670]/50">
+                        <p>发起人：{getPartnerName(store, order.from)}</p>
+                        <p>接收人：{getPartnerName(store, order.to)}</p>
+                        <p>当前状态：{orderStatusLabels[order.status]}</p>
+                        <p>当前操作方：{getOrderActionOwner(order) ? getPartnerName(store, getOrderActionOwner(order)!) : "双方查看结果"}</p>
+                        <p>最后更新时间：{formatTime(order.updatedAt || order.createdAt)}</p>
+                      </div>
                       <div className="mt-3 flex flex-wrap gap-2">
                         <button
                           className="inline-flex min-h-9 items-center gap-1 rounded-[7px] bg-[#D86F82] px-3 text-xs font-semibold text-white"
                           type="button"
-                          onClick={() => updateOrderStatus(order.id, "accepted", "已接单，等待发起方继续推进。")}
+                          onClick={() => updateOrderStatus(order.id, "accepted", "已接收订单，等待发起方继续推进。")}
                         >
                           <CheckCircle2 className="h-4 w-4" />
-                          接单
+                          接收
                         </button>
                         <button
                           className="inline-flex min-h-9 items-center gap-1 rounded-[7px] border border-[#D8DDD8]/80 bg-white/70 px-3 text-xs font-semibold text-[#5A6670]"
@@ -602,9 +652,10 @@ export default function CoupleHub({ embedded = false }: Readonly<{ embedded?: bo
               </div>
 
               <div className="rounded-[8px] border border-[#D6E8F0]/70 bg-[#D6E8F0]/26 p-4">
-                <p className="text-sm font-semibold text-[#344451]">2. 我发起后的推进</p>
+                <p className="text-sm font-semibold text-[#344451]">2. 我发出的待推进</p>
+                <p className="mt-2 text-xs leading-6 text-[#5A6670]/54">这里拆成两种状态：等待对方接收，或已经接收后等你继续推进。</p>
                 <div className="mt-3 grid gap-3">
-                  {outgoingActiveOrders.length === 0 && <p className="text-sm text-[#5A6670]/58">还没有需要你继续推进的订单。</p>}
+                  {outgoingActiveOrders.length === 0 && <p className="text-sm text-[#5A6670]/58">还没有你需要继续跟进的订单。</p>}
                   {outgoingActiveOrders.map((order) => (
                     <article key={order.id} className="rounded-[8px] border border-white/72 bg-white/64 p-4">
                       <div className="flex items-start justify-between gap-3">
@@ -613,37 +664,49 @@ export default function CoupleHub({ embedded = false }: Readonly<{ embedded?: bo
                           <p className="mt-1 text-sm text-[#5A6670]/62">{[order.brand, order.details, order.note].filter(Boolean).join(" · ")}</p>
                         </div>
                         <span className="rounded-full bg-white/76 px-2.5 py-1 text-xs font-semibold text-[#5A6670]">
-                          {orderStatusLabels[order.status]}
+                          {order.status === "pending" ? "等待对方接收" : orderStatusLabels[order.status]}
                         </span>
                       </div>
-                      <p className="mt-2 text-xs font-semibold text-[#5A6670]/42">
-                        发给 {partnerLabels[order.to]} · 最后更新 {formatTime(order.updatedAt || order.createdAt)}
-                      </p>
+                      <div className="mt-3 space-y-1 text-xs font-semibold text-[#5A6670]/50">
+                        <p>发起人：{getPartnerName(store, order.from)}</p>
+                        <p>接收人：{getPartnerName(store, order.to)}</p>
+                        <p>当前状态：{orderStatusLabels[order.status]}</p>
+                        <p>当前操作方：{getOrderActionOwner(order) ? getPartnerName(store, getOrderActionOwner(order)!) : "双方查看结果"}</p>
+                        <p>最后更新时间：{formatTime(order.updatedAt || order.createdAt)}</p>
+                      </div>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        {order.status === "accepted" && (
-                          <button
-                            className="rounded-[7px] border border-[#D8DDD8]/80 bg-white/70 px-3 py-2 text-xs font-semibold text-[#5A6670]"
-                            type="button"
-                            onClick={() => updateOrderStatus(order.id, "preparing", "订单已进入准备中。")}
-                          >
-                            标记准备中
-                          </button>
+                        {order.status === "pending" ? (
+                          <span className="inline-flex min-h-9 items-center rounded-[7px] border border-[#D8DDD8]/80 bg-white/70 px-3 text-xs font-semibold text-[#5A6670]">
+                            对方还没有处理，暂时等待即可。
+                          </span>
+                        ) : (
+                          <>
+                            {order.status === "accepted" && (
+                              <button
+                                className="rounded-[7px] border border-[#D8DDD8]/80 bg-white/70 px-3 py-2 text-xs font-semibold text-[#5A6670]"
+                                type="button"
+                                onClick={() => updateOrderStatus(order.id, "preparing", "订单已进入准备中。")}
+                              >
+                                标记准备中
+                              </button>
+                            )}
+                            <button
+                              className="inline-flex items-center gap-1 rounded-[7px] bg-[#273846] px-3 py-2 text-xs font-semibold text-white"
+                              type="button"
+                              onClick={() => updateOrderStatus(order.id, "completed", "订单已完成。")}
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                              标记完成
+                            </button>
+                            <button
+                              className="inline-flex items-center gap-1 rounded-[7px] border border-[#D8DDD8]/80 bg-white/70 px-3 py-2 text-xs font-semibold text-[#5A6670]"
+                              type="button"
+                              onClick={() => updateOrderStatus(order.id, "cancelled", "订单已取消。")}
+                            >
+                              取消
+                            </button>
+                          </>
                         )}
-                        <button
-                          className="inline-flex items-center gap-1 rounded-[7px] bg-[#273846] px-3 py-2 text-xs font-semibold text-white"
-                          type="button"
-                          onClick={() => updateOrderStatus(order.id, "completed", "订单已完成。")}
-                        >
-                          <CheckCircle2 className="h-4 w-4" />
-                          标记完成
-                        </button>
-                        <button
-                          className="inline-flex items-center gap-1 rounded-[7px] border border-[#D8DDD8]/80 bg-white/70 px-3 py-2 text-xs font-semibold text-[#5A6670]"
-                          type="button"
-                          onClick={() => updateOrderStatus(order.id, "cancelled", "订单已取消。")}
-                        >
-                          取消
-                        </button>
                       </div>
                     </article>
                   ))}
@@ -652,24 +715,26 @@ export default function CoupleHub({ embedded = false }: Readonly<{ embedded?: bo
 
               <div className="rounded-[8px] border border-[#D8DDD8]/70 bg-[#FAFBF7]/76 p-4">
                 <p className="text-sm font-semibold text-[#344451]">3. 历史记录</p>
+                <p className="mt-2 text-xs leading-6 text-[#5A6670]/54">这里只保留完成、拒绝和取消后的只读记录，不再出现还能操作的待处理订单。</p>
                 <div className="mt-3 grid gap-3">
-                  {recentOrders.length === 0 && <p className="text-sm text-[#5A6670]/58">还没有订单历史。</p>}
+                  {recentOrders.length === 0 && <p className="text-sm text-[#5A6670]/58">还没有只读历史记录，先从第一笔订单开始。</p>}
                   {recentOrders.map((order) => (
                     <article key={order.id} className="rounded-[8px] border border-[#D8DDD8]/70 bg-white/70 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <h3 className="font-semibold text-[#344451]">{order.title}</h3>
                           <p className="mt-1 text-sm text-[#5A6670]/62">
-                            {partnerLabels[order.from]} {"->"} {partnerLabels[order.to]}
+                            {getPartnerName(store, order.from)} 发送给 {getPartnerName(store, order.to)}
                           </p>
                         </div>
                         <span className="rounded-full bg-[#FAFBF7]/90 px-2.5 py-1 text-xs font-semibold text-[#5A6670]">
                           {orderStatusLabels[order.status]}
                         </span>
                       </div>
-                      <p className="mt-2 text-xs text-[#5A6670]/50">
-                        最后更新时间 {formatTime(order.updatedAt || order.createdAt)}
-                      </p>
+                      <div className="mt-3 space-y-1 text-xs text-[#5A6670]/50">
+                        <p>当前操作方：{getOrderActionOwner(order) ? getPartnerName(store, getOrderActionOwner(order)!) : "双方查看结果"}</p>
+                        <p>最后更新时间：{formatTime(order.updatedAt || order.createdAt)}</p>
+                      </div>
                     </article>
                   ))}
                 </div>

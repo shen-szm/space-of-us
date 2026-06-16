@@ -5,8 +5,10 @@ import {
   findAccount,
   findPublicAccount,
   updateAccountEmail,
+  updateAccountThemePreset,
 } from "@/lib/server/accountStore";
 import { verifyEmailCode } from "@/lib/server/verificationStore";
+import { isThemePresetId } from "@/lib/themePresets";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -76,6 +78,15 @@ export async function POST(request: NextRequest) {
         targetUsername: session.username,
       });
       const user = await updateAccountEmail({ username: session.username, email });
+      return NextResponse.json({ ok: true, user });
+    }
+
+    if (payload.action === "updateThemePreset") {
+      const themePreset = cleanString(payload.themePreset, 40);
+      if (!isThemePresetId(themePreset)) {
+        return NextResponse.json({ error: "Invalid theme preset" }, { status: 400 });
+      }
+      const user = await updateAccountThemePreset({ username: session.username, themePreset });
       return NextResponse.json({ ok: true, user });
     }
   } catch (error) {

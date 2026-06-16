@@ -34,6 +34,7 @@ export type UserAccount = {
   partnerUserId?: string;
   partnerUsername?: string;
   partnerDisplayName?: string;
+  themePreset?: string;
   bindingRequests?: AccountBindingRequest[];
 };
 
@@ -52,6 +53,7 @@ export type PublicUserAccount = {
   partnerUserId?: string;
   partnerUsername?: string;
   partnerDisplayName?: string;
+  themePreset?: string;
   bindingRequests?: AccountBindingRequest[];
 };
 
@@ -78,5 +80,6 @@ export const toPublicAccount = (account: UserAccount): PublicUserAccount => ({
   partnerUserId: account.partnerUserId,
   partnerUsername: account.partnerUsername,
   partnerDisplayName: account.partnerDisplayName,
+  themePreset: account.themePreset,
   bindingRequests: account.bindingRequests ?? [],
 });
