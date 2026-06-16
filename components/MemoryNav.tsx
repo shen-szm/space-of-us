@@ -44,19 +44,24 @@ const navItems = [
 
 export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
   const [supportOpen, setSupportOpen] = useState(false);
+  const [supportPreviewOpen, setSupportPreviewOpen] = useState(false);
 
   useEffect(() => {
-    if (!supportOpen) return;
+    if (!supportOpen && !supportPreviewOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (supportPreviewOpen) {
+          setSupportPreviewOpen(false);
+          return;
+        }
         setSupportOpen(false);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [supportOpen]);
+  }, [supportOpen, supportPreviewOpen]);
 
   return (
     <aside className="hidden min-h-screen w-[260px] shrink-0 border-r border-[#D8DDD8]/78 bg-[#FAFBF7]/78 px-5 py-8 shadow-[12px_0_34px_rgba(90,102,112,0.04)] backdrop-blur lg:block">
@@ -180,12 +185,42 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
             >
               <X className="h-4 w-4" />
             </button>
-            <div className="relative mx-auto w-full max-w-[920px]">
+            <button
+              className="relative mx-auto block w-full max-w-[920px]"
+              type="button"
+              onClick={() => setSupportPreviewOpen(true)}
+            >
               <Image
                 alt="赞助支持收款码"
                 className="h-auto w-full rounded-[8px]"
                 height={1599}
                 priority
+                src="/photos/support-qr.jpg"
+                width={1280}
+              />
+            </button>
+          </div>
+        </div>
+      )}
+      {supportPreviewOpen && (
+        <div
+          className="fixed inset-0 z-[130] flex items-center justify-center bg-[#161F27]/88 px-4 py-6 backdrop-blur-md"
+          onClick={() => setSupportPreviewOpen(false)}
+        >
+          <button
+            aria-label="Close full preview"
+            className="absolute right-4 top-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:border-white/40 hover:bg-white/20"
+            type="button"
+            onClick={() => setSupportPreviewOpen(false)}
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <div className="max-h-full w-full overflow-auto" onClick={(event) => event.stopPropagation()}>
+            <div className="mx-auto w-full max-w-[1280px]">
+              <Image
+                alt="Support QR preview"
+                className="h-auto w-full rounded-[10px]"
+                height={1599}
                 src="/photos/support-qr.jpg"
                 width={1280}
               />

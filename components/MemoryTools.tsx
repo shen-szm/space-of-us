@@ -365,8 +365,8 @@ function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
 
       <section className="mt-6 grid gap-5 lg:grid-cols-[380px_1fr]">
         <div className="h-fit overflow-hidden rounded-[8px] border border-white/72 bg-white/58 p-5 shadow-[0_24px_70px_rgba(90,102,112,0.10)] backdrop-blur-2xl">
-          <div className="flex items-center justify-between gap-3">
-            <div>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-[#5A6670]">
                 {config.kind === "anniversary" ? "双方绑定窗口" : editingId ? "编辑" : "新增"}
               </p>
@@ -375,7 +375,7 @@ function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
               </p>
             </div>
             {canEditShared ? (
-              <span className="rounded-full bg-[#D6E8F0]/58 px-3 py-1 text-xs font-semibold text-[#5A6670]/62">
+              <span className="max-w-[108px] rounded-full bg-[#D6E8F0]/58 px-3 py-1 text-xs font-semibold leading-4 text-[#5A6670]/62">
                 双方可操作
               </span>
             ) : (
@@ -456,7 +456,7 @@ function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
                 <div className="relative">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-[#5A6670]">{item.title}</h2>
+                        <h2 className="break-words text-lg font-semibold text-[#5A6670]">{item.title}</h2>
                     {city && <p className="mt-1 text-sm text-[#A8C8DC]">{city.name}</p>}
                     {item.date && <p className="mt-1 text-sm text-[#5A6670]/54">{item.date}</p>}
                   </div>
@@ -486,7 +486,7 @@ function MemoryToolPage({ config }: Readonly<{ config: ToolConfig }>) {
                     {leftDays >= 0 ? `还有 ${leftDays} 天` : `已经过去 ${Math.abs(leftDays)} 天`}
                   </p>
                 )}
-                {item.note && <p className="mt-3 text-sm leading-6 text-[#5A6670]/68">{item.note}</p>}
+                {item.note && <p className="mt-3 break-words text-sm leading-6 text-[#5A6670]/68">{item.note}</p>}
                 </div>
               </article>
             );

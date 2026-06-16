@@ -13,8 +13,9 @@ import {
   writeJsonValue,
 } from "@/lib/server/supabase";
 import { isLocalPrivacyRequest, localPrivacyImagePlaceholder } from "@/lib/localPrivacy";
-import { getMissingAuthEnv, hasSiteSession, requireAdminSession } from "@/lib/server/auth";
+import { getMissingAuthEnv, getSessionUsername, hasSiteSession, requireSiteSession } from "@/lib/server/auth";
 import { getPrivateDataFilePath } from "@/lib/server/dataDir";
+import { getAccountScopeKey } from "@/lib/server/accountStore";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -69,6 +70,32 @@ async function writeCityAssetStore(store: CityAssetStore) {
   await writeFile(cityAssetStorePath, `${JSON.stringify(store, null, 2)}\n`, "utf8");
 }
 
+const scopedStoreKey = (scopeKey?: string) => (scopeKey ? `${cityAssetStoreKey}:${scopeKey}` : cityAssetStoreKey);
+
+async function readScopedCityAssetStore(scopeKey?: string): Promise<CityAssetStore> {
+  if (!isSupabaseConfigured) {
+    return readCityAssetStore();
+  }
+
+  const scopedAssets = normalizeCityAssetStore(await readJsonValue(scopedStoreKey(scopeKey), {}));
+  if (Object.keys(scopedAssets).length > 0 || !scopeKey) return scopedAssets;
+
+  const legacyAssets = await readCityAssetStore();
+  if (Object.keys(legacyAssets).length === 0) return scopedAssets;
+
+  await writeJsonValue(scopedStoreKey(scopeKey), legacyAssets);
+  return legacyAssets;
+}
+
+async function writeScopedCityAssetStore(store: CityAssetStore, scopeKey?: string) {
+  if (!isSupabaseConfigured) {
+    await writeCityAssetStore(store);
+    return;
+  }
+
+  await writeJsonValue(scopedStoreKey(scopeKey), store);
+}
+
 const signCityAssetStore = (store: CityAssetStore) => createSignedImageMap(store);
 
 const quotaErrorResponse = () =>
@@ -110,7 +137,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ assets: {} });
   }
 
-  const assets = await readCityAssetStore();
+  const username = getSessionUsername(request);
+  const scope = username ? await getAccountScopeKey(username) : null;
+  const assets = await readScopedCityAssetStore(scope?.scopeKey);
 
   return NextResponse.json({
     assets: isLocalPrivacyRequest(request) ? maskCityAssets(assets) : await signCityAssetStore(assets),
@@ -118,8 +147,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const authResponse = requireAdminSession(request);
+  const authResponse = requireSiteSession(request);
   if (authResponse) return authResponse;
+  const username = getSessionUsername(request);
+  if (!username) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  const scope = await getAccountScopeKey(username);
+  if (!scope) return NextResponse.json({ error: "Account not found" }, { status: 404 });
 
   try {
     assertWritableStorageConfigured();
@@ -134,11 +167,11 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
-    const assets = await readCityAssetStore();
+    const assets = await readScopedCityAssetStore(scope.scopeKey);
     const image = await uploadDataImage(payload.image, `city-assets/${payload.cityId}`, "landmark");
     const nextAssets = { ...assets, [payload.cityId]: image };
 
-    await writeCityAssetStore(nextAssets);
+    await writeScopedCityAssetStore(nextAssets, scope.scopeKey);
 
     return NextResponse.json({ assets: await signCityAssetStore(nextAssets) });
   } catch (error) {
@@ -148,8 +181,12 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const authResponse = requireAdminSession(request);
+  const authResponse = requireSiteSession(request);
   if (authResponse) return authResponse;
+  const username = getSessionUsername(request);
+  if (!username) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  const scope = await getAccountScopeKey(username);
+  if (!scope) return NextResponse.json({ error: "Account not found" }, { status: 404 });
 
   try {
     assertWritableStorageConfigured();
@@ -174,7 +211,7 @@ export async function PATCH(request: NextRequest) {
       ),
     );
 
-    await writeCityAssetStore(nextAssets);
+    await writeScopedCityAssetStore(nextAssets, scope.scopeKey);
 
     return NextResponse.json({ assets: await signCityAssetStore(nextAssets) });
   } catch (error) {
@@ -184,8 +221,12 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const authResponse = requireAdminSession(request);
+  const authResponse = requireSiteSession(request);
   if (authResponse) return authResponse;
+  const username = getSessionUsername(request);
+  if (!username) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  const scope = await getAccountScopeKey(username);
+  if (!scope) return NextResponse.json({ error: "Account not found" }, { status: 404 });
 
   try {
     assertWritableStorageConfigured();
@@ -199,11 +240,11 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Invalid city asset payload" }, { status: 400 });
   }
 
-  const assets = await readCityAssetStore();
+  const assets = await readScopedCityAssetStore(scope.scopeKey);
   const nextAssets = { ...assets };
   delete nextAssets[payload.cityId];
 
-  await writeCityAssetStore(nextAssets);
+  await writeScopedCityAssetStore(nextAssets, scope.scopeKey);
 
   return NextResponse.json({ assets: await signCityAssetStore(nextAssets) });
 }

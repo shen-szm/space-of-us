@@ -37,9 +37,7 @@ function PhotoImage({ photo }: Readonly<{ photo: RandomPhoto }>) {
   const className = "h-full w-full object-cover";
 
   if (isBrowserImageUrl(photo.src)) {
-    return (
-      <LocalPrivacyImg className={className} src={photo.src} alt={`${photo.city} 的随机照片`} />
-    );
+    return <LocalPrivacyImg className={className} src={photo.src} alt={`${photo.city} 的随机照片`} />;
   }
 
   return (
@@ -88,15 +86,13 @@ export default function RandomPhotoCard() {
         return;
       }
 
-      const data = (await response.json().catch(() => null)) as
-        | { memories?: LocalMemoryStore }
-        | null;
+      const data = (await response.json().catch(() => null)) as { memories?: LocalMemoryStore } | null;
 
       if (!cancelled) applyMemories(data?.memories ?? {});
     }
 
     window.addEventListener(memoryStoreUpdatedEvent, handleMemoryUpdate);
-    loadLocalMemories();
+    void loadLocalMemories();
 
     return () => {
       cancelled = true;
@@ -111,8 +107,7 @@ export default function RandomPhotoCard() {
   }, [photo]);
 
   const shufflePhoto = () => {
-    if (!photo) return;
-    if (photos.length === 0) return;
+    if (!photo || photos.length === 0) return;
     const candidates = photos.filter((candidate) => candidate.id !== photo.id);
     const source = candidates.length > 0 ? candidates : photos;
     setPhoto(source[Math.floor(Math.random() * source.length)]);
@@ -128,7 +123,7 @@ export default function RandomPhotoCard() {
             </span>
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-[#5A6670]">随机相框</p>
-              <p className="truncate text-xs font-medium text-[#5A6670]/48">点照片回到那座城</p>
+              <p className="truncate text-xs font-medium text-[#5A6670]/48">点照片回到那座城市</p>
             </div>
           </div>
           <button
@@ -143,11 +138,7 @@ export default function RandomPhotoCard() {
         </div>
 
         {photo ? (
-          <Link
-            className="group block"
-            href={href}
-            aria-label={`查看${photo.city} ${photo.date} 的随机照片`}
-          >
+          <Link className="group block" href={href} aria-label={`查看 ${photo.city} ${photo.date} 的随机照片`}>
             <div className="relative aspect-[4/3] overflow-hidden rounded-[6px] border border-[#D8DDD8]/80 bg-[#D6E8F0]/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
               <PhotoImage photo={photo} />
               <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#344451]/42 to-transparent opacity-80 transition group-hover:opacity-55" />
@@ -171,7 +162,7 @@ export default function RandomPhotoCard() {
               <div>
                 <Camera className="mx-auto h-7 w-7 text-[#E8B8C2]" />
                 <p className="mt-2 text-sm font-semibold text-[#5A6670]">相框在等照片</p>
-                <p className="mt-1 text-xs leading-5 text-[#5A6670]/52">点一座城市写回忆后，这里会随机展示。</p>
+                <p className="mt-1 text-xs leading-5 text-[#5A6670]/52">点亮一座城市并写下回忆后，这里会随机展示。</p>
               </div>
             </div>
           </div>

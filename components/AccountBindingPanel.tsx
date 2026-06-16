@@ -118,6 +118,36 @@ export default function AccountBindingPanel({
         </div>
       ) : (
         <div className="mt-4 grid gap-3">
+          {profile?.partner && (
+            <div className="grid gap-3">
+              <div className="rounded-[8px] border border-[#D8DDD8]/70 bg-[#FAFBF7]/72 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[#344451]">
+                      {profile.user.displayName || profile.user.username} / {profile.partner.displayName || profile.partner.username}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-[#5A6670]/52">已完成绑定，可以直接进入情侣空间继续处理约定、菜单和订单。</p>
+                  </div>
+                  <span className="rounded-full bg-[#F5DCE0]/50 px-3 py-1 text-xs font-semibold text-[#D86F82]">已绑定</span>
+                </div>
+                <div className={`mt-3 grid gap-2 ${compact ? "" : "sm:grid-cols-3"}`}>
+                  <div className="rounded-[7px] border border-white/70 bg-white/70 px-3 py-2">
+                    <p className="text-[11px] font-semibold text-[#5A6670]/48">我的昵称</p>
+                    <p className="mt-1 text-sm font-semibold text-[#344451]">{profile.user.displayName || profile.user.username}</p>
+                  </div>
+                  <div className="rounded-[7px] border border-white/70 bg-white/70 px-3 py-2">
+                    <p className="text-[11px] font-semibold text-[#5A6670]/48">对方昵称</p>
+                    <p className="mt-1 text-sm font-semibold text-[#344451]">{profile.partner.displayName || profile.partner.username}</p>
+                  </div>
+                  <div className="rounded-[7px] border border-white/70 bg-white/70 px-3 py-2">
+                    <p className="text-[11px] font-semibold text-[#5A6670]/48">待处理邀请</p>
+                    <p className="mt-1 text-sm font-semibold text-[#344451]">{pendingRequests.length} 条</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {!profile?.partner && (
             <>
               <div className={`grid gap-2 ${compact ? "" : "sm:grid-cols-[1fr_auto]"}`}>

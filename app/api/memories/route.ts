@@ -15,8 +15,9 @@ import {
   writeJsonValue,
 } from "@/lib/server/supabase";
 import { isLocalPrivacyRequest, localPrivacyImagePlaceholder } from "@/lib/localPrivacy";
-import { requireAdminSession, requireSiteSession } from "@/lib/server/auth";
+import { getSessionUsername, requireSiteSession } from "@/lib/server/auth";
 import { getBundledDataFilePath, getPrivateDataFilePath } from "@/lib/server/dataDir";
+import { getAccountScopeKey } from "@/lib/server/accountStore";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -145,6 +146,32 @@ async function writeMemoryStore(store: MemoryStore) {
 
   await mkdir(path.dirname(memoryStorePath), { recursive: true });
   await writeFile(memoryStorePath, `${JSON.stringify(store, null, 2)}\n`, "utf8");
+}
+
+const scopedStoreKey = (scopeKey?: string) => (scopeKey ? `${memoryStoreKey}:${scopeKey}` : memoryStoreKey);
+
+async function readScopedMemoryStore(scopeKey?: string): Promise<MemoryStore> {
+  if (!isSupabaseConfigured) {
+    return readMemoryStore();
+  }
+
+  const scopedMemories = normalizeMemoryStore(await readJsonValue(scopedStoreKey(scopeKey), {}));
+  if (Object.keys(scopedMemories).length > 0 || !scopeKey) return scopedMemories;
+
+  const legacyMemories = await readMemoryStore();
+  if (Object.keys(legacyMemories).length === 0) return scopedMemories;
+
+  await writeJsonValue(scopedStoreKey(scopeKey), legacyMemories);
+  return legacyMemories;
+}
+
+async function writeScopedMemoryStore(store: MemoryStore, scopeKey?: string) {
+  if (!isSupabaseConfigured) {
+    await writeMemoryStore(store);
+    return;
+  }
+
+  await writeJsonValue(scopedStoreKey(scopeKey), store);
 }
 
 async function uploadMemoryImages(memory: Memory): Promise<Memory> {
@@ -340,7 +367,9 @@ export async function GET(request: NextRequest) {
   const authResponse = requireSiteSession(request);
   if (authResponse) return authResponse;
 
-  const memories = await readMemoryStore();
+  const username = getSessionUsername(request);
+  const scope = username ? await getAccountScopeKey(username) : null;
+  const memories = await readScopedMemoryStore(scope?.scopeKey);
 
   return NextResponse.json({
     memories: isLocalPrivacyRequest(request) ? maskMemoryPhotos(memories) : await signMemoryStore(memories),
@@ -348,8 +377,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const authResponse = requireAdminSession(request);
+  const authResponse = requireSiteSession(request);
   if (authResponse) return authResponse;
+  const username = getSessionUsername(request);
+  if (!username) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  const scope = await getAccountScopeKey(username);
+  if (!scope) return NextResponse.json({ error: "Account not found" }, { status: 404 });
 
   try {
     assertWritableStorageConfigured();
@@ -365,13 +398,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const memory = await uploadMemoryImages(parsedMemory);
-    const memories = await readMemoryStore();
+    const memories = await readScopedMemoryStore(scope.scopeKey);
     const nextMemories = {
       ...memories,
       [memory.cityId]: [memory, ...(memories[memory.cityId] ?? [])],
     };
 
-    await writeMemoryStore(nextMemories);
+    await writeScopedMemoryStore(nextMemories, scope.scopeKey);
 
     return NextResponse.json({ memory: await signMemoryImages(memory), memories: await signMemoryStore(nextMemories) });
   } catch (error) {
@@ -381,8 +414,12 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const authResponse = requireAdminSession(request);
+  const authResponse = requireSiteSession(request);
   if (authResponse) return authResponse;
+  const username = getSessionUsername(request);
+  if (!username) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  const scope = await getAccountScopeKey(username);
+  if (!scope) return NextResponse.json({ error: "Account not found" }, { status: 404 });
 
   try {
     assertWritableStorageConfigured();
@@ -407,7 +444,7 @@ export async function PUT(request: NextRequest) {
       ),
     );
 
-    await writeMemoryStore(nextMemories);
+    await writeScopedMemoryStore(nextMemories, scope.scopeKey);
 
     return NextResponse.json({ memories: await signMemoryStore(nextMemories) });
   } catch (error) {
@@ -417,8 +454,12 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const authResponse = requireAdminSession(request);
+  const authResponse = requireSiteSession(request);
   if (authResponse) return authResponse;
+  const username = getSessionUsername(request);
+  if (!username) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  const scope = await getAccountScopeKey(username);
+  if (!scope) return NextResponse.json({ error: "Account not found" }, { status: 404 });
 
   try {
     assertWritableStorageConfigured();
@@ -430,7 +471,7 @@ export async function PATCH(request: NextRequest) {
   const editPayload = parseEditPayload(rawPayload);
 
   if (editPayload) {
-    const memories = await readMemoryStore();
+    const memories = await readScopedMemoryStore(scope.scopeKey);
     const cityMemories = memories[editPayload.cityId] ?? [];
     const memoryIndex = cityMemories.findIndex((memory) => memory.id === editPayload.memoryId);
 
@@ -448,7 +489,7 @@ export async function PATCH(request: NextRequest) {
         [editPayload.cityId]: nextCityMemories,
       };
 
-      await writeMemoryStore(nextMemories);
+      await writeScopedMemoryStore(nextMemories, scope.scopeKey);
 
       return NextResponse.json({
         memory: await signMemoryImages(nextCityMemories[memoryIndex]),
@@ -466,7 +507,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Invalid memory payload" }, { status: 400 });
   }
 
-  const memories = await readMemoryStore();
+  const memories = await readScopedMemoryStore(scope.scopeKey);
   const cityMemories = memories[payload.cityId] ?? [];
   const memoryIndex = cityMemories.findIndex((memory) => memory.id === payload.memoryId);
 
@@ -490,7 +531,7 @@ export async function PATCH(request: NextRequest) {
     [payload.cityId]: nextCityMemories,
   };
 
-  await writeMemoryStore(nextMemories);
+  await writeScopedMemoryStore(nextMemories, scope.scopeKey);
 
   return NextResponse.json({
     memory: await signMemoryImages(nextCityMemories[memoryIndex]),
@@ -499,8 +540,12 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const authResponse = requireAdminSession(request);
+  const authResponse = requireSiteSession(request);
   if (authResponse) return authResponse;
+  const username = getSessionUsername(request);
+  if (!username) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  const scope = await getAccountScopeKey(username);
+  if (!scope) return NextResponse.json({ error: "Account not found" }, { status: 404 });
 
   try {
     assertWritableStorageConfigured();
@@ -514,7 +559,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Invalid delete payload" }, { status: 400 });
   }
 
-  const memories = await readMemoryStore();
+  const memories = await readScopedMemoryStore(scope.scopeKey);
   const cityMemories = memories[payload.cityId] ?? [];
   const memoryIndex = cityMemories.findIndex((memory) => memory.id === payload.memoryId);
 
@@ -528,7 +573,7 @@ export async function DELETE(request: NextRequest) {
   if (nextCityMemories.length > 0) nextMemories[payload.cityId] = nextCityMemories;
   else delete nextMemories[payload.cityId];
 
-  await writeMemoryStore(nextMemories);
+  await writeScopedMemoryStore(nextMemories, scope.scopeKey);
 
   return NextResponse.json({ memories: await signMemoryStore(nextMemories) });
 }

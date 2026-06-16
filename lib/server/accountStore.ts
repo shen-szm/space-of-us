@@ -19,9 +19,16 @@ const localFileName = "accounts.json";
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-const normalizeUsername = (value: string) => value.trim().toLowerCase();
+const normalizeUsername = (value: string) => value.trim().normalize("NFKC");
+const normalizeUsernameLookupKey = (value: string) => normalizeUsername(value).toLocaleLowerCase("zh-CN");
 const normalizeEmail = (value: string) => value.trim().toLowerCase();
 const requestStatuses = new Set<BindingRequestStatus>(["pending", "accepted", "declined", "cancelled"]);
+
+const usernameMatches = (left: string, right: string) =>
+  normalizeUsernameLookupKey(left) === normalizeUsernameLookupKey(right);
+
+const findAccountInStore = (store: AccountStore, username: string) =>
+  store.users.find((account) => usernameMatches(account.username, username)) ?? null;
 
 const cleanBindingRequest = (value: unknown): AccountBindingRequest | null => {
   if (!isRecord(value)) return null;
@@ -177,9 +184,8 @@ export const listPublicAccounts = async (): Promise<PublicUserAccount[]> => {
 };
 
 export const findAccount = async (username: string) => {
-  const normalized = normalizeUsername(username);
   const store = await readAccountStore();
-  return store.users.find((account) => account.username === normalized) ?? null;
+  return findAccountInStore(store, username);
 };
 
 export const findAccountByEmail = async (email: string) => {
@@ -232,7 +238,7 @@ export const registerAccount = async ({
   const normalizedUsername = normalizeUsername(username);
   const normalizedEmail = normalizeEmail(email);
   const store = await readAccountStore();
-  if (store.users.some((account) => account.username === normalizedUsername)) {
+  if (store.users.some((account) => usernameMatches(account.username, normalizedUsername))) {
     throw new Error("Account already exists");
   }
   if (store.users.some((account) => account.email === normalizedEmail)) {
@@ -273,7 +279,7 @@ export const resetAccountPassword = async ({
 }) => {
   const normalized = normalizeUsername(username);
   const store = await readAccountStore();
-  const account = store.users.find((item) => item.username === normalized);
+  const account = findAccountInStore(store, normalized);
   if (!account) throw new Error("Account not found");
 
   if (!verifyAccountSecret(recoveryPhrase, account.id, account.recoveryHash)) {
@@ -298,7 +304,7 @@ export const resetAccountPasswordByUsername = async ({
 }) => {
   const normalized = normalizeUsername(username);
   const store = await readAccountStore();
-  const account = store.users.find((item) => item.username === normalized);
+  const account = findAccountInStore(store, normalized);
   if (!account) throw new Error("Account not found");
 
   const timestamp = new Date().toISOString();
@@ -323,7 +329,7 @@ export const changeOwnAccountPassword = async ({
 }) => {
   const normalized = normalizeUsername(username);
   const store = await readAccountStore();
-  const account = store.users.find((item) => item.username === normalized);
+  const account = findAccountInStore(store, normalized);
   if (!account) throw new Error("Account not found");
   if (!verifyPasswordAgainstAccount(account, currentPassword)) {
     throw new Error("Current password is incorrect");
@@ -348,9 +354,11 @@ export const updateAccountEmail = async ({
   const normalizedUsername = normalizeUsername(username);
   const normalizedEmail = normalizeEmail(email);
   const store = await readAccountStore();
-  const account = store.users.find((item) => item.username === normalizedUsername);
+  const account = findAccountInStore(store, normalizedUsername);
   if (!account) throw new Error("Account not found");
-  const duplicated = store.users.find((item) => item.username !== normalizedUsername && item.email === normalizedEmail);
+  const duplicated = store.users.find(
+    (item) => !usernameMatches(item.username, normalizedUsername) && item.email === normalizedEmail,
+  );
   if (duplicated) throw new Error("Email already exists");
 
   const timestamp = new Date().toISOString();
@@ -365,7 +373,7 @@ export const updateAccountEmail = async ({
 export const markAccountLogin = async (username: string) => {
   const normalized = normalizeUsername(username);
   const store = await readAccountStore();
-  const account = store.users.find((item) => item.username === normalized);
+  const account = findAccountInStore(store, normalized);
   if (!account) return null;
 
   account.lastLoginAt = new Date().toISOString();
@@ -394,7 +402,7 @@ const syncRequestForUsers = (store: AccountStore, request: AccountBindingRequest
 export const getAccountBindingProfile = async (username: string) => {
   const normalized = normalizeUsername(username);
   const store = await readAccountStore();
-  const account = store.users.find((item) => item.username === normalized);
+  const account = findAccountInStore(store, normalized);
   if (!account) throw new Error("Account not found");
 
   const users = publicUsersById(store);
@@ -409,7 +417,7 @@ export const getAccountBindingProfile = async (username: string) => {
 export const generateAccountBindingInvite = async (username: string) => {
   const normalized = normalizeUsername(username);
   const store = await readAccountStore();
-  const account = store.users.find((item) => item.username === normalized);
+  const account = findAccountInStore(store, normalized);
   if (!account) throw new Error("Account not found");
   if (account.partnerUserId) throw new Error("Already bound");
 
@@ -429,7 +437,7 @@ export const createAccountBindingRequest = async (username: string, inviteCode: 
   const normalized = normalizeUsername(username);
   const code = inviteCode.trim().toUpperCase();
   const store = await readAccountStore();
-  const from = store.users.find((item) => item.username === normalized);
+  const from = findAccountInStore(store, normalized);
   if (!from) throw new Error("Account not found");
   if (from.partnerUserId) throw new Error("Already bound");
 
@@ -482,7 +490,7 @@ export const respondToAccountBindingRequest = async ({
 }) => {
   const normalized = normalizeUsername(username);
   const store = await readAccountStore();
-  const account = store.users.find((item) => item.username === normalized);
+  const account = findAccountInStore(store, normalized);
   if (!account) throw new Error("Account not found");
 
   const request = (account.bindingRequests ?? []).find((item) => item.id === requestId);

@@ -17,6 +17,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const cleanString = (value: unknown, maxLength: number) =>
   typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 
+const usernamePattern = /^[\p{Script=Han}A-Za-z0-9._-]{2,40}$/u;
+const isValidUsername = (value: string) => usernamePattern.test(value);
+
 const isStorageConfigError = (error: unknown) =>
   error instanceof Error && error.message.toLowerCase().includes("supabase is required");
 
@@ -61,7 +64,13 @@ export async function POST(request: NextRequest) {
 
   if (payload.action === "register") {
     const emailCode = cleanString(payload.emailCode, 12).toUpperCase();
-    if (username.length < 2 || password.length < 4 || email.length < 5 || !email.includes("@") || emailCode.length < 4) {
+    if (
+      !isValidUsername(username) ||
+      password.length < 4 ||
+      email.length < 5 ||
+      !email.includes("@") ||
+      emailCode.length < 4
+    ) {
       return NextResponse.json({ error: "Invalid account fields" }, { status: 400 });
     }
 
@@ -110,7 +119,7 @@ export async function POST(request: NextRequest) {
     if (authError) return authError;
 
     const newPassword = cleanString(payload.newPassword, 80);
-    if (username.length < 2 || newPassword.length < 4) {
+    if (!isValidUsername(username) || newPassword.length < 4) {
       return NextResponse.json({ error: "Invalid admin reset fields" }, { status: 400 });
     }
 

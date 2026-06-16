@@ -38,6 +38,26 @@ type CaptchaState = {
   svg: string;
 };
 
+type LoginPhotoStoreResponse = {
+  photos?: Record<string, string>;
+};
+
+type BindingProfileResponse = {
+  user?: {
+    displayName?: string;
+    username?: string;
+  };
+  partner?: {
+    displayName?: string;
+    username?: string;
+  } | null;
+};
+
+type MemoryPhotoCandidate = {
+  image?: string;
+  photos?: string[];
+};
+
 const authModes: Array<{ key: AuthMode; label: string }> = [
   { key: "login", label: "登录" },
   { key: "register", label: "注册" },
@@ -134,6 +154,8 @@ export default function EntryExperience() {
   const [adminPanel, setAdminPanel] = useState(false);
   const [resetUser, setResetUser] = useState("");
   const [resetPassword, setResetPassword] = useState("");
+  const [heroPhotoSrc, setHeroPhotoSrc] = useState(loginPhotoPath("hangzhou"));
+  const [heroBadgeLabel, setHeroBadgeLabel] = useState("private album");
 
   const captchaSrc = useMemo(() => captchaToSrc(captcha?.svg), [captcha?.svg]);
 
@@ -187,6 +209,59 @@ export default function EntryExperience() {
       return () => window.clearTimeout(timer);
     }
   }, [mode, recoverStage, email, username, captcha]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const pickHero = async () => {
+      const [bindingResult, memoryResult, loginPhotoResult] = await Promise.allSettled([
+        getJson<BindingProfileResponse>("/api/account-binding"),
+        fetch("/api/memories", { cache: "no-store", credentials: "same-origin" }).then((response) =>
+          response.ok ? response.json() : null,
+        ),
+        getJson<LoginPhotoStoreResponse>("/api/login-photos"),
+      ]);
+
+      if (cancelled) return;
+
+      const bindingPayload = bindingResult.status === "fulfilled" ? bindingResult.value : null;
+      const memoryPayload = memoryResult.status === "fulfilled" ? memoryResult.value : null;
+      const loginPhotoPayload = loginPhotoResult.status === "fulfilled" ? loginPhotoResult.value : null;
+
+      const memoryPhotos = Object.values((memoryPayload ?? {}) as Record<string, MemoryPhotoCandidate>)
+        .flatMap((item) => [item?.image, ...(item?.photos ?? [])])
+        .filter((value): value is string => typeof value === "string" && value.length > 0);
+
+      const configuredPhotos = Object.values(loginPhotoPayload?.photos ?? {}).filter(
+        (value): value is string => typeof value === "string" && value.length > 0,
+      );
+
+      const heroSource =
+        memoryPhotos[Math.floor(Math.random() * memoryPhotos.length)] ??
+        configuredPhotos[Math.floor(Math.random() * configuredPhotos.length)] ??
+        loginPhotoPath("hangzhou");
+
+      setHeroPhotoSrc(heroSource);
+
+      const myName = bindingPayload?.user?.displayName || bindingPayload?.user?.username;
+      const partnerName = bindingPayload?.partner?.displayName || bindingPayload?.partner?.username;
+
+      if (myName && partnerName) {
+        setHeroBadgeLabel(`${myName} & ${partnerName}`);
+        return;
+      }
+
+      if (configuredPhotos.length > 0) {
+        setHeroBadgeLabel("custom login cover");
+      }
+    };
+
+    void pickHero();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const loadUsers = async () => {
     const payload = await getJson<{ users?: PublicUserAccount[] }>("/api/accounts");
@@ -255,7 +330,6 @@ export default function EntryExperience() {
       setMessage("邮箱验证码已发送，请查收邮件后继续完成注册。");
       setRegisterCodeCooldown(60);
       await ensureCaptcha();
-      setCaptchaAnswer("");
     } catch (error) {
       setStatus("wrong");
       setMessage(error instanceof Error ? `发送失败：${error.message}` : "验证码发送失败。");
@@ -292,7 +366,6 @@ export default function EntryExperience() {
     setRecoverMaskedEmail(payload.maskedEmail ?? "");
     setRecoverStage("verify-code");
     setEmailCode("");
-    setCaptchaAnswer("");
     setStatus("done");
     setMessage("验证码已发送到绑定邮箱，请先完成邮箱验证，再继续密码重置。");
     await ensureCaptcha();
@@ -430,7 +503,7 @@ export default function EntryExperience() {
         <section className="relative hidden min-h-0 overflow-hidden rounded-[8px] border border-[#DCCFC1]/86 bg-[#161F27] shadow-[0_28px_80px_rgba(91,71,50,0.12)] lg:block">
           <LocalPrivacyImage
             className="h-full w-full object-cover opacity-42 saturate-[1.08]"
-            src={loginPhotoPath("hangzhou")}
+            src={heroPhotoSrc}
             alt=""
             fill
             sizes="45vw"
@@ -440,7 +513,7 @@ export default function EntryExperience() {
           <div className="absolute inset-x-8 inset-y-8 flex flex-col justify-between pb-8">
             <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/14 bg-white/10 px-3 py-2 text-xs font-semibold text-white/76 backdrop-blur">
               <MapPinned className="h-4 w-4 text-[#F5DCE0]" />
-              private album
+              {heroBadgeLabel}
             </div>
             <div>
               <p className="max-w-[440px] text-[clamp(42px,4.8vw,72px)] font-semibold leading-[0.92] tracking-normal text-white">
@@ -718,7 +791,7 @@ export default function EntryExperience() {
                   </button>
                 )}
 
-                <div className="mt-3 rounded-[8px] border border-[#F0E6D8] bg-[#FAFBF7]/76 px-4 py-3 text-xs leading-6 text-[#5A6670]/58">
+                <div className="hidden rounded-[8px] border border-[#F0E6D8] bg-[#FAFBF7]/76 px-4 py-3 text-xs leading-6 text-[#5A6670]/58">
                   当前公开入口仍然是国际托管。换设备登录后，数据会从云端同步；若中国大陆网络访问偏慢，可以稍后重试或切换网络。
                 </div>
 

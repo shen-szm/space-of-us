@@ -26,7 +26,7 @@ const partnerRoles = new Set(["a", "b"]);
 const agreementCategories = new Set(["food", "play", "travel", "anniversary", "promise"]);
 const agreementStatuses = new Set(["wish", "planned", "doing", "done", "archived"]);
 const menuCategories = new Set(["milkTea", "food", "dessert", "snack", "other"]);
-const orderStatuses = new Set(["pending", "seen", "preparing", "completed", "cancelled"]);
+const orderStatuses = new Set(["pending", "accepted", "preparing", "completed", "declined", "cancelled"]);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -211,7 +211,9 @@ export async function POST(request: NextRequest) {
 
   if (payload.action === "updateOrderStatus") {
     const itemId = cleanString(payload.id, 80);
-    const status: OrderStatus = orderStatuses.has(String(payload.status)) ? (payload.status as OrderStatus) : "seen";
+    const status: OrderStatus = orderStatuses.has(String(payload.status))
+      ? (payload.status as OrderStatus)
+      : "accepted";
 
     store.orders = store.orders.map((order) =>
       order.id === itemId
@@ -219,7 +221,7 @@ export async function POST(request: NextRequest) {
             ...order,
             status,
             updatedAt: timestamp,
-            completedAt: status === "completed" ? timestamp : order.completedAt,
+            completedAt: status === "completed" ? timestamp : undefined,
           }
         : order,
     );

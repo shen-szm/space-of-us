@@ -45,7 +45,7 @@ export type CoupleMenuItem = {
   updatedAt: string;
 };
 
-export type OrderStatus = "pending" | "seen" | "preparing" | "completed" | "cancelled";
+export type OrderStatus = "pending" | "accepted" | "preparing" | "completed" | "declined" | "cancelled";
 
 export type CoupleOrder = {
   id: string;
@@ -110,8 +110,9 @@ export const menuCategoryLabels: Record<MenuCategory, string> = {
 
 export const orderStatusLabels: Record<OrderStatus, string> = {
   pending: "待接收",
-  seen: "已看到",
+  accepted: "已接单",
   preparing: "准备中",
   completed: "已完成",
+  declined: "已拒绝",
   cancelled: "已取消",
 };

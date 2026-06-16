@@ -18,7 +18,6 @@ import { chinaFeatures, makePath, makeProjectionForProvince, provinceIdOf } from
 import { cityFallbackSprite, getCitiesByProvince, type City } from "@/data/cities";
 import { getLatestMemory, sortMemoriesByTime, type Memory } from "@/data/memories";
 import { getLitCityIds, memoryStoreUpdatedEvent, type LocalMemoryStore } from "@/data/progress";
-import { adminModeUpdatedEvent, readAdminMode } from "@/data/adminMode";
 import type { Province } from "@/data/provinces";
 import { LocalPrivacyImage, LocalPrivacyImg } from "@/components/LocalPrivacyImage";
 
@@ -92,26 +91,6 @@ const isDataImageUrl = (url?: string | null): url is string =>
 
 const isBrowserImageUrl = (url?: string | null): url is string =>
   typeof url === "string" && (url.startsWith("data:image/") || url.startsWith("https://"));
-
-const useAdminMode = () => {
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setIsAdmin(readAdminMode()), 0);
-    const handleAdminMode = (event: Event) => {
-      setIsAdmin(Boolean((event as CustomEvent<boolean>).detail));
-    };
-
-    window.addEventListener(adminModeUpdatedEvent, handleAdminMode);
-
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener(adminModeUpdatedEvent, handleAdminMode);
-    };
-  }, []);
-
-  return isAdmin;
-};
 
 const normalizeMemoryDate = (value: string) => {
   const match = value.match(/^(\d{4})\.(\d{1,2})\.(\d{1,2})$/);
@@ -354,7 +333,7 @@ const photosOfMemory = (memory?: Memory) => {
 };
 
 export default function ProvinceMap({ province, width = 1120, height = 760 }: ProvinceMapProps) {
-  const isAdmin = useAdminMode();
+  const canEdit = true;
   const frameRef = useRef<HTMLDivElement>(null);
   const nudgeTimeoutRef = useRef<BrowserTimeout | null>(null);
   const localMemoriesRef = useRef<LocalMemoryStore>({});
@@ -524,8 +503,6 @@ export default function ProvinceMap({ province, width = 1120, height = 760 }: Pr
     : null;
 
   const handleSaveMemory = async (cityId: string, memory: Memory) => {
-    if (!isAdmin) throw new Error("Admin mode required");
-
     const response = await fetch("/api/memories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -545,8 +522,6 @@ export default function ProvinceMap({ province, width = 1120, height = 760 }: Pr
   };
 
   const handleSetMemoryCover = async (cityId: string, memoryId: string, coverImage: string) => {
-    if (!isAdmin) throw new Error("Admin mode required");
-
     const response = await fetch("/api/memories", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -566,8 +541,6 @@ export default function ProvinceMap({ province, width = 1120, height = 760 }: Pr
   };
 
   const handleUpdateMemory = async (cityId: string, memoryId: string, memory: Memory) => {
-    if (!isAdmin) throw new Error("Admin mode required");
-
     const response = await fetch("/api/memories", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -587,8 +560,6 @@ export default function ProvinceMap({ province, width = 1120, height = 760 }: Pr
   };
 
   const handleDeleteMemory = async (cityId: string, memoryId: string) => {
-    if (!isAdmin) throw new Error("Admin mode required");
-
     const response = await fetch("/api/memories", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -608,8 +579,6 @@ export default function ProvinceMap({ province, width = 1120, height = 760 }: Pr
   };
 
   const handleSaveCityAsset = async (cityId: string, image: string) => {
-    if (!isAdmin) throw new Error("Admin mode required");
-
     const response = await fetch("/api/city-assets", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -623,8 +592,6 @@ export default function ProvinceMap({ province, width = 1120, height = 760 }: Pr
   };
 
   const handleDeleteCityAsset = async (cityId: string) => {
-    if (!isAdmin) throw new Error("Admin mode required");
-
     const response = await fetch("/api/city-assets", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -948,7 +915,7 @@ export default function ProvinceMap({ province, width = 1120, height = 760 }: Pr
           localMemories={localMemories[selectedCity.id] ?? []}
           isLit={litCityIds.has(selectedCity.id)}
           anchor={cardAnchor}
-          isAdmin={isAdmin}
+          isAdmin={canEdit}
           onClose={() => setSelectedCityId(null)}
           onSave={handleSaveMemory}
         onSetCover={handleSetMemoryCover}
