@@ -498,8 +498,8 @@ export default function EntryExperience() {
       <div className="login-paper absolute inset-0" />
       <div className="login-grid absolute inset-0" aria-hidden="true" />
 
-      <div className="relative z-10 mx-auto grid min-h-[100dvh] w-full max-w-[1540px] gap-5 px-4 py-5 sm:px-6 lg:grid-cols-2 lg:items-stretch lg:px-8 xl:grid-cols-[0.92fr_1.08fr]">
-        <section className="theme-card theme-floating-shadow-strong theme-hero-glow relative hidden min-h-[520px] overflow-hidden rounded-[28px] border lg:block lg:h-full">
+      <div className="login-shell relative z-10 mx-auto w-full">
+        <section className="login-visual theme-card theme-floating-shadow-strong theme-hero-glow relative overflow-hidden border">
           <LocalPrivacyImage
             className="h-full w-full object-cover opacity-42 saturate-[1.08]"
             src={heroPhotoSrc}
@@ -526,8 +526,8 @@ export default function EntryExperience() {
           </div>
         </section>
 
-        <section className="flex min-h-[calc(100dvh-32px)] items-center justify-center lg:min-h-0 lg:h-full">
-          <div className="theme-card-strong theme-floating-shadow-strong w-full max-w-[760px] rounded-[30px] border p-5 backdrop-blur-2xl sm:p-7">
+        <section className="login-auth flex items-center justify-center">
+          <div className="login-auth-card theme-card-strong theme-floating-shadow-strong w-full rounded-[30px] border p-5 backdrop-blur-2xl sm:p-7">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <BrandHeart />

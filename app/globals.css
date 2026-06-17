@@ -436,6 +436,68 @@ button {
   mask-image: linear-gradient(to bottom, transparent, black 12%, black 88%, transparent);
 }
 
+.login-paper,
+.login-grid {
+  pointer-events: none;
+}
+
+.login-shell {
+  min-height: 100dvh;
+  max-width: 1540px;
+  display: grid;
+  grid-template-columns: minmax(360px, 0.92fr) minmax(440px, 1.08fr);
+  gap: 20px;
+  padding: 20px 32px;
+  align-items: stretch;
+}
+
+.login-visual {
+  min-height: calc(100dvh - 40px);
+  max-height: calc(100dvh - 40px);
+  border-radius: 28px;
+}
+
+.login-auth {
+  min-height: calc(100dvh - 40px);
+}
+
+.login-auth-card {
+  max-width: 760px;
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  position: relative;
+  z-index: 2;
+}
+
+@media (min-width: 1024px) and (max-width: 1240px) {
+  .login-shell {
+    grid-template-columns: minmax(300px, 0.78fr) minmax(440px, 1.22fr);
+    padding-inline: 24px;
+  }
+}
+
+@media (max-width: 1023px) {
+  .login-shell {
+    min-height: 100dvh;
+    display: flex;
+    padding: 16px;
+  }
+
+  .login-visual {
+    display: none;
+  }
+
+  .login-auth {
+    width: 100%;
+    min-height: calc(100dvh - 32px);
+  }
+
+  .login-auth-card {
+    max-width: 720px;
+    max-height: none;
+  }
+}
+
 .login-sun {
   position: absolute;
   right: 6%;
