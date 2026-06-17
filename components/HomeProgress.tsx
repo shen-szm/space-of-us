@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode, type SVGProps } from "rea
 import Link from "next/link";
 import { CalendarDays, Heart, Images, RefreshCw } from "lucide-react";
 import { LocalPrivacyImage } from "@/components/LocalPrivacyImage";
+import { MusicRecommendationCard } from "@/components/RandomPhotoCard";
 import { cities } from "@/data/cities";
 import {
   getLitCityIds,
@@ -486,7 +487,7 @@ function AlbumProgressCard() {
   );
 }
 
-function CoupleLogo() {
+export function CoupleLogo() {
   const [activeHead, setActiveHead] = useState<"left" | "right" | null>(null);
   const settings = useAppSettings();
   const logoSrc = settings.coupleLogo ?? defaultCoupleLogo;
@@ -605,7 +606,7 @@ export function StatsPanel({ children }: Readonly<{ children: ReactNode }>) {
       {children}
       <TogetherDaysCard />
       <AlbumProgressCard />
-      <CoupleLogo />
+      <MusicRecommendationCard className="mt-auto" />
     </aside>
   );
 }
