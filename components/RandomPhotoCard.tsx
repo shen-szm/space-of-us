@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Camera, ExternalLink, Headphones, MapPin, Play, RefreshCw, SkipForward } from "lucide-react";
+import { Camera, ExternalLink, Headphones, MapPin, RefreshCw, SkipForward } from "lucide-react";
 import { LocalPrivacyImage, LocalPrivacyImg } from "@/components/LocalPrivacyImage";
 import { cities } from "@/data/cities";
 import { memories, type Memory } from "@/data/memories";
@@ -61,70 +61,48 @@ export function MusicRecommendationCard({ className = "" }: Readonly<{ className
     () => musicRecommendations[Math.floor(Math.random() * musicRecommendations.length)] ?? musicRecommendations[0],
   );
 
-  const shuffleTrack = () => setTrack((current) => pickAnother(current, musicRecommendations) ?? musicRecommendations[0]);
+  const shuffleTrack = () =>
+    setTrack((current) => pickAnother(current, musicRecommendations) ?? musicRecommendations[0]);
 
   return (
     <section
-      className={`theme-card theme-floating-shadow overflow-hidden rounded-[24px] border p-4 text-[#5A6670] backdrop-blur-xl ${className}`}
+      className={`theme-card theme-floating-shadow overflow-hidden rounded-[20px] border p-4 text-[#5A6670] backdrop-blur-xl ${className}`}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="theme-icon-chip grid h-11 w-11 shrink-0 place-items-center rounded-[14px]">
-            <Headphones className="h-5 w-5" />
+          <span className="theme-icon-chip grid h-9 w-9 shrink-0 place-items-center rounded-[12px]">
+            <Headphones className="h-4 w-4" />
           </span>
           <div className="min-w-0">
-            <p className="theme-text-main truncate text-sm font-semibold">今日音乐推荐</p>
-            <p className="theme-text-soft truncate text-xs">给今天的地图配一首歌</p>
+            <p className="theme-text-main truncate text-sm font-semibold">{"\u4eca\u65e5\u914d\u4e50"}</p>
+            <p className="theme-text-soft mt-1 text-xs">{"\u7559\u4e00\u9996\u5b89\u9759\u7684\u80cc\u666f\u97f3\u3002"}</p>
           </div>
         </div>
         <button
-          className="theme-subtle-button inline-flex h-9 items-center gap-1 rounded-full px-3 text-xs font-semibold transition"
+          className="theme-subtle-button inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-3 text-xs font-semibold transition"
           type="button"
           onClick={shuffleTrack}
+          aria-label={"\u6362\u4e00\u9996\u63a8\u8350"}
         >
           <SkipForward className="h-3.5 w-3.5" />
-          换一首
+          {"\u6362\u4e00\u9996"}
         </button>
       </div>
 
-      <div className="mt-4 rounded-[20px] border border-[var(--border-soft)] bg-[linear-gradient(140deg,color-mix(in_srgb,var(--accent-wash)_88%,white),color-mix(in_srgb,var(--accent-secondary)_22%,white))] p-4">
-        <div className="flex items-start gap-4">
-          <div className="flex h-20 w-20 shrink-0 items-end rounded-[18px] border border-white/70 bg-[linear-gradient(160deg,color-mix(in_srgb,var(--accent-primary)_16%,white),color-mix(in_srgb,var(--accent-secondary)_34%,white))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-white/72 text-[var(--hero-ink)] shadow-[0_8px_20px_rgba(70,82,92,0.12)]">
-              <Play className="ml-0.5 h-4 w-4 fill-current" />
-            </span>
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="theme-text-soft text-[11px] font-semibold uppercase tracking-[0.18em]">music recommendation</p>
-            <p className="theme-text-main mt-1 truncate text-xl font-semibold">{track.title}</p>
-            <p className="theme-text-muted mt-1 truncate text-sm font-medium">{track.artist}</p>
-            <p className="theme-text-soft mt-3 text-xs leading-6">{track.note}</p>
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <div className="h-1.5 overflow-hidden rounded-full bg-white/68">
-            <div
-              className="h-full rounded-full bg-[var(--accent-primary)]"
-              style={{ width: `${42 + (track.title.length % 4) * 12}%` }}
-            />
-          </div>
-          <div className="theme-text-soft mt-2 flex items-center justify-between text-[11px] font-medium">
-            <span>{track.mood}</span>
-            <span>外链播放</span>
-          </div>
-        </div>
+      <div className="mt-4 rounded-[18px] border border-[var(--border-soft)] bg-[linear-gradient(150deg,color-mix(in_srgb,var(--accent-wash)_78%,white),rgba(255,255,255,0.94))] p-4">
+        <p className="theme-text-main truncate text-[clamp(1.6rem,4vw,2rem)] font-semibold leading-none">{track.title}</p>
+        <p className="theme-text-muted mt-2 truncate text-sm font-medium">{track.artist}</p>
+        <p className="theme-text-soft mt-4 line-clamp-2 text-sm leading-6">{track.note}</p>
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3">
-        <p className="theme-text-soft text-xs leading-6">点击后跳转到外部平台继续听，不在站内播放。</p>
+      <div className="mt-4 flex items-center justify-end">
         <a
-          className="theme-accent-button inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold transition hover:-translate-y-0.5"
+          className="theme-accent-button inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold transition hover:-translate-y-0.5"
           href={track.href}
           rel="noreferrer"
           target="_blank"
         >
-          去听这首
+          {"\u53bb\u542c\u8fd9\u9996"}
           <ExternalLink className="h-4 w-4" />
         </a>
       </div>

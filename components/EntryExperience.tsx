@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   ArrowRight,
   CalendarDays,
+  ChevronDown,
   Eye,
   EyeOff,
   Heart,
@@ -24,37 +25,15 @@ import {
 import type { PublicUserAccount } from "@/data/accounts";
 import type { AdminAlert } from "@/data/adminAlerts";
 import AccountBindingPanel from "@/components/AccountBindingPanel";
-import { LocalPrivacyBadge, LocalPrivacyImage } from "@/components/LocalPrivacyImage";
-import { withVersion } from "@/lib/appVersion";
-
-const loginPhotoPath = (fileName: string) => withVersion(`/photos/login/${fileName}.jpg`);
+import { LocalPrivacyBadge } from "@/components/LocalPrivacyImage";
 
 type AuthMode = "login" | "register" | "recover";
 type RecoverStage = "request-code" | "verify-code" | "reset-password";
 type Status = "idle" | "checking" | "wrong" | "done";
+
 type CaptchaState = {
   token: string;
   svg: string;
-};
-
-type LoginPhotoStoreResponse = {
-  photos?: Record<string, string>;
-};
-
-type BindingProfileResponse = {
-  user?: {
-    displayName?: string;
-    username?: string;
-  };
-  partner?: {
-    displayName?: string;
-    username?: string;
-  } | null;
-};
-
-type MemoryPhotoCandidate = {
-  image?: string;
-  photos?: string[];
 };
 
 const authModes: Array<{ key: AuthMode; label: string }> = [
@@ -62,6 +41,12 @@ const authModes: Array<{ key: AuthMode; label: string }> = [
   { key: "register", label: "注册" },
   { key: "recover", label: "找回" },
 ];
+
+const modeTitles: Record<AuthMode, string> = {
+  login: "欢迎回来",
+  register: "创建你们的入口",
+  recover: "找回密码",
+};
 
 const adminQuickLinks = [
   { label: "地图主页", href: "/map", icon: MapPinned },
@@ -87,8 +72,8 @@ const cleanErrorMessage = (value: string) => {
   if (value.includes("Database is not configured")) return "数据库尚未配置，请先完成 Supabase 连接配置。";
   if (value.includes("Load users failed")) return "加载用户列表失败，请稍后再试。";
   if (value.includes("Invalid API key")) return "Supabase API Key 无效，请检查线上环境变量。";
-  if (value.includes("Email already exists")) return "该邮箱已被使用，请换一个。";
-  if (value.includes("Account already exists")) return "该用户名已存在，请换一个。";
+  if (value.includes("Email already exists")) return "该邮箱已被使用，请更换一个。";
+  if (value.includes("Account already exists")) return "该用户名已存在，请更换一个。";
   if (value.includes("Invalid captcha")) return "图形验证码错误，请重新输入。";
   if (value.includes("Captcha expired")) return "图形验证码已过期，请重新获取。";
   if (value.includes("Please wait before requesting another code")) return "请等待 1 分钟后再重新发送验证码。";
@@ -151,10 +136,9 @@ export default function EntryExperience() {
   const [users, setUsers] = useState<PublicUserAccount[]>([]);
   const [alerts, setAlerts] = useState<AdminAlert[]>([]);
   const [adminPanel, setAdminPanel] = useState(false);
+  const [bindingExpanded, setBindingExpanded] = useState(false);
   const [resetUser, setResetUser] = useState("");
   const [resetPassword, setResetPassword] = useState("");
-  const [heroPhotoSrc, setHeroPhotoSrc] = useState(loginPhotoPath("hangzhou"));
-  const [heroBadgeLabel, setHeroBadgeLabel] = useState("private album");
 
   const captchaSrc = useMemo(() => captchaToSrc(captcha?.svg), [captcha?.svg]);
 
@@ -208,59 +192,6 @@ export default function EntryExperience() {
       return () => window.clearTimeout(timer);
     }
   }, [mode, recoverStage, email, username, captcha]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const pickHero = async () => {
-      const [bindingResult, memoryResult, loginPhotoResult] = await Promise.allSettled([
-        getJson<BindingProfileResponse>("/api/account-binding"),
-        fetch("/api/memories", { cache: "no-store", credentials: "same-origin" }).then((response) =>
-          response.ok ? response.json() : null,
-        ),
-        getJson<LoginPhotoStoreResponse>("/api/login-photos"),
-      ]);
-
-      if (cancelled) return;
-
-      const bindingPayload = bindingResult.status === "fulfilled" ? bindingResult.value : null;
-      const memoryPayload = memoryResult.status === "fulfilled" ? memoryResult.value : null;
-      const loginPhotoPayload = loginPhotoResult.status === "fulfilled" ? loginPhotoResult.value : null;
-
-      const memoryPhotos = Object.values((memoryPayload ?? {}) as Record<string, MemoryPhotoCandidate>)
-        .flatMap((item) => [item?.image, ...(item?.photos ?? [])])
-        .filter((value): value is string => typeof value === "string" && value.length > 0);
-
-      const configuredPhotos = Object.values(loginPhotoPayload?.photos ?? {}).filter(
-        (value): value is string => typeof value === "string" && value.length > 0,
-      );
-
-      const heroSource =
-        memoryPhotos[Math.floor(Math.random() * memoryPhotos.length)] ??
-        configuredPhotos[Math.floor(Math.random() * configuredPhotos.length)] ??
-        loginPhotoPath("hangzhou");
-
-      setHeroPhotoSrc(heroSource);
-
-      const myName = bindingPayload?.user?.displayName || bindingPayload?.user?.username;
-      const partnerName = bindingPayload?.partner?.displayName || bindingPayload?.partner?.username;
-
-      if (myName && partnerName) {
-        setHeroBadgeLabel(`${myName} & ${partnerName}`);
-        return;
-      }
-
-      if (configuredPhotos.length > 0) {
-        setHeroBadgeLabel("custom login cover");
-      }
-    };
-
-    void pickHero();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const loadUsers = async () => {
     const payload = await getJson<{ users?: PublicUserAccount[] }>("/api/accounts");
@@ -492,59 +423,41 @@ export default function EntryExperience() {
     return "输入用户名或邮箱，先完成图形验证，再向绑定邮箱发送验证码。";
   };
 
+  const modeDescription =
+    mode === "register"
+      ? "创建一个共享入口，把地图、回忆、纪念日和约定放进同一张私密地图里。"
+      : mode === "recover"
+        ? renderRecoverHint()
+        : "登录后即可继续查看你们的地图、约定、纪念和共享进度。";
+
   return (
     <main className="theme-page login-stage relative min-h-[100dvh] overflow-x-hidden overflow-y-auto theme-text-main">
       <LocalPrivacyBadge />
       <div className="login-paper absolute inset-0" />
       <div className="login-grid absolute inset-0" aria-hidden="true" />
+      <div className="login-stage-orbit login-stage-orbit-a" aria-hidden="true" />
+      <div className="login-stage-orbit login-stage-orbit-b" aria-hidden="true" />
+      <div className="login-stage-pulse login-stage-pulse-a" aria-hidden="true" />
+      <div className="login-stage-pulse login-stage-pulse-b" aria-hidden="true" />
 
-      <div className="login-shell relative z-10 mx-auto w-full">
-        <section className="login-visual theme-card theme-floating-shadow-strong theme-hero-glow relative overflow-hidden border">
-          <LocalPrivacyImage
-            className="h-full w-full object-cover opacity-42 saturate-[1.08]"
-            src={heroPhotoSrc}
-            alt=""
-            fill
-            sizes="45vw"
-            priority
-          />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(22,31,39,0.86),rgba(22,31,39,0.24)_50%,rgba(22,31,39,0.72)),radial-gradient(circle_at_72%_22%,rgba(245,220,224,0.24),transparent_34%)]" />
-          <div className="absolute inset-x-8 inset-y-8 flex flex-col justify-between pb-8">
-            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/14 px-3 py-2 text-xs font-semibold text-white/78 backdrop-blur-xl">
-              <MapPinned className="h-4 w-4 text-white/80" />
-              {heroBadgeLabel}
-            </div>
-            <div>
-              <p className="max-w-[440px] text-[clamp(42px,4.8vw,72px)] font-semibold leading-[0.92] tracking-normal text-white">
-                旧照片
-                <span className="block text-[var(--accent-highlight)]">新地图</span>
-              </p>
-              <p className="mt-4 max-w-[380px] text-sm font-medium leading-7 text-white/70">
-                左侧保留原来的回忆照片氛围，右侧是更清爽的账号入口，属于沈先生和张小姐的 Space of us。
-              </p>
-            </div>
-          </div>
-        </section>
+      <div className="login-shell relative z-10 mx-auto flex min-h-[100dvh] w-full items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
+        <section className="login-auth-card theme-card-strong theme-floating-shadow-strong w-full border backdrop-blur-2xl">
+          {!adminPanel ? (
+            <div className="mx-auto flex w-full max-w-[680px] flex-col justify-center">
 
-        <section className="login-auth flex items-center justify-center">
-          <div className="login-auth-card theme-card-strong theme-floating-shadow-strong w-full rounded-[30px] border p-5 backdrop-blur-2xl sm:p-7">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <BrandHeart />
-                <div>
-                  <p className="theme-text-main text-[28px] font-semibold leading-none">Space of us</p>
-                  <p className="theme-text-soft mt-1 text-xs font-semibold">
-                    {adminPanel ? "Admin Console" : "Private Couple Space"}
-                  </p>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <BrandHeart />
+                    <div>
+                      <p className="theme-text-main text-[28px] font-semibold leading-none">Space of us</p>
+                      <p className="theme-text-soft mt-1 text-xs font-semibold">Private Couple Space</p>
+                    </div>
+                  </div>
+                  <span className="theme-soft theme-text-soft grid h-11 w-11 place-items-center rounded-full border">
+                    <LockKeyhole className="h-5 w-5" />
+                  </span>
                 </div>
-              </div>
-              <span className="theme-soft theme-text-soft grid h-11 w-11 place-items-center rounded-full border">
-                {adminPanel ? <ShieldCheck className="h-5 w-5" /> : <LockKeyhole className="h-5 w-5" />}
-              </span>
-            </div>
 
-            {!adminPanel ? (
-              <>
                 <div className="theme-soft mt-7 w-fit rounded-full border p-1">
                   <div className="grid grid-cols-3 gap-1">
                     {authModes.map((item) => (
@@ -558,6 +471,7 @@ export default function EntryExperience() {
                         type="button"
                         onClick={() => {
                           setMode(item.key);
+                          setBindingExpanded(false);
                           resetTransient();
                         }}
                       >
@@ -568,16 +482,10 @@ export default function EntryExperience() {
                 </div>
 
                 <div className="mt-7">
-                  <h1 className="theme-text-main text-[clamp(32px,5vw,54px)] font-semibold leading-[1.02] tracking-normal">
-                    {mode === "register" ? "创建账号" : mode === "recover" ? "找回密码" : "欢迎回来"}
+                  <h1 className="theme-text-main text-[clamp(2rem,4vw,3.4rem)] font-semibold leading-[1.04] tracking-[-0.03em]">
+                    {modeTitles[mode]}
                   </h1>
-                  <p className="theme-text-muted mt-3 max-w-[560px] text-sm leading-7">
-                    {mode === "register"
-                      ? "注册普通用户时，需要先通过图形验证码并完成邮箱验证。"
-                      : mode === "recover"
-                        ? renderRecoverHint()
-                        : "输入你的账号信息，继续回到属于你们的地图。"}
-                  </p>
+                  <p className="theme-text-muted mt-3 max-w-[36rem] text-sm leading-7">{modeDescription}</p>
                 </div>
 
                 <div className="mt-6 grid gap-3">
@@ -600,7 +508,7 @@ export default function EntryExperience() {
                   {mode === "register" && (
                     <>
                       <label className="block">
-                        <span className="theme-text-soft mb-2 block text-xs font-semibold">昵称</span>
+                        <span className="theme-text-soft mb-2 block text-xs font-semibold">显示名称</span>
                         <span className="theme-input flex min-h-12 items-center gap-3 rounded-[16px] px-3 transition">
                           <UserPlus className="theme-text-soft h-4 w-4" />
                           <input
@@ -677,9 +585,18 @@ export default function EntryExperience() {
                           onClick={() => void ensureCaptcha()}
                         >
                           {captchaSrc ? (
-                            <Image alt="图形验证码" src={captchaSrc} width={150} height={52} className="h-14 w-full object-cover" unoptimized />
+                            <Image
+                              alt="图形验证码"
+                              src={captchaSrc}
+                              width={150}
+                              height={52}
+                              className="h-14 w-full object-cover"
+                              unoptimized
+                            />
                           ) : (
-                            <span className="theme-text-soft grid h-14 place-items-center text-xs">点击加载验证码</span>
+                            <span className="theme-text-soft grid h-14 place-items-center text-xs">
+                              点击加载验证码
+                            </span>
                           )}
                         </button>
                         <label className="block">
@@ -711,13 +628,18 @@ export default function EntryExperience() {
                           className="theme-subtle-button inline-flex min-h-12 items-center justify-center rounded-[16px] px-4 text-sm font-semibold transition"
                           type="button"
                           onClick={() => void sendRegisterCode()}
-                          disabled={!email.trim() || !captchaAnswer.trim() || status === "checking" || registerCodeCooldown > 0}
+                          disabled={
+                            !email.trim() ||
+                            !captchaAnswer.trim() ||
+                            status === "checking" ||
+                            registerCodeCooldown > 0
+                          }
                         >
                           {registerCodeCooldown > 0 ? `${registerCodeCooldown}s 后重发` : "获取邮箱验证码"}
                         </button>
                       </div>
                       <p className="theme-text-soft text-xs leading-6">
-                        发送验证码前会先校验图形验证码；同一个邮箱需要等待 1 分钟冷却后才能再次发送。
+                        发送邮箱验证码前会先校验图形验证码；同一邮箱需等待 1 分钟后才能再次发送。
                       </p>
                     </div>
                   )}
@@ -766,7 +688,7 @@ export default function EntryExperience() {
                 </div>
 
                 <button
-                  className="theme-accent-button mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-[8px] px-4 text-sm font-semibold text-white shadow-[0_20px_46px_rgba(39,56,70,0.18)] transition hover:-translate-y-0.5 disabled:opacity-55"
+                  className="theme-accent-button mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] px-4 text-sm font-semibold text-white shadow-[0_20px_46px_rgba(39,56,70,0.18)] transition hover:-translate-y-0.5 disabled:opacity-55"
                   type="button"
                   onClick={() => void submit()}
                   disabled={status === "checking"}
@@ -777,10 +699,10 @@ export default function EntryExperience() {
 
                 {mode === "recover" && recoverStage !== "request-code" && (
                   <button
-                  className="theme-subtle-button mt-3 inline-flex min-h-10 items-center gap-2 rounded-[16px] px-4 text-sm font-semibold"
-                  type="button"
-                  onClick={() => {
-                    setRecoverStage("request-code");
+                    className="theme-subtle-button mt-3 inline-flex min-h-10 items-center gap-2 rounded-[16px] px-4 text-sm font-semibold"
+                    type="button"
+                    onClick={() => {
+                      setRecoverStage("request-code");
                       setEmailCode("");
                       setRecoverGrantToken("");
                       setRecoverMaskedEmail("");
@@ -794,224 +716,239 @@ export default function EntryExperience() {
                 )}
 
                 {mode !== "recover" && (
-                  <div className="theme-soft mt-6 rounded-[24px] border p-5">
-                    <div className="mb-3">
-                      <p className="theme-text-main text-sm font-semibold">情侣绑定入口</p>
-                      <p className="theme-text-soft mt-1 text-xs leading-6">登录后先发起绑定，再一起进入地图、约定、菜单和订单流。</p>
-                    </div>
-                    <AccountBindingPanel compact />
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="mt-7">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <h1 className="text-[clamp(30px,5vw,48px)] font-semibold leading-tight tracking-normal text-[#273846]">
-                      管理界面
-                    </h1>
-                    <p className="mt-2 text-sm leading-6 text-[#5A6670]/62">
-                      管理员可以进入主站功能，并查看注册用户、绑定状态和系统提醒。
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="theme-soft mt-6 rounded-[22px] border p-4">
                     <button
-                      className="inline-flex min-h-10 items-center gap-2 rounded-[8px] border border-[#D8DDD8]/80 bg-[#FAFBF7]/74 px-3 text-sm font-semibold text-[#5A6670]"
+                      className="login-binding-toggle w-full"
                       type="button"
-                      onClick={() => void loadAdminData()}
+                      aria-expanded={bindingExpanded}
+                      onClick={() => setBindingExpanded((current) => !current)}
                     >
-                      <RefreshCcw className="h-4 w-4" />
-                      刷新
-                    </button>
-                    <button
-                      className="inline-flex min-h-10 items-center gap-2 rounded-[8px] border border-[#F5DCE0] bg-[#F5DCE0]/54 px-3 text-sm font-semibold text-[#D86F82]"
-                      type="button"
-                      onClick={() => void logoutAdmin()}
-                    >
-                      <LogOut className="h-4 w-4" />
-                      退出后台
-                    </button>
-                  </div>
-                </div>
-
-                {alerts.length > 0 && (
-                  <div className="mt-5 rounded-[8px] border border-[#F5B8C6]/70 bg-[#FFF1F4]/76 p-4 shadow-[0_18px_46px_rgba(216,111,130,0.10)]">
-                    <div className="flex items-start gap-3">
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/72 text-[#D86F82]">
-                        <AlertTriangle className="h-5 w-5" />
+                      <span>
+                        <span className="theme-text-main block text-sm font-semibold">情侣绑定入口</span>
+                        <span className="theme-text-soft mt-1 block text-xs leading-6">
+                          登录后先发起绑定，再一起进入地图、约定、菜单和订单流。
+                        </span>
                       </span>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-[#8F4152]">系统提醒</p>
-                        <div className="mt-2 space-y-2">
-                          {alerts.slice(0, 3).map((alert) => (
-                            <div key={alert.id} className="rounded-[7px] border border-white/70 bg-white/62 px-3 py-2">
-                              <p className="text-sm font-semibold text-[#344451]">{alert.title}</p>
-                              <p className="mt-1 text-xs leading-5 text-[#5A6670]/62">{alert.message}</p>
-                              <p className="mt-1 text-[11px] font-semibold text-[#5A6670]/42">
-                                {formatDateTime(alert.createdAt)}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
+                      <ChevronDown
+                        className={`h-4 w-4 transition ${bindingExpanded ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                    {bindingExpanded && (
+                      <div className="mt-4 rounded-[18px] border border-white/65 bg-white/54 p-4">
+                        <AccountBindingPanel compact />
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
-
-                <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-[8px] border border-white/70 bg-white/58 p-4">
-                    <p className="text-xs font-semibold text-[#5A6670]/48">注册用户</p>
-                    <p className="mt-1 text-3xl font-semibold text-[#273846]">{users.length}</p>
-                  </div>
-                  <div className="rounded-[8px] border border-white/70 bg-white/58 p-4">
-                    <p className="text-xs font-semibold text-[#5A6670]/48">已绑定用户</p>
-                    <p className="mt-1 text-3xl font-semibold text-[#273846]">
-                      {users.filter((user) => Boolean(user.partnerUserId)).length}
-                    </p>
-                  </div>
-                  <div className="rounded-[8px] border border-white/70 bg-white/58 p-4">
-                    <p className="text-xs font-semibold text-[#5A6670]/48">待处理邀请</p>
-                    <p className="mt-1 text-3xl font-semibold text-[#273846]">
-                      {users.reduce(
-                        (total, user) =>
-                          total + (user.bindingRequests ?? []).filter((request) => request.status === "pending").length,
-                        0,
-                      )}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="relative mt-5 overflow-hidden rounded-[8px] border border-white/72 bg-white/58 p-5 shadow-[0_22px_64px_rgba(90,102,112,0.10)] backdrop-blur-2xl">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_8%_0%,rgba(245,220,224,0.55),transparent_28%),radial-gradient(circle_at_90%_18%,rgba(214,232,240,0.62),transparent_34%)]" />
-                  <div className="relative flex items-center gap-2">
-                    <span className="grid h-9 w-9 place-items-center rounded-full border border-white/80 bg-white/62 text-[#D86F82]">
-                      <LayoutDashboard className="h-4 w-4" />
-                    </span>
-                    <div>
-                      <p className="text-sm font-semibold text-[#344451]">主站功能</p>
-                      <p className="mt-1 text-xs text-[#5A6670]/50">像启动台一样快速进入每个页面。</p>
-                    </div>
-                  </div>
-                  <div className="relative mt-4 grid gap-3 sm:grid-cols-5">
-                    {adminQuickLinks.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <button
-                          key={item.href}
-                          className="group flex min-h-24 flex-col items-center justify-center gap-2 rounded-[8px] border border-white/72 bg-white/54 px-3 text-sm font-semibold text-[#5A6670] shadow-[0_12px_30px_rgba(90,102,112,0.06)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-[#E8B8C2] hover:bg-white/72 hover:text-[#D86F82]"
-                          type="button"
-                          onClick={() => router.push(item.href)}
-                        >
-                          <span className="grid h-11 w-11 place-items-center rounded-full bg-[#FAFBF7]/78 text-[#5A6670]/70 transition group-hover:scale-110 group-hover:bg-[#F5DCE0]/72 group-hover:text-[#D86F82]">
-                            <Icon className="h-5 w-5" />
-                          </span>
-                          {item.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="mt-5 rounded-[8px] border border-[#D8DDD8]/76 bg-[#FAFBF7]/72 p-4">
-                  <p className="text-sm font-semibold text-[#344451]">帮用户重置密码</p>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-                    <input
-                      className="min-h-11 rounded-[8px] border border-[#D8DDD8]/88 bg-white/70 px-3 text-sm outline-none transition focus:border-[#E8B8C2]"
-                      value={resetUser}
-                      onChange={(event) => setResetUser(event.target.value)}
-                      placeholder="用户名"
-                    />
-                    <input
-                      className="min-h-11 rounded-[8px] border border-[#D8DDD8]/88 bg-white/70 px-3 text-sm outline-none transition focus:border-[#E8B8C2]"
-                      value={resetPassword}
-                      onChange={(event) => setResetPassword(event.target.value)}
-                      placeholder="新密码"
-                      type="password"
-                    />
-                    <button
-                      className="inline-flex min-h-11 items-center justify-center rounded-[8px] bg-[#273846] px-4 text-sm font-semibold text-white disabled:opacity-50"
-                      type="button"
-                      onClick={() => void adminResetPassword()}
-                      disabled={!resetUser.trim() || !resetPassword.trim()}
-                    >
-                      重置
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-5 rounded-[8px] border border-[#D8DDD8]/76 bg-[#FAFBF7]/72 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <UsersRound className="h-4 w-4 text-[#D86F82]" />
-                      <p className="text-sm font-semibold text-[#344451]">注册用户详情</p>
-                    </div>
-                    <span className="text-xs font-semibold text-[#5A6670]/48">{users.length} 人</span>
-                  </div>
-                  <p className="mt-2 text-xs leading-5 text-[#5A6670]/48">
-                    后台不会显示用户密码，只显示账号、邮箱、绑定和邀请状态。
+              </div>
+          ) : (
+            <div className="mt-2">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h1 className="text-[clamp(30px,5vw,48px)] font-semibold leading-tight tracking-normal text-[#273846]">
+                    管理界面
+                  </h1>
+                  <p className="mt-2 text-sm leading-6 text-[#5A6670]/62">
+                    管理员可以进入主站功能，并查看注册用户、绑定状态和系统提醒。
                   </p>
-                  <div className="mt-3 max-h-[420px] space-y-3 overflow-auto pr-1">
-                    {users.length === 0 && (
-                      <p className="rounded-[7px] border border-dashed border-[#D8DDD8] px-4 py-8 text-center text-sm text-[#5A6670]/52">
-                        暂无注册用户。
-                      </p>
-                    )}
-                    {users.map((user) => (
-                      <div key={user.id} className="rounded-[7px] border border-white/70 bg-white/66 px-3 py-3">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-semibold text-[#344451]">{user.displayName}</p>
-                            <p className="mt-1 text-xs text-[#5A6670]/48">@{user.username}</p>
-                          </div>
-                          <button
-                            className="rounded-[7px] border border-[#D8DDD8]/80 bg-[#FAFBF7]/70 px-3 py-2 text-xs font-semibold text-[#5A6670]"
-                            type="button"
-                            onClick={() => setResetUser(user.username)}
-                          >
-                            选择重置
-                          </button>
-                        </div>
-                        <div className="mt-3 grid gap-2 text-xs leading-5 text-[#5A6670]/58 sm:grid-cols-2">
-                          <p>
-                            <span className="font-semibold text-[#344451]">用户 ID：</span>
-                            <span className="select-all">{user.id}</span>
-                          </p>
-                          <p>
-                            <span className="font-semibold text-[#344451]">邮箱：</span>
-                            {user.email || "未绑定"}
-                          </p>
-                          <p>
-                            <span className="font-semibold text-[#344451]">邮箱验证：</span>
-                            {user.emailVerifiedAt ? `已验证 · ${formatDateTime(user.emailVerifiedAt)}` : "未验证"}
-                          </p>
-                          <p>
-                            <span className="font-semibold text-[#344451]">密码更新时间：</span>
-                            {formatDateTime(user.passwordUpdatedAt)}
-                          </p>
-                          <p>
-                            <span className="font-semibold text-[#344451]">注册时间：</span>
-                            {formatDateTime(user.createdAt)}
-                          </p>
-                          <p>
-                            <span className="font-semibold text-[#344451]">最近登录：</span>
-                            {formatDateTime(user.lastLoginAt)}
-                          </p>
-                          <p>
-                            <span className="font-semibold text-[#344451]">绑定对象：</span>
-                            {user.partnerDisplayName || user.partnerUsername || "未绑定"}
-                          </p>
-                          <p>
-                            <span className="font-semibold text-[#344451]">邀请记录：</span>
-                            {(user.bindingRequests ?? []).length} 条
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    className="inline-flex min-h-10 items-center gap-2 rounded-[8px] border border-[#D8DDD8]/80 bg-[#FAFBF7]/74 px-3 text-sm font-semibold text-[#5A6670]"
+                    type="button"
+                    onClick={() => void loadAdminData()}
+                  >
+                    <RefreshCcw className="h-4 w-4" />
+                    刷新
+                  </button>
+                  <button
+                    className="inline-flex min-h-10 items-center gap-2 rounded-[8px] border border-[#F5DCE0] bg-[#F5DCE0]/54 px-3 text-sm font-semibold text-[#D86F82]"
+                    type="button"
+                    onClick={() => void logoutAdmin()}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    退出后台
+                  </button>
                 </div>
               </div>
-            )}
-          </div>
+
+              {alerts.length > 0 && (
+                <div className="mt-5 rounded-[8px] border border-[#F5B8C6]/70 bg-[#FFF1F4]/76 p-4 shadow-[0_18px_46px_rgba(216,111,130,0.10)]">
+                  <div className="flex items-start gap-3">
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/72 text-[#D86F82]">
+                      <AlertTriangle className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-[#8F4152]">系统提醒</p>
+                      <div className="mt-2 space-y-2">
+                        {alerts.slice(0, 3).map((alert) => (
+                          <div key={alert.id} className="rounded-[7px] border border-white/70 bg-white/62 px-3 py-2">
+                            <p className="text-sm font-semibold text-[#344451]">{alert.title}</p>
+                            <p className="mt-1 text-xs leading-5 text-[#5A6670]/62">{alert.message}</p>
+                            <p className="mt-1 text-[11px] font-semibold text-[#5A6670]/42">
+                              {formatDateTime(alert.createdAt)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-[8px] border border-white/70 bg-white/58 p-4">
+                  <p className="text-xs font-semibold text-[#5A6670]/48">注册用户</p>
+                  <p className="mt-1 text-3xl font-semibold text-[#273846]">{users.length}</p>
+                </div>
+                <div className="rounded-[8px] border border-white/70 bg-white/58 p-4">
+                  <p className="text-xs font-semibold text-[#5A6670]/48">已绑定用户</p>
+                  <p className="mt-1 text-3xl font-semibold text-[#273846]">
+                    {users.filter((user) => Boolean(user.partnerUserId)).length}
+                  </p>
+                </div>
+                <div className="rounded-[8px] border border-white/70 bg-white/58 p-4">
+                  <p className="text-xs font-semibold text-[#5A6670]/48">待处理邀请</p>
+                  <p className="mt-1 text-3xl font-semibold text-[#273846]">
+                    {users.reduce(
+                      (total, user) =>
+                        total + (user.bindingRequests ?? []).filter((request) => request.status === "pending").length,
+                      0,
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="relative mt-5 overflow-hidden rounded-[8px] border border-white/72 bg-white/58 p-5 shadow-[0_22px_64px_rgba(90,102,112,0.10)] backdrop-blur-2xl">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_8%_0%,rgba(245,220,224,0.55),transparent_28%),radial-gradient(circle_at_90%_18%,rgba(214,232,240,0.62),transparent_34%)]" />
+                <div className="relative flex items-center gap-2">
+                  <span className="grid h-9 w-9 place-items-center rounded-full border border-white/80 bg-white/62 text-[#D86F82]">
+                    <LayoutDashboard className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-[#344451]">主站功能</p>
+                    <p className="mt-1 text-xs text-[#5A6670]/50">像启动台一样快速进入每一个页面。</p>
+                  </div>
+                </div>
+                <div className="relative mt-4 grid gap-3 sm:grid-cols-5">
+                  {adminQuickLinks.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.href}
+                        className="group flex min-h-24 flex-col items-center justify-center gap-2 rounded-[8px] border border-white/72 bg-white/54 px-3 text-sm font-semibold text-[#5A6670] shadow-[0_12px_30px_rgba(90,102,112,0.06)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-[#E8B8C2] hover:bg-white/72 hover:text-[#D86F82]"
+                        type="button"
+                        onClick={() => router.push(item.href)}
+                      >
+                        <span className="grid h-11 w-11 place-items-center rounded-full bg-[#FAFBF7]/78 text-[#5A6670]/70 transition group-hover:scale-110 group-hover:bg-[#F5DCE0]/72 group-hover:text-[#D86F82]">
+                          <Icon className="h-5 w-5" />
+                        </span>
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-[8px] border border-[#D8DDD8]/76 bg-[#FAFBF7]/72 p-4">
+                <p className="text-sm font-semibold text-[#344451]">帮用户重置密码</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                  <input
+                    className="min-h-11 rounded-[8px] border border-[#D8DDD8]/88 bg-white/70 px-3 text-sm outline-none transition focus:border-[#E8B8C2]"
+                    value={resetUser}
+                    onChange={(event) => setResetUser(event.target.value)}
+                    placeholder="用户名"
+                  />
+                  <input
+                    className="min-h-11 rounded-[8px] border border-[#D8DDD8]/88 bg-white/70 px-3 text-sm outline-none transition focus:border-[#E8B8C2]"
+                    value={resetPassword}
+                    onChange={(event) => setResetPassword(event.target.value)}
+                    placeholder="新密码"
+                    type="password"
+                  />
+                  <button
+                    className="inline-flex min-h-11 items-center justify-center rounded-[8px] bg-[#273846] px-4 text-sm font-semibold text-white disabled:opacity-50"
+                    type="button"
+                    onClick={() => void adminResetPassword()}
+                    disabled={!resetUser.trim() || !resetPassword.trim()}
+                  >
+                    重置
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-[8px] border border-[#D8DDD8]/76 bg-[#FAFBF7]/72 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <UsersRound className="h-4 w-4 text-[#D86F82]" />
+                    <p className="text-sm font-semibold text-[#344451]">注册用户详情</p>
+                  </div>
+                  <span className="text-xs font-semibold text-[#5A6670]/48">{users.length} 人</span>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-[#5A6670]/48">
+                  后台不会显示用户密码，只显示账号、邮箱、绑定和邀请状态。
+                </p>
+                <div className="mt-3 max-h-[420px] space-y-3 overflow-auto pr-1">
+                  {users.length === 0 && (
+                    <p className="rounded-[7px] border border-dashed border-[#D8DDD8] px-4 py-8 text-center text-sm text-[#5A6670]/52">
+                      暂无注册用户。
+                    </p>
+                  )}
+                  {users.map((user) => (
+                    <div key={user.id} className="rounded-[7px] border border-white/70 bg-white/66 px-3 py-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-[#344451]">{user.displayName}</p>
+                          <p className="mt-1 text-xs text-[#5A6670]/48">@{user.username}</p>
+                        </div>
+                        <button
+                          className="rounded-[7px] border border-[#D8DDD8]/80 bg-[#FAFBF7]/70 px-3 py-2 text-xs font-semibold text-[#5A6670]"
+                          type="button"
+                          onClick={() => setResetUser(user.username)}
+                        >
+                          选择重置
+                        </button>
+                      </div>
+                      <div className="mt-3 grid gap-2 text-xs leading-5 text-[#5A6670]/58 sm:grid-cols-2">
+                        <p>
+                          <span className="font-semibold text-[#344451]">用户 ID：</span>
+                          <span className="select-all">{user.id}</span>
+                        </p>
+                        <p>
+                          <span className="font-semibold text-[#344451]">邮箱：</span>
+                          {user.email || "未绑定"}
+                        </p>
+                        <p>
+                          <span className="font-semibold text-[#344451]">邮箱验证：</span>
+                          {user.emailVerifiedAt ? `已验证 · ${formatDateTime(user.emailVerifiedAt)}` : "未验证"}
+                        </p>
+                        <p>
+                          <span className="font-semibold text-[#344451]">密码更新时间：</span>
+                          {formatDateTime(user.passwordUpdatedAt)}
+                        </p>
+                        <p>
+                          <span className="font-semibold text-[#344451]">注册时间：</span>
+                          {formatDateTime(user.createdAt)}
+                        </p>
+                        <p>
+                          <span className="font-semibold text-[#344451]">最近登录：</span>
+                          {formatDateTime(user.lastLoginAt)}
+                        </p>
+                        <p>
+                          <span className="font-semibold text-[#344451]">绑定对象：</span>
+                          {user.partnerDisplayName || user.partnerUsername || "未绑定"}
+                        </p>
+                        <p>
+                          <span className="font-semibold text-[#344451]">邀请记录：</span>
+                          {(user.bindingRequests ?? []).length} 条
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       </div>
     </main>
