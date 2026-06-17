@@ -12,6 +12,7 @@ import {
   HandHeart,
   Heart,
   Map as MapIcon,
+  MessageCircleMore,
   Settings,
   ShieldCheck,
   Sparkles,
@@ -26,6 +27,7 @@ export type MemoryNavKey =
   | "favorites"
   | "anniversaries"
   | "capsule"
+  | "feedback"
   | "settings";
 
 const navItems = [
@@ -36,6 +38,7 @@ const navItems = [
   { key: "anniversaries", label: "纪念日", icon: CalendarDays, href: "/anniversaries" },
   { key: "capsule", label: "时光宝盒", icon: Archive, href: "/time-capsule" },
   { key: "settings", label: "设置", icon: Settings, href: "/settings" },
+  { key: "feedback", label: "\u610f\u89c1\u53cd\u9988", icon: MessageCircleMore, href: "/feedback" },
 ] satisfies Array<{
   key: MemoryNavKey;
   label: string;

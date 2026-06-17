@@ -342,42 +342,15 @@ button {
   inset: auto 0 0;
   height: 58vh;
   pointer-events: none;
-  opacity: 0.46;
+  opacity: 0.54;
   background:
     linear-gradient(
       to bottom,
       rgb(250 251 247 / 0) 0%,
-      rgb(214 232 240 / 0.28) 42%,
-      rgb(214 232 240 / 0.18) 100%
+      rgb(214 232 240 / 0.2) 28%,
+      rgb(214 232 240 / 0.32) 72%,
+      rgb(214 232 240 / 0.16) 100%
     );
-}
-
-.map-mist-band::before,
-.map-mist-band::after {
-  content: "";
-  position: absolute;
-  inset-inline: 0;
-  height: 180px;
-  background-repeat: repeat-x;
-  image-rendering: pixelated;
-}
-
-.map-mist-band::before {
-  top: 24px;
-  opacity: 0.12;
-  background-size: 104px 84px;
-  background-image:
-    linear-gradient(135deg, transparent 0 38%, #d6e8f0 38% 55%, transparent 55%),
-    linear-gradient(45deg, transparent 0 44%, #d6e8f0 44% 58%, transparent 58%);
-}
-
-.map-mist-band::after {
-  bottom: 0;
-  opacity: 0.1;
-  background-size: 84px 76px;
-  background-image:
-    linear-gradient(135deg, transparent 0 42%, #a8c8dc 42% 58%, transparent 58%),
-    linear-gradient(45deg, transparent 0 38%, #a8c8dc 38% 52%, transparent 52%);
 }
 
 .real-cover-grain {

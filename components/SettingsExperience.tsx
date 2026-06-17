@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { type ChangeEvent, useEffect, useState } from "react";
 import {
   CalendarDays,
   ImagePlus,
   KeyRound,
   Mail,
+  MailPlus,
+  MessageCircleMore,
   RefreshCcw,
   RotateCcw,
   Settings,
@@ -615,6 +618,46 @@ export default function SettingsExperience() {
               );
             })}
           </div>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Link
+            className="theme-card theme-floating-shadow rounded-[8px] border p-5 transition hover:-translate-y-0.5"
+            href="/feedback"
+          >
+            <div className="flex items-center gap-3">
+              <MessageCircleMore className="h-5 w-5 text-[#D86F82]" />
+              <div>
+                <p className="text-sm font-semibold text-[#344451]">意见反馈</p>
+                <p className="mt-1 text-sm leading-6 text-[#5A6670]/62">单独进入反馈页提交问题、建议或使用感受，管理员会同步收到。</p>
+              </div>
+            </div>
+          </Link>
+
+          {user?.username?.toLowerCase?.() === (process.env.NEXT_PUBLIC_ADMIN_USERNAME || "admin").toLowerCase() ? (
+            <Link
+              className="theme-card theme-floating-shadow rounded-[8px] border p-5 transition hover:-translate-y-0.5"
+              href="/admin/inbox"
+            >
+              <div className="flex items-center gap-3">
+                <MailPlus className="h-5 w-5 text-[#D86F82]" />
+                <div>
+                  <p className="text-sm font-semibold text-[#344451]">管理员收件箱</p>
+                  <p className="mt-1 text-sm leading-6 text-[#5A6670]/62">查看用户反馈，并进入邮件发送中心批量给用户发送自定义内容。</p>
+                </div>
+              </div>
+            </Link>
+          ) : (
+            <div className="theme-card theme-floating-shadow rounded-[8px] border p-5 opacity-68">
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="h-5 w-5 text-[#A8C8DC]" />
+                <div>
+                  <p className="text-sm font-semibold text-[#344451]">管理员区</p>
+                  <p className="mt-1 text-sm leading-6 text-[#5A6670]/62">管理员入口只对管理员账户显示。</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="theme-soft theme-text-muted rounded-[8px] border px-4 py-3 text-sm shadow-[0_12px_28px_rgba(90,102,112,0.06)]">

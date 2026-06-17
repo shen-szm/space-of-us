@@ -1,0 +1,138 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { MessageCircleMore, Send, Sparkles } from "lucide-react";
+import { MemoryPageShell } from "@/components/MemoryNav";
+import type { PublicUserAccount } from "@/data/accounts";
+import type { UserFeedbackCategory } from "@/data/feedback";
+
+const categories: Array<{ value: UserFeedbackCategory; label: string; note: string }> = [
+  { value: "experience", label: "使用体验", note: "页面结构、交互感受、节奏问题" },
+  { value: "bug", label: "问题反馈", note: "异常、报错、状态不同步等" },
+  { value: "idea", label: "功能建议", note: "你希望补进来的功能或流程" },
+  { value: "other", label: "其他", note: "不方便归类的内容" },
+];
+
+async function fetchUser() {
+  const response = await fetch("/api/account/security", { cache: "no-store" });
+  const data = (await response.json().catch(() => null)) as { user?: PublicUserAccount; error?: string } | null;
+  if (!response.ok || !data?.user) {
+    throw new Error(data?.error || "加载账户信息失败");
+  }
+  return data.user;
+}
+
+export default function FeedbackExperience() {
+  const [user, setUser] = useState<PublicUserAccount | null>(null);
+  const [category, setCategory] = useState<UserFeedbackCategory>("experience");
+  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchUser()
+      .then(setUser)
+      .catch((error) => setStatus(error instanceof Error ? error.message : "加载失败"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const submit = async () => {
+    if (!message.trim()) return;
+    setSubmitting(true);
+    setStatus("");
+
+    try {
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category, message }),
+      });
+      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok) throw new Error(data?.error || "提交失败");
+      setMessage("");
+      setStatus("反馈已发送给管理员。");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "提交失败");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <MemoryPageShell active="feedback">
+      <div className="mx-auto max-w-5xl">
+        <header className="theme-card theme-floating-shadow overflow-hidden rounded-[8px] border p-6 sm:p-8">
+          <div className="flex flex-wrap items-start justify-between gap-5">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/78 px-3 py-1.5 text-xs font-semibold text-[#5A6670]/68">
+                <Sparkles className="h-4 w-4 text-[#D86F82]" />
+                Feedback channel
+              </div>
+              <h1 className="mt-5 text-[clamp(30px,5vw,54px)] font-semibold leading-[0.96] text-[#273846]">意见反馈</h1>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-[#5A6670]/68">
+                这是独立于设置页的反馈入口。你可以直接提交问题、建议或使用感受，管理员后台会同步收到，并可继续通过邮件联系你。
+              </p>
+            </div>
+            <div className="rounded-[8px] border border-[#F5DCE0]/72 bg-[#FDF4F6] px-4 py-3 text-sm text-[#5A6670]/70">
+              <p className="font-semibold text-[#344451]">{loading ? "读取中…" : user?.displayName || user?.username || "当前账户"}</p>
+              <p className="mt-1 text-xs">{user?.email || "未绑定邮箱"}</p>
+            </div>
+          </div>
+        </header>
+
+        <section className="mt-5 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="theme-card theme-floating-shadow rounded-[8px] border p-5">
+            <div className="flex items-center gap-3">
+              <MessageCircleMore className="h-5 w-5 text-[#D86F82]" />
+              <div>
+                <p className="text-sm font-semibold text-[#344451]">反馈类型</p>
+                <p className="mt-1 text-sm leading-6 text-[#5A6670]/62">先选一个最接近的分类，方便管理员后续整理。</p>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3">
+              {categories.map((item) => (
+                <button
+                  key={item.value}
+                  className={`rounded-[8px] border p-4 text-left transition ${
+                    category === item.value
+                      ? "border-[#E8B8C2] bg-[#FDF4F6] shadow-[0_14px_30px_rgba(216,111,130,0.08)]"
+                      : "border-[#D8DDD8]/78 bg-white/60 hover:-translate-y-0.5"
+                  }`}
+                  type="button"
+                  onClick={() => setCategory(item.value)}
+                >
+                  <p className="text-sm font-semibold text-[#344451]">{item.label}</p>
+                  <p className="mt-1 text-xs leading-6 text-[#5A6670]/58">{item.note}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="theme-card theme-floating-shadow rounded-[8px] border p-5">
+            <p className="text-sm font-semibold text-[#344451]">写给管理员</p>
+            <p className="mt-2 text-sm leading-6 text-[#5A6670]/62">尽量写清楚页面、操作路径、预期和实际结果。功能建议也可以直接写你希望怎样用。</p>
+            <textarea
+              className="mt-4 min-h-[260px] w-full rounded-[8px] border border-[#D8DDD8]/82 bg-[#FAFBF7]/78 px-4 py-3 text-sm leading-7 text-[#344451] outline-none transition focus:border-[#E8B8C2]"
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              placeholder="例如：情侣订单里希望接收方完成后，发送方能补一句反馈，并在双方历史里都看到。"
+            />
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs text-[#5A6670]/52">{status || "提交后会写入管理员收件箱，并尝试发送邮件提醒。"}</p>
+              <button
+                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#273846] px-5 text-sm font-semibold text-white shadow-[0_16px_34px_rgba(39,56,70,0.16)] transition hover:-translate-y-0.5 disabled:opacity-45"
+                type="button"
+                onClick={submit}
+                disabled={submitting || !message.trim()}
+              >
+                <Send className="h-4 w-4" />
+                {submitting ? "发送中" : "提交反馈"}
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </MemoryPageShell>
+  );
+}

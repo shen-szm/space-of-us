@@ -12,7 +12,7 @@ const ensureMailConfigured = () => {
 };
 
 const postEmail = async (payload: {
-  to: string;
+  to: string | string[];
   subject: string;
   html: string;
   text: string;
@@ -26,7 +26,7 @@ const postEmail = async (payload: {
     },
     body: JSON.stringify({
       from: getSender(),
-      to: [payload.to],
+      to: Array.isArray(payload.to) ? payload.to : [payload.to],
       subject: payload.subject,
       html: payload.html,
       text: payload.text,
@@ -49,6 +49,65 @@ const emailShell = (title: string, content: string) => `
     </div>
   </div>
 `;
+
+const escapeHtml = (value: string) =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+
+const textToHtml = (value: string) => escapeHtml(value).replaceAll("\n", "<br />");
+
+export async function sendAdminFeedbackEmail({
+  to,
+  subject,
+  username,
+  displayName,
+  email,
+  category,
+  message,
+}: {
+  to: string;
+  subject: string;
+  username: string;
+  displayName: string;
+  email?: string;
+  category: string;
+  message: string;
+}) {
+  const content = [
+    `收到来自 <strong>${escapeHtml(displayName)}</strong>（${escapeHtml(username)}）的用户反馈。`,
+    `类型：${escapeHtml(category)}`,
+    `邮箱：${escapeHtml(email || "未绑定")}`,
+    `内容：<br />${textToHtml(message)}`,
+  ].join("<br /><br />");
+
+  await postEmail({
+    to,
+    subject,
+    html: emailShell("用户意见反馈", content),
+    text: `收到来自 ${displayName} (${username}) 的用户反馈。\n类型：${category}\n邮箱：${email || "未绑定"}\n\n${message}`,
+  });
+}
+
+export async function sendAdminCustomMail({
+  to,
+  subject,
+  body,
+}: {
+  to: string[];
+  subject: string;
+  body: string;
+}) {
+  await postEmail({
+    to,
+    subject,
+    html: emailShell(escapeHtml(subject), textToHtml(body)),
+    text: body,
+  });
+}
 
 export async function sendRegisterCodeEmail(email: string, code: string) {
   await postEmail({

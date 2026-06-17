@@ -56,6 +56,55 @@ function PhotoImage({ photo }: Readonly<{ photo: RandomPhoto }>) {
   );
 }
 
+function PixelMusicCover({ track }: Readonly<{ track: MusicRecommendation }>) {
+  const { shell, glow, pixel, accent, ink } = track.palette;
+
+  return (
+    <div
+      className="relative grid aspect-square w-[96px] shrink-0 place-items-center overflow-hidden rounded-[18px] border border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.42),0_14px_34px_rgba(60,44,36,0.12)] pixelated"
+      style={{
+        background: `linear-gradient(145deg, ${shell}, ${glow})`,
+      }}
+    >
+      <div className="absolute inset-[8px] rounded-[12px] border border-white/18 bg-black/16" />
+      {track.cover.pattern === "sunset-grid" && (
+        <>
+          <div className="absolute inset-x-3 bottom-4 h-7 border-t-2 border-white/30" />
+          <div className="absolute inset-x-3 bottom-4 h-7 bg-[linear-gradient(90deg,transparent_0_8px,rgba(255,255,255,0.18)_8px_9px)] bg-[length:10px_10px]" />
+          <div className="absolute left-1/2 top-[26px] h-10 w-10 -translate-x-1/2 rounded-full" style={{ background: glow, boxShadow: `0 0 0 6px ${pixel}33` }} />
+        </>
+      )}
+      {track.cover.pattern === "night-window" && (
+        <>
+          <div className="absolute left-4 top-4 grid grid-cols-3 gap-[3px]">
+            {Array.from({ length: 9 }).map((_, index) => (
+              <span key={index} className="h-3 w-3" style={{ background: index % 2 === 0 ? pixel : ink }} />
+            ))}
+          </div>
+          <div className="absolute bottom-5 left-5 h-8 w-12 rounded-[3px]" style={{ background: `${accent}aa` }} />
+        </>
+      )}
+      {track.cover.pattern === "peach-signal" && (
+        <>
+          <div className="absolute left-4 top-5 h-3 w-14" style={{ background: pixel }} />
+          <div className="absolute left-7 top-8 h-3 w-8" style={{ background: ink }} />
+          <div className="absolute bottom-4 right-4 h-12 w-12 rounded-full border-[6px]" style={{ borderColor: accent }} />
+        </>
+      )}
+      {track.cover.pattern === "mint-lane" && (
+        <>
+          <div className="absolute inset-x-4 bottom-5 h-4 rounded-[4px]" style={{ background: ink }} />
+          <div className="absolute left-5 top-5 h-16 w-4 rounded-[3px]" style={{ background: pixel }} />
+          <div className="absolute right-5 top-8 h-10 w-10 rounded-full" style={{ background: `${accent}cc` }} />
+        </>
+      )}
+      <div className="absolute bottom-3 left-3 rounded-[6px] border border-white/20 bg-black/18 px-2 py-1 text-[9px] font-semibold tracking-[0.18em] text-white/88">
+        {track.cover.label}
+      </div>
+    </div>
+  );
+}
+
 export function MusicRecommendationCard({ className = "" }: Readonly<{ className?: string }>) {
   const [track, setTrack] = useState<MusicRecommendation>(
     () => musicRecommendations[Math.floor(Math.random() * musicRecommendations.length)] ?? musicRecommendations[0],
@@ -66,43 +115,79 @@ export function MusicRecommendationCard({ className = "" }: Readonly<{ className
 
   return (
     <section
-      className={`theme-card theme-floating-shadow overflow-hidden rounded-[20px] border p-4 text-[#5A6670] backdrop-blur-xl ${className}`}
+      className={`theme-card theme-floating-shadow overflow-hidden rounded-[24px] border p-4 text-[#5A6670] backdrop-blur-xl ${className}`}
     >
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="theme-icon-chip grid h-9 w-9 shrink-0 place-items-center rounded-[12px]">
+          <span className="theme-icon-chip grid h-10 w-10 shrink-0 place-items-center rounded-[14px]">
             <Headphones className="h-4 w-4" />
           </span>
           <div className="min-w-0">
-            <p className="theme-text-main truncate text-sm font-semibold">{"\u4eca\u65e5\u914d\u4e50"}</p>
-            <p className="theme-text-soft mt-1 text-xs">{"\u7559\u4e00\u9996\u5b89\u9759\u7684\u80cc\u666f\u97f3\u3002"}</p>
+            <p className="theme-text-main truncate text-[15px] font-semibold">今日配乐</p>
+            <p className="theme-text-soft mt-1 line-clamp-2 text-xs leading-5">留一首安静的背景音，陪今天的地图一起往下走。</p>
           </div>
         </div>
         <button
-          className="theme-subtle-button inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-3 text-xs font-semibold transition"
+          className="theme-subtle-button inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition"
           type="button"
           onClick={shuffleTrack}
-          aria-label={"\u6362\u4e00\u9996\u63a8\u8350"}
+          aria-label="换一首推荐"
         >
           <SkipForward className="h-3.5 w-3.5" />
-          {"\u6362\u4e00\u9996"}
+          换一首
         </button>
       </div>
 
-      <div className="mt-4 rounded-[18px] border border-[var(--border-soft)] bg-[linear-gradient(150deg,color-mix(in_srgb,var(--accent-wash)_78%,white),rgba(255,255,255,0.94))] p-4">
-        <p className="theme-text-main truncate text-[clamp(1.6rem,4vw,2rem)] font-semibold leading-none">{track.title}</p>
-        <p className="theme-text-muted mt-2 truncate text-sm font-medium">{track.artist}</p>
-        <p className="theme-text-soft mt-4 line-clamp-2 text-sm leading-6">{track.note}</p>
+      <div className="mt-4 rounded-[22px] border border-[var(--border-soft)] bg-[linear-gradient(160deg,rgba(255,255,255,0.94),rgba(250,251,247,0.84))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
+        <div className="flex items-start gap-4">
+          <PixelMusicCover track={track} />
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#5A6670]/42">Apple-style pick</p>
+            <h3 className="mt-2 line-clamp-2 text-[clamp(1.8rem,4.1vw,2.25rem)] font-semibold leading-[0.92] text-[#344451]">
+              {track.title}
+            </h3>
+            <p className="mt-2 truncate text-sm font-medium text-[#5A6670]/76">{track.artist}</p>
+            <div className="mt-3 inline-flex max-w-full rounded-full border border-white/80 bg-white/82 px-3 py-1.5 text-xs font-semibold text-[#D86F82] shadow-[0_10px_22px_rgba(216,111,130,0.08)]">
+              <span className="truncate">{track.mood}</span>
+            </div>
+            <p className="mt-3 line-clamp-3 text-sm leading-7 text-[#5A6670]/70">{track.note}</p>
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center gap-3 rounded-[18px] border border-white/72 bg-white/78 px-3 py-3">
+          <button
+            type="button"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#344451] text-white shadow-[0_10px_22px_rgba(52,68,81,0.18)]"
+            aria-label="静态播放按钮"
+          >
+            <span className="ml-0.5 inline-block h-0 w-0 border-b-[7px] border-l-[11px] border-t-[7px] border-b-transparent border-l-white border-t-transparent" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-3 text-[11px] font-semibold text-[#5A6670]/56">
+              <span className="truncate">推荐已绑定网易云链接</span>
+              <span>01:28</span>
+            </div>
+            <div className="mt-2 h-2 rounded-full bg-[#E8E3DB]">
+              <div
+                className="h-2 rounded-full"
+                style={{
+                  width: "42%",
+                  background: `linear-gradient(90deg, ${track.palette.accent}, ${track.palette.glow})`,
+                }}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-end">
+      <div className="mt-4 flex justify-end">
         <a
-          className="theme-accent-button inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold transition hover:-translate-y-0.5"
+          className="theme-accent-button inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-5 text-sm font-semibold transition hover:-translate-y-0.5"
           href={track.href}
           rel="noreferrer"
           target="_blank"
         >
-          {"\u53bb\u542c\u8fd9\u9996"}
+          去听这首
           <ExternalLink className="h-4 w-4" />
         </a>
       </div>

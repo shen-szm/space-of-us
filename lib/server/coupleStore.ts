@@ -1,7 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
-import { type CoupleHubStore, defaultCoupleStore } from "@/data/couple";
+import { type CoupleHubStore, type CoupleOrder, defaultCoupleStore } from "@/data/couple";
 import { getPrivateDataFilePath } from "@/lib/server/dataDir";
 import {
   assertWritableStorageConfigured,
@@ -15,6 +15,59 @@ const localFileName = "couple-hub.json";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
+
+const cleanOrders = (value: unknown): CoupleOrder[] => {
+  if (!Array.isArray(value)) return [];
+
+  const orders = value.filter(isRecord).reduce<CoupleOrder[]>((result, order) => {
+      if (
+        typeof order.id !== "string" ||
+        typeof order.title !== "string" ||
+        (order.from !== "a" && order.from !== "b") ||
+        (order.to !== "a" && order.to !== "b") ||
+        typeof order.createdAt !== "string" ||
+        typeof order.updatedAt !== "string"
+      ) {
+        return result;
+      }
+
+      result.push({
+        id: order.id,
+        itemId: typeof order.itemId === "string" ? order.itemId : undefined,
+        title: order.title,
+        brand: typeof order.brand === "string" ? order.brand : undefined,
+        details: typeof order.details === "string" ? order.details : undefined,
+        senderNote:
+          typeof order.senderNote === "string"
+            ? order.senderNote
+            : typeof order.note === "string"
+              ? order.note
+              : undefined,
+        senderFeedback: typeof order.senderFeedback === "string" ? order.senderFeedback : undefined,
+        senderFeedbackAt: typeof order.senderFeedbackAt === "string" ? order.senderFeedbackAt : undefined,
+        resolvedAt:
+          typeof order.resolvedAt === "string"
+            ? order.resolvedAt
+            : typeof order.completedAt === "string"
+              ? order.completedAt
+              : undefined,
+        resolvedBy: order.resolvedBy === "a" || order.resolvedBy === "b" ? order.resolvedBy : undefined,
+        from: order.from,
+        to: order.to,
+        status:
+          order.status === "completed" || order.status === "declined" || order.status === "accepted"
+            ? order.status
+            : "pending",
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
+        completedAt: typeof order.completedAt === "string" ? order.completedAt : undefined,
+      } satisfies CoupleOrder);
+
+      return result;
+    }, []);
+
+  return orders;
+};
 
 const hasCoupleData = (store: CoupleHubStore) =>
   store.agreements.length > 0 ||
@@ -58,7 +111,7 @@ const normalizeStore = (value: unknown): CoupleHubStore => {
     },
     agreements: Array.isArray(value.agreements) ? value.agreements : [],
     menu: Array.isArray(value.menu) ? value.menu : [],
-    orders: Array.isArray(value.orders) ? value.orders : [],
+    orders: cleanOrders(value.orders),
   };
 };
 

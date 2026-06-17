@@ -26,7 +26,7 @@ const partnerRoles = new Set(["a", "b"]);
 const agreementCategories = new Set(["food", "play", "travel", "anniversary", "promise"]);
 const agreementStatuses = new Set(["wish", "planned", "doing", "done", "archived"]);
 const menuCategories = new Set(["milkTea", "food", "dessert", "snack", "other"]);
-const orderStatuses = new Set(["pending", "accepted", "preparing", "completed", "declined", "cancelled"]);
+const orderStatuses = new Set(["pending", "accepted", "completed", "declined"]);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -234,7 +234,7 @@ export async function POST(request: NextRequest) {
 
   if (payload.action === "createOrder") {
     if (!synced.isBound) {
-      return NextResponse.json({ error: "请先完成情侣绑定后再发送订单" }, { status: 403 });
+      return NextResponse.json({ error: "请先完成情侣绑定后再发送订单。" }, { status: 403 });
     }
 
     const from = currentRole;
@@ -250,7 +250,7 @@ export async function POST(request: NextRequest) {
       title,
       brand: menuItem?.brand || cleanString(payload.brand, 60) || undefined,
       details: menuItem?.preference || cleanString(payload.details, 180) || undefined,
-      note: cleanString(payload.note, 300) || undefined,
+      senderNote: cleanString(payload.senderNote, 300) || undefined,
       from,
       to,
       status: "pending",
@@ -276,13 +276,10 @@ export async function POST(request: NextRequest) {
 
     const canAccept = targetOrder.to === currentRole && targetOrder.status === "pending" && status === "accepted";
     const canDecline = targetOrder.to === currentRole && targetOrder.status === "pending" && status === "declined";
-    const canAdvance =
-      targetOrder.from === currentRole &&
-      (targetOrder.status === "accepted" || targetOrder.status === "preparing") &&
-      (status === "preparing" || status === "completed" || status === "cancelled");
+    const canComplete = targetOrder.to === currentRole && targetOrder.status === "accepted" && status === "completed";
 
-    if (!canAccept && !canDecline && !canAdvance) {
-      return NextResponse.json({ error: "当前状态下无法执行这个订单操作" }, { status: 403 });
+    if (!canAccept && !canDecline && !canComplete) {
+      return NextResponse.json({ error: "当前状态下无法执行这个订单操作。" }, { status: 403 });
     }
 
     store.orders = store.orders.map((order) =>
@@ -291,7 +288,39 @@ export async function POST(request: NextRequest) {
             ...order,
             status,
             updatedAt: timestamp,
-            completedAt: status === "completed" ? timestamp : undefined,
+            completedAt: status === "completed" ? timestamp : order.completedAt,
+            resolvedAt: status === "completed" || status === "declined" ? timestamp : order.resolvedAt,
+            resolvedBy: status === "completed" || status === "declined" ? currentRole : order.resolvedBy,
+          }
+        : order,
+    );
+
+    await writeCoupleStore(store, resolved.scopeKey);
+    return NextResponse.json({ ...store, role: currentRole });
+  }
+
+  if (payload.action === "saveOrderFeedback") {
+    const itemId = cleanString(payload.id, 80);
+    const senderFeedback = cleanString(payload.senderFeedback, 240);
+    const targetOrder = store.orders.find((order) => order.id === itemId);
+
+    if (!targetOrder) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+    if (targetOrder.from !== currentRole || targetOrder.status !== "completed") {
+      return NextResponse.json({ error: "Only the sender can save feedback after completion." }, { status: 403 });
+    }
+    if (!senderFeedback) {
+      return NextResponse.json({ error: "Feedback is required." }, { status: 400 });
+    }
+
+    store.orders = store.orders.map((order) =>
+      order.id === itemId
+        ? {
+            ...order,
+            senderFeedback,
+            senderFeedbackAt: timestamp,
+            updatedAt: timestamp,
           }
         : order,
     );
