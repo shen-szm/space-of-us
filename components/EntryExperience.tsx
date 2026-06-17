@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import {
   AlertTriangle,
   ArrowRight,
@@ -528,12 +527,7 @@ export default function EntryExperience() {
         </section>
 
         <section className="flex min-h-[calc(100dvh-32px)] items-center justify-center lg:min-h-0 lg:h-full">
-          <motion.div
-            className="theme-card-strong theme-floating-shadow-strong w-full max-w-[760px] rounded-[30px] border p-5 backdrop-blur-2xl sm:p-7"
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.48 }}
-          >
+          <div className="theme-card-strong theme-floating-shadow-strong w-full max-w-[760px] rounded-[30px] border p-5 backdrop-blur-2xl sm:p-7">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <BrandHeart />
@@ -1017,7 +1011,7 @@ export default function EntryExperience() {
                 </div>
               </div>
             )}
-          </motion.div>
+          </div>
         </section>
       </div>
     </main>
