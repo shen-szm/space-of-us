@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Lock, MessageCircleMore, Send, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CheckCircle2, Lock, MessageCircleMore, Send, Sparkles } from "lucide-react";
 import { MemoryPageShell } from "@/components/MemoryNav";
 import type { PublicUserAccount } from "@/data/accounts";
 import type { UserFeedbackCategory } from "@/data/feedback";
@@ -29,6 +29,8 @@ export default function FeedbackExperience() {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
+  const successDialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     fetchUser()
@@ -36,6 +38,13 @@ export default function FeedbackExperience() {
       .catch((error) => setStatus(error instanceof Error ? error.message : "加载失败"))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    const dialog = successDialogRef.current;
+    if (!dialog) return;
+    if (successOpen && !dialog.open) dialog.showModal();
+    if (!successOpen && dialog.open) dialog.close();
+  }, [successOpen]);
 
   const submit = async () => {
     if (!message.trim()) return;
@@ -51,7 +60,8 @@ export default function FeedbackExperience() {
       const data = (await response.json().catch(() => null)) as { error?: string } | null;
       if (!response.ok) throw new Error(data?.error || "提交失败");
       setMessage("");
-      setStatus("反馈已发送到管理员收件箱，且仅管理员可见。");
+      setStatus("");
+      setSuccessOpen(true);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "提交失败");
     } finally {
@@ -144,6 +154,28 @@ export default function FeedbackExperience() {
           </div>
         </section>
       </div>
+
+      <dialog
+        ref={successDialogRef}
+        className="m-auto w-[min(90vw,400px)] rounded-[14px] border-0 bg-white p-0 text-[#344451] shadow-[0_24px_64px_rgba(39,56,70,0.24)] backdrop:bg-[#273846]/48 backdrop:backdrop-blur-sm"
+        onClose={() => setSuccessOpen(false)}
+      >
+        <div className="p-6 text-center sm:p-7">
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#FDF4F6] text-[#D86F82]">
+            <CheckCircle2 className="h-6 w-6" />
+          </span>
+          <h2 className="mt-4 text-xl font-semibold text-[#273846]">反馈已提交</h2>
+          <p className="mt-2 text-sm leading-7 text-[#5A6670]">内容已发送到管理员收件箱。</p>
+          <button
+            autoFocus
+            className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[#273846] px-5 text-sm font-semibold text-white transition hover:bg-[#344451] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D86F82]"
+            type="button"
+            onClick={() => setSuccessOpen(false)}
+          >
+            知道了
+          </button>
+        </div>
+      </dialog>
     </MemoryPageShell>
   );
 }

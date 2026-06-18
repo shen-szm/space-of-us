@@ -41,6 +41,7 @@ import {
   writeLoginPhotoText,
 } from "@/data/loginPhotoStore";
 import type { PublicUserAccount } from "@/data/accounts";
+import type { AuthSessionInfo } from "@/lib/authSessionInfo";
 
 const loginPhotoFallback = (fileName: string) => withVersion(`/photos/login/${fileName}.jpg`);
 
@@ -93,6 +94,7 @@ export default function SettingsExperience() {
   const [isSaving, setIsSaving] = useState(false);
   const [securityStatus, setSecurityStatus] = useState("");
   const [user, setUser] = useState<PublicUserAccount | null>(null);
+  const [session, setSession] = useState<AuthSessionInfo | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [nextEmail, setNextEmail] = useState("");
@@ -293,11 +295,14 @@ export default function SettingsExperience() {
   useEffect(() => {
     const load = async () => {
       try {
+        const authSession = await getJson<AuthSessionInfo>("/api/auth/session");
+        setSession(authSession);
+
         const [serverSettings, photos, texts] = await Promise.all([
           syncAppSettings(),
           readLoginPhotos(),
           readLoginPhotoTexts(),
-          loadSecurity(),
+          authSession.role === "site" && authSession.username ? loadSecurity() : Promise.resolve(),
         ]);
         setSettings({ ...serverSettings, loginPhotoTexts: texts });
         setLoginPhotos(photos);
@@ -377,6 +382,7 @@ export default function SettingsExperience() {
           </div>
         </div>
 
+        {session?.role === "site" && session.username && (
         <div className="theme-card theme-floating-shadow rounded-[8px] border p-5">
           <div className="flex items-center gap-3">
             <ShieldCheck className="h-5 w-5 text-[#E8B8C2]" />
@@ -469,6 +475,7 @@ export default function SettingsExperience() {
             {securityStatus || "账号安全信息已接入云端，支持多设备同步使用。"}
           </div>
         </div>
+        )}
 
         <div className="theme-card theme-floating-shadow rounded-[8px] border p-5">
           <div className="flex items-center gap-3">
@@ -634,7 +641,7 @@ export default function SettingsExperience() {
             </div>
           </Link>
 
-          {user?.username?.toLowerCase?.() === (process.env.NEXT_PUBLIC_ADMIN_USERNAME || "admin").toLowerCase() ? (
+          {session?.role === "admin" ? (
             <Link
               className="theme-card theme-floating-shadow rounded-[8px] border p-5 transition hover:-translate-y-0.5"
               href="/admin/inbox"

@@ -11,6 +11,7 @@ import {
   Eye,
   EyeOff,
   Heart,
+  Inbox,
   LayoutDashboard,
   LockKeyhole,
   LogOut,
@@ -53,6 +54,7 @@ const adminQuickLinks = [
   { label: "情侣中心", href: "/couple", icon: Heart },
   { label: "回忆记录", href: "/memories", icon: LayoutDashboard },
   { label: "纪念日", href: "/anniversaries", icon: CalendarDays },
+  { label: "用户反馈", href: "/admin/inbox", icon: Inbox },
   { label: "系统设置", href: "/settings", icon: ShieldCheck },
 ];
 
@@ -830,7 +832,7 @@ export default function EntryExperience() {
                     <p className="mt-1 text-xs text-[#5A6670]/50">像启动台一样快速进入每一个页面。</p>
                   </div>
                 </div>
-                <div className="relative mt-4 grid gap-3 sm:grid-cols-5">
+                <div className="relative mt-4 grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
                   {adminQuickLinks.map((item) => {
                     const Icon = item.icon;
                     return (

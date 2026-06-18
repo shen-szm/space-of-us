@@ -1,13 +1,23 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Inbox, MailPlus, Send, ShieldCheck, Users } from "lucide-react";
+import { Inbox, MailPlus, RefreshCcw, Send, ShieldCheck, Users } from "lucide-react";
 import { MemoryPageShell } from "@/components/MemoryNav";
 import type { PublicUserAccount } from "@/data/accounts";
-import type { UserFeedback } from "@/data/feedback";
+import type { UserFeedback, UserFeedbackCategory } from "@/data/feedback";
+import type { AuthSessionInfo } from "@/lib/authSessionInfo";
+import { loadAdminInboxSources } from "@/lib/adminInboxLoading";
 
 type FeedbackPayload = { feedback: UserFeedback[] };
 type AccountsPayload = { users: PublicUserAccount[] };
+
+const categoryLabels: Record<UserFeedbackCategory, string> = {
+  bug: "问题反馈",
+  idea: "功能建议",
+  experience: "使用体验",
+  other: "其他",
+};
 
 async function getJson<T>(url: string) {
   const response = await fetch(url, { cache: "no-store" });
@@ -23,16 +33,25 @@ export default function AdminInboxExperience() {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [status, setStatus] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
+  const [feedbackLoading, setFeedbackLoading] = useState(true);
+  const [accountsLoading, setAccountsLoading] = useState(true);
+  const [feedbackError, setFeedbackError] = useState("");
+  const [accountsError, setAccountsError] = useState("");
   const [sending, setSending] = useState(false);
 
-  const load = async () => {
-    const [feedbackPayload, accountPayload] = await Promise.all([
-      getJson<FeedbackPayload>("/api/admin-feedback"),
-      getJson<AccountsPayload>("/api/accounts"),
-    ]);
-    setFeedback(feedbackPayload.feedback);
-    setUsers(accountPayload.users);
+  const loadFeedback = async () => {
+    setFeedbackLoading(true);
+    setFeedbackError("");
+    try {
+      const payload = await getJson<FeedbackPayload>("/api/admin-feedback");
+      setFeedback(payload.feedback);
+    } catch (error) {
+      setFeedbackError(error instanceof Error ? error.message : "反馈加载失败");
+    } finally {
+      setFeedbackLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -40,17 +59,34 @@ export default function AdminInboxExperience() {
 
     const bootstrap = async () => {
       try {
-        const [feedbackPayload, accountPayload] = await Promise.all([
-          getJson<FeedbackPayload>("/api/admin-feedback"),
-          getJson<AccountsPayload>("/api/accounts"),
-        ]);
+        const session = await getJson<AuthSessionInfo>("/api/auth/session");
         if (cancelled) return;
-        setFeedback(feedbackPayload.feedback);
-        setUsers(accountPayload.users);
+        if (session.role !== "admin") {
+          setAuthorized(false);
+          return;
+        }
+
+        setAuthorized(true);
+        const sources = await loadAdminInboxSources(
+          async () => (await getJson<FeedbackPayload>("/api/admin-feedback")).feedback,
+          async () => (await getJson<AccountsPayload>("/api/accounts")).users,
+        );
+        if (cancelled) return;
+        setFeedback(sources.feedback.data);
+        setUsers(sources.accounts.data);
+        setFeedbackError(sources.feedback.error ?? "");
+        setAccountsError(sources.accounts.error ?? "");
       } catch (error) {
-        if (!cancelled) setStatus(error instanceof Error ? error.message : "加载失败");
+        if (!cancelled) {
+          setAuthorized(false);
+          setStatus(error instanceof Error ? error.message : "会话检查失败");
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setSessionLoading(false);
+          setFeedbackLoading(false);
+          setAccountsLoading(false);
+        }
       }
     };
 
@@ -97,12 +133,46 @@ export default function AdminInboxExperience() {
         const data = (await response.json().catch(() => null)) as { error?: string } | null;
         if (!response.ok) throw new Error(data?.error || "操作失败");
       });
-      await load();
+      await loadFeedback();
       setStatus("反馈状态已更新。");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "操作失败");
     }
   };
+
+  if (sessionLoading) {
+    return (
+      <MemoryPageShell active="settings">
+        <div className="mx-auto max-w-3xl">
+          <div className="theme-card rounded-[8px] border p-6 text-sm text-[#5A6670]">
+            正在验证管理员身份…
+          </div>
+        </div>
+      </MemoryPageShell>
+    );
+  }
+
+  if (!authorized) {
+    return (
+      <MemoryPageShell active="settings">
+        <div className="mx-auto max-w-3xl">
+          <section className="theme-card rounded-[12px] border p-8 text-center">
+            <ShieldCheck className="mx-auto h-8 w-8 text-[#D86F82]" />
+            <h1 className="mt-4 text-2xl font-semibold text-[#273846]">需要管理员身份</h1>
+            <p className="mx-auto mt-3 max-w-lg text-sm leading-7 text-[#5A6670]">
+              当前会话没有管理员权限。请返回登录页，使用管理员账号重新登录。
+            </p>
+            <Link
+              className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-[#273846] px-5 text-sm font-semibold text-white"
+              href="/"
+            >
+              返回管理员登录
+            </Link>
+          </section>
+        </div>
+      </MemoryPageShell>
+    );
+  }
 
   const sendMail = async () => {
     if (!subject.trim() || !body.trim() || selectedEmails.length === 0) return;
@@ -170,8 +240,21 @@ export default function AdminInboxExperience() {
             </div>
 
             <div className="mt-4 grid gap-3">
-              {loading && <p className="text-sm text-[#5A6670]/58">加载中…</p>}
-              {!loading && feedback.length === 0 && (
+              {feedbackLoading && <p className="text-sm text-[#5A6670]/58">正在读取反馈…</p>}
+              {!feedbackLoading && feedbackError && (
+                <div className="rounded-[8px] border border-[#E8B8C2] bg-[#FDF4F6] px-4 py-4 text-sm text-[#7D4652]">
+                  <p>反馈加载失败：{feedbackError}</p>
+                  <button
+                    className="mt-3 inline-flex min-h-9 items-center gap-2 rounded-[7px] bg-white px-3 text-xs font-semibold text-[#5A6670]"
+                    type="button"
+                    onClick={() => void loadFeedback()}
+                  >
+                    <RefreshCcw className="h-3.5 w-3.5" />
+                    重新加载
+                  </button>
+                </div>
+              )}
+              {!feedbackLoading && !feedbackError && feedback.length === 0 && (
                 <div className="theme-soft rounded-[8px] border px-4 py-4 text-sm text-[#5A6670]/62">还没有用户反馈。</div>
               )}
               {feedback.map((item) => (
@@ -187,7 +270,7 @@ export default function AdminInboxExperience() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="rounded-full bg-[#F5DCE0]/62 px-2.5 py-1 text-xs font-semibold text-[#D86F82]">
-                        {item.category}
+                        {categoryLabels[item.category]}
                       </span>
                       <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#5A6670]">
                         {item.status === "resolved" ? "已处理" : "待处理"}
@@ -253,7 +336,13 @@ export default function AdminInboxExperience() {
             </div>
 
             <div className="mt-4 grid max-h-[280px] gap-2 overflow-auto rounded-[8px] border border-[#D8DDD8]/72 bg-[#FAFBF7]/72 p-3">
-              {verifiedUsers.length === 0 ? (
+              {accountsLoading ? (
+                <p className="px-2 py-3 text-sm text-[#5A6670]/58">正在读取可发信用户…</p>
+              ) : accountsError ? (
+                <div className="rounded-[8px] border border-[#E8B8C2] bg-[#FDF4F6] px-4 py-4 text-sm text-[#7D4652]">
+                  用户邮箱加载失败：{accountsError}
+                </div>
+              ) : verifiedUsers.length === 0 ? (
                 <div className="rounded-[8px] border border-dashed border-[#D8DDD8]/72 bg-white/56 px-4 py-4 text-sm text-[#5A6670]/58">
                   当前没有可用于通知的已验证邮箱用户。
                 </div>
