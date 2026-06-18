@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MessageCircleMore, Send, Sparkles } from "lucide-react";
+import { Lock, MessageCircleMore, Send, Sparkles } from "lucide-react";
 import { MemoryPageShell } from "@/components/MemoryNav";
 import type { PublicUserAccount } from "@/data/accounts";
 import type { UserFeedbackCategory } from "@/data/feedback";
@@ -51,7 +51,7 @@ export default function FeedbackExperience() {
       const data = (await response.json().catch(() => null)) as { error?: string } | null;
       if (!response.ok) throw new Error(data?.error || "提交失败");
       setMessage("");
-      setStatus("反馈已发送给管理员。");
+      setStatus("反馈已发送到管理员收件箱，且仅管理员可见。");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "提交失败");
     } finally {
@@ -71,7 +71,7 @@ export default function FeedbackExperience() {
               </div>
               <h1 className="mt-5 text-[clamp(30px,5vw,54px)] font-semibold leading-[0.96] text-[#273846]">意见反馈</h1>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-[#5A6670]/68">
-                这是独立于设置页的反馈入口。你可以直接提交问题、建议或使用感受，管理员后台会同步收到，并可继续通过邮件联系你。
+                这里是用户唯一的反馈入口。提交后会直接进入管理员后台收件箱，普通用户不能查看其他反馈内容。
               </p>
             </div>
             <div className="rounded-[8px] border border-[#F5DCE0]/72 bg-[#FDF4F6] px-4 py-3 text-sm text-[#5A6670]/70">
@@ -107,19 +107,30 @@ export default function FeedbackExperience() {
                 </button>
               ))}
             </div>
+
+            <div className="theme-soft mt-4 rounded-[8px] border px-4 py-3 text-sm text-[#5A6670]/66">
+              <div className="flex items-start gap-2">
+                <Lock className="mt-0.5 h-4 w-4 text-[#D86F82]" />
+                <p>提交后仅管理员后台 `/admin/inbox` 可见，普通账户不会看到反馈列表。</p>
+              </div>
+            </div>
           </div>
 
           <div className="theme-card theme-floating-shadow rounded-[8px] border p-5">
             <p className="text-sm font-semibold text-[#344451]">写给管理员</p>
-            <p className="mt-2 text-sm leading-6 text-[#5A6670]/62">尽量写清楚页面、操作路径、预期和实际结果。功能建议也可以直接写你希望怎样用。</p>
+            <p className="mt-2 text-sm leading-6 text-[#5A6670]/62">
+              尽量写清页面、操作路径、预期和实际结果。功能建议也可以直接描述你希望它如何工作。
+            </p>
             <textarea
               className="mt-4 min-h-[260px] w-full rounded-[8px] border border-[#D8DDD8]/82 bg-[#FAFBF7]/78 px-4 py-3 text-sm leading-7 text-[#344451] outline-none transition focus:border-[#E8B8C2]"
               value={message}
               onChange={(event) => setMessage(event.target.value)}
-              placeholder="例如：情侣订单里希望接收方完成后，发送方能补一句反馈，并在双方历史里都看到。"
+              placeholder="例如：情侣订单完成后，希望发送方可以补一条反馈，并且双方历史里都能看到。"
             />
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs text-[#5A6670]/52">{status || "提交后会写入管理员收件箱，并尝试发送邮件提醒。"}</p>
+              <p className="text-xs text-[#5A6670]/52">
+                {status || "发送后会写入管理员收件箱，并在邮件链路可用时同步提醒管理员。"}
+              </p>
               <button
                 className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#273846] px-5 text-sm font-semibold text-white shadow-[0_16px_34px_rgba(39,56,70,0.16)] transition hover:-translate-y-0.5 disabled:opacity-45"
                 type="button"
