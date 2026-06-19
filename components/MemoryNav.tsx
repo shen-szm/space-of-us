@@ -2,13 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode, RefObject } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   Archive,
-  ExternalLink,
   BookOpen,
   CalendarDays,
+  ExternalLink,
   HandHeart,
   Heart,
   Map as MapIcon,
@@ -30,28 +30,196 @@ export type MemoryNavKey =
   | "feedback"
   | "settings";
 
-const navItems = [
-  { key: "map", label: "地图", icon: MapIcon, href: "/map" },
-  { key: "couple", label: "情侣中心", icon: Heart, href: "/couple" },
-  { key: "memories", label: "回忆记录", icon: BookOpen, href: "/memories" },
-  { key: "favorites", label: "地点收藏", icon: Heart, href: "/favorites" },
-  { key: "anniversaries", label: "纪念日", icon: CalendarDays, href: "/anniversaries" },
-  { key: "capsule", label: "时光宝盒", icon: Archive, href: "/time-capsule" },
-  { key: "settings", label: "设置", icon: Settings, href: "/settings" },
-  { key: "feedback", label: "\u610f\u89c1\u53cd\u9988", icon: MessageCircleMore, href: "/feedback" },
-] satisfies Array<{
+type NavItem = {
   key: MemoryNavKey;
   label: string;
   icon: typeof MapIcon;
   href: string;
-}>;
+};
+
+const navItems = [
+  { key: "map", label: "\u5730\u56fe", icon: MapIcon, href: "/map" },
+  { key: "couple", label: "\u60c5\u4fa3\u4e2d\u5fc3", icon: Heart, href: "/couple" },
+  { key: "memories", label: "\u56de\u5fc6\u8bb0\u5f55", icon: BookOpen, href: "/memories" },
+  { key: "favorites", label: "\u5730\u70b9\u6536\u85cf", icon: Heart, href: "/favorites" },
+  { key: "anniversaries", label: "\u7eaa\u5ff5\u65e5", icon: CalendarDays, href: "/anniversaries" },
+  { key: "capsule", label: "\u65f6\u5149\u5b9d\u76d2", icon: Archive, href: "/time-capsule" },
+  { key: "settings", label: "\u8bbe\u7f6e", icon: Settings, href: "/settings" },
+  { key: "feedback", label: "\u610f\u89c1\u53cd\u9988", icon: MessageCircleMore, href: "/feedback" },
+] satisfies NavItem[];
+
+const focusableSelector = [
+  "a[href]",
+  "button:not([disabled])",
+  "textarea:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  '[tabindex]:not([tabindex="-1"])',
+].join(",");
+
+const getFocusableElements = (container: HTMLElement | null) => {
+  if (!container) return [];
+  return Array.from(container.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+    (element) => !element.hasAttribute("disabled") && element.getAttribute("aria-hidden") !== "true",
+  );
+};
+
+const focusFirstDialogElement = (container: HTMLElement | null) => {
+  const [firstElement] = getFocusableElements(container);
+  firstElement?.focus();
+};
+
+const trapDialogTabKey = (event: KeyboardEvent, container: HTMLElement | null) => {
+  if (event.key !== "Tab") return;
+
+  const elements = getFocusableElements(container);
+  if (elements.length === 0) {
+    event.preventDefault();
+    return;
+  }
+
+  const firstElement = elements[0];
+  const lastElement = elements[elements.length - 1];
+  const activeElement = document.activeElement;
+
+  if (event.shiftKey && activeElement === firstElement) {
+    event.preventDefault();
+    lastElement.focus();
+    return;
+  }
+
+  if (!event.shiftKey && activeElement === lastElement) {
+    event.preventDefault();
+    firstElement.focus();
+  }
+};
+
+function NavLinks({ active, compact = false }: Readonly<{ active: MemoryNavKey; compact?: boolean }>) {
+  return (
+    <>
+      {navItems.map((item) => {
+        const Icon = item.icon;
+        const selected = item.key === active;
+
+        return (
+          <Link
+            key={item.key}
+            aria-current={selected ? "page" : undefined}
+            className={
+              compact
+                ? `inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                    selected
+                      ? "border-[color-mix(in_srgb,var(--accent-primary)_18%,white)] bg-[var(--accent-wash)] text-[var(--accent-primary)]"
+                      : "border-[var(--border-soft)] bg-[color-mix(in_srgb,var(--surface-card)_74%,white)] theme-text-muted"
+                  }`
+                : `flex w-full items-center gap-3 rounded-[8px] border px-4 py-3 text-sm font-medium transition ${
+                    selected
+                      ? "border-[color-mix(in_srgb,var(--accent-primary)_18%,white)] bg-[var(--accent-wash)] text-[var(--accent-primary)]"
+                      : "border-transparent theme-text-muted hover:border-[var(--border-soft)] hover:bg-[color-mix(in_srgb,var(--surface-card)_58%,white)]"
+                  }`
+            }
+            href={item.href}
+          >
+            <Icon className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+            <span>{item.label}</span>
+          </Link>
+        );
+      })}
+    </>
+  );
+}
+
+function MobileMemoryNav({ active }: Readonly<{ active: MemoryNavKey }>) {
+  return (
+    <nav
+      aria-label="Primary navigation"
+      className="theme-shell sticky top-0 z-40 -mx-6 mb-6 border-b px-4 py-3 shadow-[0_10px_24px_rgba(90,102,112,0.06)] backdrop-blur lg:hidden sm:-mx-10 sm:px-6"
+    >
+      <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <NavLinks active={active} compact />
+      </div>
+    </nav>
+  );
+}
+
+type SupportDialogProps = {
+  closeLabel: string;
+  imageAlt: string;
+  imageClassName: string;
+  imagePriority?: boolean;
+  labelledBy: string;
+  title: string;
+  dialogRef: RefObject<HTMLDivElement | null>;
+  onClose: () => void;
+  onKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
+  children?: ReactNode;
+};
+
+function SupportDialog({
+  closeLabel,
+  imageAlt,
+  imageClassName,
+  imagePriority = false,
+  labelledBy,
+  title,
+  dialogRef,
+  onClose,
+  onKeyDown,
+  children,
+}: Readonly<SupportDialogProps>) {
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[#344451]/66 px-6 py-10 backdrop-blur-sm" onClick={onClose}>
+      <div
+        ref={dialogRef}
+        aria-labelledby={labelledBy}
+        aria-modal="true"
+        className="relative max-h-full w-full max-w-[980px] overflow-auto rounded-[12px] bg-white p-3 shadow-[0_28px_80px_rgba(52,68,81,0.28)]"
+        role="dialog"
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={onKeyDown}
+      >
+        <h2 className="sr-only" id={labelledBy}>
+          {title}
+        </h2>
+        <button
+          aria-label={closeLabel}
+          className="absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#D8DDD8]/80 bg-white/88 text-[#5A6670] transition hover:border-[#E8B8C2] hover:text-[#D86F82]"
+          type="button"
+          onClick={onClose}
+        >
+          <X className="h-4 w-4" />
+        </button>
+        {children}
+        <Image
+          alt={imageAlt}
+          className={imageClassName}
+          height={1599}
+          priority={imagePriority}
+          src="/photos/support-qr.jpg"
+          width={1280}
+        />
+      </div>
+    </div>
+  );
+}
 
 export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
   const [supportOpen, setSupportOpen] = useState(false);
   const [supportPreviewOpen, setSupportPreviewOpen] = useState(false);
+  const supportDialogRef = useRef<HTMLDivElement>(null);
+  const supportPreviewDialogRef = useRef<HTMLDivElement>(null);
+  const supportTriggerRef = useRef<HTMLButtonElement>(null);
+  const supportPreviewTriggerRef = useRef<HTMLButtonElement>(null);
+  const supportTitleId = useId();
+  const supportPreviewTitleId = useId();
 
   useEffect(() => {
-    if (!supportOpen && !supportPreviewOpen) return;
+    const activeDialog = supportPreviewOpen ? supportPreviewDialogRef.current : supportOpen ? supportDialogRef.current : null;
+    if (!activeDialog) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const timer = window.setTimeout(() => focusFirstDialogElement(activeDialog), 0);
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -59,13 +227,29 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
           setSupportPreviewOpen(false);
           return;
         }
+
         setSupportOpen(false);
+        return;
       }
+
+      trapDialogTabKey(event, activeDialog);
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.clearTimeout(timer);
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [supportOpen, supportPreviewOpen]);
+
+  useEffect(() => {
+    if (!supportOpen) supportTriggerRef.current?.focus();
+  }, [supportOpen]);
+
+  useEffect(() => {
+    if (!supportPreviewOpen) supportPreviewTriggerRef.current?.focus();
+  }, [supportPreviewOpen]);
 
   return (
     <aside className="theme-shell hidden min-h-screen w-[260px] shrink-0 border-r px-5 py-8 shadow-[12px_0_34px_rgba(90,102,112,0.04)] backdrop-blur lg:block">
@@ -73,66 +257,48 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
         <div className="mx-auto grid h-14 w-14 place-items-center">
           <Heart className="h-10 w-10 fill-[var(--accent-highlight)] text-[color-mix(in_srgb,var(--accent-primary)_72%,white)]" />
         </div>
-        <p className="theme-text-main mt-2 text-lg font-semibold">我们的地图</p>
-        <p className="theme-text-soft mt-1 text-xs">只属于两个人的回忆空间</p>
+        <p className="theme-text-main mt-2 text-lg font-semibold">\u6211\u4eec\u7684\u5730\u56fe</p>
+        <p className="theme-text-soft mt-1 text-xs">\u53ea\u5c5e\u4e8e\u4e24\u4e2a\u4eba\u7684\u56de\u5fc6\u7a7a\u95f4</p>
       </div>
 
-      <nav className="mt-10 space-y-2">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const selected = item.key === active;
-
-          return (
-            <Link
-              key={item.key}
-              className={`flex w-full items-center gap-3 rounded-[8px] border px-4 py-3 text-sm font-medium transition ${
-                selected
-                  ? "border-[color-mix(in_srgb,var(--accent-primary)_18%,white)] bg-[var(--accent-wash)] text-[var(--accent-primary)]"
-                  : "border-transparent theme-text-muted hover:border-[var(--border-soft)] hover:bg-[color-mix(in_srgb,var(--surface-card)_58%,white)]"
-              }`}
-              href={item.href}
-            >
-              <Icon className="h-4 w-4" />
-              {item.label}
-            </Link>
-          );
-        })}
+      <nav aria-label="Primary navigation" className="mt-10 space-y-2">
+        <NavLinks active={active} />
       </nav>
 
       <div className="theme-card theme-floating-shadow mt-10 rounded-[8px] border p-4 text-sm leading-7 theme-text-muted">
-        在地图的每个角落，慢慢收藏你们一起走过、想去、想记住的故事。
+        \u5728\u5730\u56fe\u7684\u6bcf\u4e2a\u89d2\u843d\uff0c\u6162\u6162\u6536\u85cf\u4f60\u4eec\u4e00\u8d77\u8d70\u8fc7\u3001\u60f3\u53bb\u3001\u60f3\u8bb0\u4f4f\u7684\u6545\u4e8b\u3002
         <Heart className="ml-1 inline h-3.5 w-3.5 fill-[var(--accent-highlight)] text-[color-mix(in_srgb,var(--accent-primary)_72%,white)]" />
       </div>
 
       <div className="theme-card theme-floating-shadow mt-4 overflow-hidden rounded-[8px] border p-4">
         <div className="flex items-center gap-2">
           <Heart className="h-3.5 w-3.5 fill-[var(--accent-highlight)] text-[color-mix(in_srgb,var(--accent-primary)_72%,white)]" />
-          <p className="theme-text-main text-xs font-semibold">关于这个空间</p>
+          <p className="theme-text-main text-xs font-semibold">\u5173\u4e8e\u8fd9\u4e2a\u7a7a\u95f4</p>
         </div>
         <p className="theme-text-muted mt-2 text-xs leading-6">
-          这里用来装下两个人的城市足迹、纪念日、心愿清单，还有那些只想留给彼此的小约定。
+          \u8fd9\u91cc\u7528\u6765\u88c5\u4e0b\u4e24\u4e2a\u4eba\u7684\u57ce\u5e02\u8db3\u8ff9\u3001\u7eaa\u5ff5\u65e5\u3001\u5fc3\u613f\u6e05\u5355\uff0c\u8fd8\u6709\u90a3\u4e9b\u53ea\u60f3\u7559\u7ed9\u5f7c\u6b64\u7684\u5c0f\u7ea6\u5b9a\u3002
         </p>
 
         <div className="theme-divider mt-3 border-t pt-3">
-          <p className="theme-text-soft text-[11px] font-semibold">这里会记录什么</p>
+          <p className="theme-text-soft text-[11px] font-semibold">\u8fd9\u91cc\u4f1a\u8bb0\u5f55\u4ec0\u4e48</p>
           <p className="theme-text-muted mt-1 text-xs leading-6">
-            想吃的小店、想喝的奶茶、想一起去的地方、已经发生的瞬间，都可以被轻轻放进 Space of us。
+            \u60f3\u5403\u7684\u5c0f\u5e97\u3001\u60f3\u559d\u7684\u5976\u8336\u3001\u60f3\u4e00\u8d77\u53bb\u7684\u5730\u65b9\u3001\u5df2\u7ecf\u53d1\u751f\u7684\u77ac\u95f4\uff0c\u90fd\u53ef\u4ee5\u88ab\u8f7b\u8f7b\u653e\u8fdb Space of us\u3002
           </p>
         </div>
 
         <div className="theme-divider mt-3 border-t pt-3">
-          <p className="theme-text-soft text-[11px] font-semibold">我们的约定</p>
+          <p className="theme-text-soft text-[11px] font-semibold">\u6211\u4eec\u7684\u7ea6\u5b9a</p>
           <div className="mt-2 rounded-[7px] border border-[color-mix(in_srgb,var(--accent-primary)_18%,white)] bg-[var(--accent-wash)] px-3 py-2 text-xs leading-6 theme-text-muted">
-            不赶时间，不怕遗忘。把喜欢的事情一件件存下来，等有空的时候一起完成。
+            \u4e0d\u8d76\u65f6\u95f4\uff0c\u4e0d\u6015\u9057\u5fd8\u3002\u628a\u559c\u6b22\u7684\u4e8b\u60c5\u4e00\u4ef6\u4ef6\u5b58\u4e0b\u6765\uff0c\u7b49\u6709\u7a7a\u7684\u65f6\u5019\u4e00\u8d77\u5b8c\u6210\u3002
           </div>
         </div>
 
         <div className="theme-divider mt-3 border-t pt-3">
-          <p className="theme-text-soft text-[11px] font-semibold">灵感来源</p>
+          <p className="theme-text-soft text-[11px] font-semibold">\u7075\u611f\u6765\u6e90</p>
           <div className="theme-text-muted mt-2 space-y-2 text-xs leading-6">
-            <p>感谢原博主的开源分享。</p>
+            <p>\u611f\u8c22\u539f\u4f5c\u8005\u7684\u5f00\u6e90\u5206\u4eab\u3002</p>
             <p>
-              GitHub：
+              GitHub\uff1a
               <a
                 className="ml-1 inline-flex items-center gap-1 text-[var(--accent-primary)] underline decoration-[var(--accent-highlight)] underline-offset-2 transition hover:opacity-80"
                 href="https://github.com/zkeyoned/map-of-us-template"
@@ -143,22 +309,25 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
                 <ExternalLink className="h-3 w-3" />
               </a>
             </p>
-            <p>抖音 ID：Zz00726yd</p>
+            <p>\u6296\u97f3 ID\uff1asz00726yd</p>
           </div>
         </div>
 
         <div className="theme-divider mt-3 border-t pt-3">
-          <p className="theme-text-soft text-[11px] font-semibold">赞助支持</p>
+          <p className="theme-text-soft text-[11px] font-semibold">\u8d5e\u52a9\u652f\u6301</p>
           <p className="theme-text-muted mt-2 text-xs leading-6">
-            如果这个项目对你有帮助，愿意的话可以通过赞助支持继续完善 Space of us。
+            \u5982\u679c\u8fd9\u4e2a\u9879\u76ee\u5bf9\u4f60\u6709\u5e2e\u52a9\uff0c\u613f\u610f\u7684\u8bdd\u53ef\u4ee5\u901a\u8fc7\u8d5e\u52a9\u652f\u6301\u7ee7\u7eed\u5b8c\u5584 Space of us\u3002
           </p>
           <button
+            ref={supportTriggerRef}
+            aria-haspopup="dialog"
+            aria-expanded={supportOpen}
             className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-[7px] border border-[color-mix(in_srgb,var(--accent-primary)_18%,white)] bg-[var(--accent-wash)] px-3 py-2 text-xs font-semibold text-[var(--accent-primary)] transition hover:opacity-88"
             type="button"
             onClick={() => setSupportOpen(true)}
           >
             <HandHeart className="h-3.5 w-3.5" />
-            愿意支持
+            \u613f\u610f\u652f\u6301
           </button>
         </div>
 
@@ -174,49 +343,51 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
       </div>
 
       {supportOpen && (
-        <div
-          className="fixed inset-0 z-[120] flex items-center justify-center bg-[#344451]/66 px-6 py-10 backdrop-blur-sm"
-          onClick={() => setSupportOpen(false)}
+        <SupportDialog
+          closeLabel="\u5173\u95ed\u8d5e\u52a9\u56fe\u7247"
+          dialogRef={supportDialogRef}
+          imageAlt="\u8d5e\u52a9\u652f\u6301\u6536\u6b3e\u7801"
+          imageClassName="h-auto w-full rounded-[8px]"
+          imagePriority
+          labelledBy={supportTitleId}
+          onClose={() => setSupportOpen(false)}
+          onKeyDown={(event) => trapDialogTabKey(event.nativeEvent, supportDialogRef.current)}
+          title="\u8d5e\u52a9\u652f\u6301"
         >
-          <div
-            className="relative max-h-full w-full max-w-[980px] overflow-auto rounded-[12px] bg-white p-3 shadow-[0_28px_80px_rgba(52,68,81,0.28)]"
-            onClick={(event) => event.stopPropagation()}
+          <button
+            ref={supportPreviewTriggerRef}
+            aria-label="\u6253\u5f00\u5927\u56fe\u9884\u89c8"
+            className="relative mx-auto mb-3 block w-full max-w-[920px]"
+            type="button"
+            onClick={() => setSupportPreviewOpen(true)}
           >
+            <span className="sr-only">\u6253\u5f00\u8d5e\u52a9\u4e8c\u7ef4\u7801\u5927\u56fe</span>
+          </button>
+        </SupportDialog>
+      )}
+
+      {supportPreviewOpen && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-[#161F27]/88 px-4 py-6 backdrop-blur-md" onClick={() => setSupportPreviewOpen(false)}>
+          <div
+            ref={supportPreviewDialogRef}
+            aria-labelledby={supportPreviewTitleId}
+            aria-modal="true"
+            className="max-h-full w-full overflow-auto"
+            role="dialog"
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => trapDialogTabKey(event.nativeEvent, supportPreviewDialogRef.current)}
+          >
+            <h2 className="sr-only" id={supportPreviewTitleId}>
+              \u8d5e\u52a9\u4e8c\u7ef4\u7801\u5927\u56fe\u9884\u89c8
+            </h2>
             <button
-              aria-label="关闭赞助图片"
-              className="absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#D8DDD8]/80 bg-white/88 text-[#5A6670] transition hover:border-[#E8B8C2] hover:text-[#D86F82]"
+              aria-label="Close full preview"
+              className="absolute right-4 top-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:border-white/40 hover:bg-white/20"
               type="button"
-              onClick={() => setSupportOpen(false)}
+              onClick={() => setSupportPreviewOpen(false)}
             >
               <X className="h-4 w-4" />
             </button>
-            <button className="relative mx-auto block w-full max-w-[920px]" type="button" onClick={() => setSupportPreviewOpen(true)}>
-              <Image
-                alt="赞助支持收款码"
-                className="h-auto w-full rounded-[8px]"
-                height={1599}
-                priority
-                src="/photos/support-qr.jpg"
-                width={1280}
-              />
-            </button>
-          </div>
-        </div>
-      )}
-      {supportPreviewOpen && (
-        <div
-          className="fixed inset-0 z-[130] flex items-center justify-center bg-[#161F27]/88 px-4 py-6 backdrop-blur-md"
-          onClick={() => setSupportPreviewOpen(false)}
-        >
-          <button
-            aria-label="Close full preview"
-            className="absolute right-4 top-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:border-white/40 hover:bg-white/20"
-            type="button"
-            onClick={() => setSupportPreviewOpen(false)}
-          >
-            <X className="h-4 w-4" />
-          </button>
-          <div className="max-h-full w-full overflow-auto" onClick={(event) => event.stopPropagation()}>
             <div className="mx-auto w-full max-w-[1280px]">
               <Image alt="Support QR preview" className="h-auto w-full rounded-[10px]" height={1599} src="/photos/support-qr.jpg" width={1280} />
             </div>
@@ -259,7 +430,10 @@ export function MemoryPageShell({
       <span className="absolute right-[17%] top-[15%] h-2 w-2 rounded-full bg-[var(--accent-secondary)]" aria-hidden="true" />
       <div className="relative z-10 flex min-h-screen">
         <MemorySidebar active={active} />
-        <section className="min-w-0 flex-1 px-6 py-8 sm:px-10">{children}</section>
+        <section className="min-w-0 flex-1 px-6 py-8 sm:px-10">
+          <MobileMemoryNav active={active} />
+          {children}
+        </section>
       </div>
       {adminSession && (
         <Link
@@ -267,7 +441,7 @@ export function MemoryPageShell({
           href="/"
         >
           <ShieldCheck className="h-4 w-4" />
-          返回控制台
+          \u8fd4\u56de\u63a7\u5236\u53f0
         </Link>
       )}
     </main>
