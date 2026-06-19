@@ -142,38 +142,36 @@ function MobileMemoryNav({ active }: Readonly<{ active: MemoryNavKey }>) {
   );
 }
 
-type SupportDialogProps = {
+type DialogShellProps = {
   closeLabel: string;
-  imageAlt: string;
-  imageClassName: string;
-  imagePriority?: boolean;
+  children: ReactNode;
+  className: string;
+  dialogRef: RefObject<HTMLDivElement | null>;
   labelledBy: string;
   title: string;
-  dialogRef: RefObject<HTMLDivElement | null>;
   onClose: () => void;
   onKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
-  children?: ReactNode;
+  overlayClassName: string;
 };
 
-function SupportDialog({
+function DialogShell({
   closeLabel,
-  imageAlt,
-  imageClassName,
-  imagePriority = false,
+  children,
+  className,
+  dialogRef,
   labelledBy,
   title,
-  dialogRef,
   onClose,
   onKeyDown,
-  children,
-}: Readonly<SupportDialogProps>) {
+  overlayClassName,
+}: Readonly<DialogShellProps>) {
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[#344451]/66 px-6 py-10 backdrop-blur-sm" onClick={onClose}>
+    <div className={overlayClassName} onClick={onClose}>
       <div
         ref={dialogRef}
         aria-labelledby={labelledBy}
         aria-modal="true"
-        className="relative max-h-full w-full max-w-[980px] overflow-auto rounded-[12px] bg-white p-3 shadow-[0_28px_80px_rgba(52,68,81,0.28)]"
+        className={className}
         role="dialog"
         onClick={(event) => event.stopPropagation()}
         onKeyDown={onKeyDown}
@@ -190,14 +188,6 @@ function SupportDialog({
           <X className="h-4 w-4" />
         </button>
         {children}
-        <Image
-          alt={imageAlt}
-          className={imageClassName}
-          height={1599}
-          priority={imagePriority}
-          src="/photos/support-qr.jpg"
-          width={1280}
-        />
       </div>
     </div>
   );
@@ -320,8 +310,8 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
           </p>
           <button
             ref={supportTriggerRef}
-            aria-haspopup="dialog"
             aria-expanded={supportOpen}
+            aria-haspopup="dialog"
             className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-[7px] border border-[color-mix(in_srgb,var(--accent-primary)_18%,white)] bg-[var(--accent-wash)] px-3 py-2 text-xs font-semibold text-[var(--accent-primary)] transition hover:opacity-88"
             type="button"
             onClick={() => setSupportOpen(true)}
@@ -343,56 +333,50 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
       </div>
 
       {supportOpen && (
-        <SupportDialog
+        <DialogShell
           closeLabel="\u5173\u95ed\u8d5e\u52a9\u56fe\u7247"
+          className="relative max-h-full w-full max-w-[980px] overflow-auto rounded-[12px] bg-white p-3 shadow-[0_28px_80px_rgba(52,68,81,0.28)]"
           dialogRef={supportDialogRef}
-          imageAlt="\u8d5e\u52a9\u652f\u6301\u6536\u6b3e\u7801"
-          imageClassName="h-auto w-full rounded-[8px]"
-          imagePriority
           labelledBy={supportTitleId}
           onClose={() => setSupportOpen(false)}
           onKeyDown={(event) => trapDialogTabKey(event.nativeEvent, supportDialogRef.current)}
+          overlayClassName="fixed inset-0 z-[120] flex items-center justify-center bg-[#344451]/66 px-6 py-10 backdrop-blur-sm"
           title="\u8d5e\u52a9\u652f\u6301"
         >
           <button
             ref={supportPreviewTriggerRef}
             aria-label="\u6253\u5f00\u5927\u56fe\u9884\u89c8"
-            className="relative mx-auto mb-3 block w-full max-w-[920px]"
+            className="relative mx-auto block w-full max-w-[920px]"
             type="button"
             onClick={() => setSupportPreviewOpen(true)}
           >
-            <span className="sr-only">\u6253\u5f00\u8d5e\u52a9\u4e8c\u7ef4\u7801\u5927\u56fe</span>
+            <Image
+              alt="\u8d5e\u52a9\u652f\u6301\u6536\u6b3e\u7801"
+              className="h-auto w-full rounded-[8px]"
+              height={1599}
+              priority
+              src="/photos/support-qr.jpg"
+              width={1280}
+            />
           </button>
-        </SupportDialog>
+        </DialogShell>
       )}
 
       {supportPreviewOpen && (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-[#161F27]/88 px-4 py-6 backdrop-blur-md" onClick={() => setSupportPreviewOpen(false)}>
-          <div
-            ref={supportPreviewDialogRef}
-            aria-labelledby={supportPreviewTitleId}
-            aria-modal="true"
-            className="max-h-full w-full overflow-auto"
-            role="dialog"
-            onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => trapDialogTabKey(event.nativeEvent, supportPreviewDialogRef.current)}
-          >
-            <h2 className="sr-only" id={supportPreviewTitleId}>
-              \u8d5e\u52a9\u4e8c\u7ef4\u7801\u5927\u56fe\u9884\u89c8
-            </h2>
-            <button
-              aria-label="Close full preview"
-              className="absolute right-4 top-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:border-white/40 hover:bg-white/20"
-              type="button"
-              onClick={() => setSupportPreviewOpen(false)}
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <div className="mx-auto w-full max-w-[1280px]">
-              <Image alt="Support QR preview" className="h-auto w-full rounded-[10px]" height={1599} src="/photos/support-qr.jpg" width={1280} />
-            </div>
+        <DialogShell
+          closeLabel="Close full preview"
+          className="relative max-h-full w-full overflow-auto"
+          dialogRef={supportPreviewDialogRef}
+          labelledBy={supportPreviewTitleId}
+          onClose={() => setSupportPreviewOpen(false)}
+          onKeyDown={(event) => trapDialogTabKey(event.nativeEvent, supportPreviewDialogRef.current)}
+          overlayClassName="fixed inset-0 z-[130] flex items-center justify-center bg-[#161F27]/88 px-4 py-6 backdrop-blur-md"
+          title="\u8d5e\u52a9\u4e8c\u7ef4\u7801\u5927\u56fe\u9884\u89c8"
+        >
+          <div className="mx-auto w-full max-w-[1280px]">
+            <Image alt="Support QR preview" className="h-auto w-full rounded-[10px]" height={1599} src="/photos/support-qr.jpg" width={1280} />
           </div>
-        </div>
+        </DialogShell>
       )}
     </aside>
   );

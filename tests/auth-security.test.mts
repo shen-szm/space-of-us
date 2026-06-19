@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
@@ -7,6 +7,8 @@ import { isValidManagedPassword, managedPasswordPolicyText } from "../lib/server
 
 const routePath = path.join(process.cwd(), "app", "api", "app-settings", "route.ts");
 const memoryNavPath = path.join(process.cwd(), "components", "MemoryNav.tsx");
+const entryExperiencePath = path.join(process.cwd(), "components", "EntryExperience.tsx");
+const settingsExperiencePath = path.join(process.cwd(), "components", "SettingsExperience.tsx");
 const collectSourceFiles = async (directory: string): Promise<string[]> => {
   const entries = await readdir(directory, { withFileTypes: true });
   const files = await Promise.all(
@@ -106,4 +108,21 @@ test("memory navigation includes mobile fallback and accessible dialogs", async 
   assert.match(source, /role="dialog"/);
   assert.match(source, /aria-modal="true"/);
   assert.match(source, /focusFirstDialogElement/);
+});
+
+test("entry experience delegates shared auth metadata to a dedicated module", async () => {
+  const source = await readFile(entryExperiencePath, "utf8");
+
+  assert.match(source, /from "@\/components\/entry\/entryExperienceShared"/);
+  assert.doesNotMatch(source, /const authModes:/);
+  assert.doesNotMatch(source, /const modeTitles:/);
+  assert.doesNotMatch(source, /const adminQuickLinks =/);
+});
+
+test("settings experience delegates theme preset rendering to a dedicated section", async () => {
+  const source = await readFile(settingsExperiencePath, "utf8");
+
+  assert.match(source, /from "@\/components\/settings\/ThemePresetSection"/);
+  assert.match(source, /<ThemePresetSection/);
+  assert.doesNotMatch(source, /themePresetList\.map\(/);
 });

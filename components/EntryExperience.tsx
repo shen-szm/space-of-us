@@ -1,24 +1,19 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   ArrowRight,
-  CalendarDays,
   ChevronDown,
   Eye,
   EyeOff,
-  Heart,
-  Inbox,
-  LayoutDashboard,
   LockKeyhole,
   LogOut,
   Mail,
-  MapPinned,
   RefreshCcw,
-  ShieldCheck,
   UserPlus,
   UserRound,
   UsersRound,
@@ -27,8 +22,18 @@ import type { PublicUserAccount } from "@/data/accounts";
 import type { AdminAlert } from "@/data/adminAlerts";
 import AccountBindingPanel from "@/components/AccountBindingPanel";
 import { LocalPrivacyBadge } from "@/components/LocalPrivacyImage";
+import {
+  type AuthMode,
+  BrandHeart,
+  adminQuickLinks,
+  authModes,
+  captchaToSrc,
+  cleanErrorMessage,
+  formatDateTime,
+  isAdminName,
+  modeTitles,
+} from "@/components/entry/entryExperienceShared";
 
-type AuthMode = "login" | "register" | "recover";
 type RecoverStage = "request-code" | "verify-code" | "reset-password";
 type Status = "idle" | "checking" | "wrong" | "done";
 
@@ -37,85 +42,29 @@ type CaptchaState = {
   svg: string;
 };
 
-const authModes: Array<{ key: AuthMode; label: string }> = [
-  { key: "login", label: "登录" },
-  { key: "register", label: "注册" },
-  { key: "recover", label: "找回" },
-];
-
-const modeTitles: Record<AuthMode, string> = {
-  login: "欢迎回来",
-  register: "创建你们的入口",
-  recover: "找回密码",
-};
-
-const adminQuickLinks = [
-  { label: "地图主页", href: "/map", icon: MapPinned },
-  { label: "情侣中心", href: "/couple", icon: Heart },
-  { label: "回忆记录", href: "/memories", icon: LayoutDashboard },
-  { label: "纪念日", href: "/anniversaries", icon: CalendarDays },
-  { label: "用户反馈", href: "/admin/inbox", icon: Inbox },
-  { label: "系统设置", href: "/settings", icon: ShieldCheck },
-];
-
-const isAdminName = (value: string) =>
-  value.trim().toLowerCase() === (process.env.NEXT_PUBLIC_ADMIN_USERNAME || "admin").toLowerCase();
-
-const formatDateTime = (value?: string) => {
-  if (!value) return "暂无";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "暂无";
-  return date.toLocaleString("zh-CN");
-};
-
-const cleanErrorMessage = (value: string) => {
-  if (!value) return "";
-  if (value.includes("Mail service is not configured")) return "邮件服务尚未配置，请先检查 Resend 环境变量。";
-  if (value.includes("Database is not configured")) return "数据库尚未配置，请先完成 Supabase 连接配置。";
-  if (value.includes("Load users failed")) return "加载用户列表失败，请稍后再试。";
-  if (value.includes("Invalid API key")) return "Supabase API Key 无效，请检查线上环境变量。";
-  if (value.includes("Email already exists")) return "该邮箱已被使用，请更换一个。";
-  if (value.includes("Account already exists")) return "该用户名已存在，请更换一个。";
-  if (value.includes("Invalid captcha")) return "图形验证码错误，请重新输入。";
-  if (value.includes("Captcha expired")) return "图形验证码已过期，请重新获取。";
-  if (value.includes("Please wait before requesting another code")) return "请等待 1 分钟后再重新发送验证码。";
-  if (value.includes("Daily email limit reached")) return "当天验证码发送次数已达上限，请明天再试。";
-  return value;
-};
-
 const postJson = async <T,>(url: string, payload: Record<string, unknown>) => {
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-
   const data = (await response.json().catch(() => null)) as { error?: string } & T;
-  if (!response.ok) {
-    throw new Error(cleanErrorMessage(data?.error ?? "Request failed"));
-  }
+  if (!response.ok) throw new Error(data?.error ?? "Request failed");
   return data as T;
 };
 
 const getJson = async <T,>(url: string) => {
   const response = await fetch(url, { cache: "no-store", credentials: "same-origin" });
   const data = (await response.json().catch(() => null)) as { error?: string } & T;
-  if (!response.ok) {
-    throw new Error(cleanErrorMessage(data?.error ?? `Request failed (${response.status})`));
-  }
+  if (!response.ok) throw new Error(data?.error ?? `Request failed (${response.status})`);
   return data as T;
 };
 
-const captchaToSrc = (svg?: string) =>
-  svg ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}` : "";
-
-function BrandHeart() {
-  return (
-    <span className="grid h-12 w-12 place-items-center rounded-full border border-white/72 bg-white/62 text-[#D86F82] shadow-[0_16px_38px_rgba(216,111,130,0.16)] backdrop-blur-xl">
-      <Heart className="h-6 w-6 fill-[#D86F82]" />
-    </span>
-  );
-}
+const statusClassName = (status: Status) => {
+  if (status === "wrong") return "border-rose-200 bg-rose-50 text-rose-700";
+  if (status === "done") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  return "border-[var(--border-soft)] bg-white/72 text-[var(--text-muted)]";
+};
 
 export default function EntryExperience() {
   const router = useRouter();
@@ -219,7 +168,7 @@ export default function EntryExperience() {
   const surfaceLoginMessage = (detail: string) => {
     if (detail.includes("Invalid admin")) return "管理员账号或密码不正确。";
     if (detail.includes("Invalid account")) return "账号或密码不正确，请重新确认。";
-    return detail ? `登录失败：${detail}` : "登录失败，请稍后重试。";
+    return detail ? `登录失败：${cleanErrorMessage(detail)}` : "登录失败，请稍后重试。";
   };
 
   const submitLogin = async () => {
@@ -264,7 +213,7 @@ export default function EntryExperience() {
       await ensureCaptcha();
     } catch (error) {
       setStatus("wrong");
-      setMessage(error instanceof Error ? `发送失败：${error.message}` : "验证码发送失败。");
+      setMessage(error instanceof Error ? `发送失败：${cleanErrorMessage(error.message)}` : "验证码发送失败。");
       await ensureCaptcha().catch(() => undefined);
     }
   };
@@ -284,7 +233,7 @@ export default function EntryExperience() {
     setEmailCode("");
     setCaptchaAnswer("");
     setCaptcha(null);
-    setMessage("注册成功，现在可以使用这个账号登录了。");
+    setMessage("注册成功，请使用新账号登录。");
   };
 
   const sendRecoverCode = async () => {
@@ -299,7 +248,7 @@ export default function EntryExperience() {
     setRecoverStage("verify-code");
     setEmailCode("");
     setStatus("done");
-    setMessage("验证码已发送到绑定邮箱，请先完成邮箱验证，再继续密码重置。");
+    setMessage("验证码已发送到绑定邮箱，请先完成邮箱验证。");
     await ensureCaptcha();
   };
 
@@ -329,7 +278,7 @@ export default function EntryExperience() {
     setEmailCode("");
     setRecoverGrantToken("");
     setRecoverMaskedEmail("");
-    setMessage("密码已经重置，请使用新密码登录。");
+    setMessage("密码已重置，请使用新密码登录。");
   };
 
   const submit = async () => {
@@ -363,9 +312,9 @@ export default function EntryExperience() {
       if (mode === "login") {
         setMessage(surfaceLoginMessage(detail));
       } else if (mode === "register") {
-        setMessage(detail ? `注册失败：${detail}` : "注册失败，请稍后重试。");
+        setMessage(detail ? `注册失败：${cleanErrorMessage(detail)}` : "注册失败，请稍后重试。");
       } else {
-        setMessage(detail ? `找回失败：${detail}` : "找回失败，请稍后重试。");
+        setMessage(detail ? `找回失败：${cleanErrorMessage(detail)}` : "找回失败，请稍后重试。");
       }
       window.setTimeout(() => setStatus("idle"), 900);
     }
@@ -387,7 +336,7 @@ export default function EntryExperience() {
       setMessage("用户密码已重置。");
     } catch (error) {
       setStatus("wrong");
-      setMessage(error instanceof Error ? `重置失败：${error.message}` : "重置失败，请稍后重试。");
+      setMessage(error instanceof Error ? `重置失败：${cleanErrorMessage(error.message)}` : "重置失败，请稍后重试。");
     }
   };
 
@@ -410,27 +359,24 @@ export default function EntryExperience() {
     resetTransient();
   };
 
-  const primaryLabel =
-    mode === "register" ? "创建账号" : mode === "recover" ? "继续处理" : "进入网站";
-
-  const renderRecoverHint = () => {
-    if (recoverStage === "verify-code") {
-      return recoverMaskedEmail
-        ? `验证码已发送到 ${recoverMaskedEmail}，先完成邮箱验证，再进行密码重置。`
-        : "验证码已发送到绑定邮箱，先完成邮箱验证，再进行密码重置。";
-    }
-    if (recoverStage === "reset-password") {
-      return "邮箱验证成功，请输入新的登录密码。";
-    }
-    return "输入用户名或邮箱，先完成图形验证，再向绑定邮箱发送验证码。";
-  };
+  const recoverHint =
+    recoverStage === "verify-code"
+      ? recoverMaskedEmail
+        ? `验证码已发送到 ${recoverMaskedEmail}，输入邮箱验证码后继续。`
+        : "验证码已发送到绑定邮箱，输入邮箱验证码后继续。"
+      : recoverStage === "reset-password"
+        ? "邮箱验证已通过，请输入新的登录密码。"
+        : "输入用户名或邮箱，先完成图形验证，再向绑定邮箱发送验证码。";
 
   const modeDescription =
     mode === "register"
       ? "创建一个共享入口，把地图、回忆、纪念日和约定放进同一张私密地图里。"
       : mode === "recover"
-        ? renderRecoverHint()
+        ? recoverHint
         : "登录后即可继续查看你们的地图、约定、纪念和共享进度。";
+
+  const primaryLabel =
+    mode === "register" ? "创建账号" : mode === "recover" ? "继续处理" : "进入网站";
 
   return (
     <main className="theme-page login-stage relative min-h-[100dvh] overflow-x-hidden overflow-y-auto theme-text-main">
@@ -439,514 +385,398 @@ export default function EntryExperience() {
       <div className="login-grid absolute inset-0" aria-hidden="true" />
       <div className="login-stage-orbit login-stage-orbit-a" aria-hidden="true" />
       <div className="login-stage-orbit login-stage-orbit-b" aria-hidden="true" />
-      <div className="login-stage-pulse login-stage-pulse-a" aria-hidden="true" />
-      <div className="login-stage-pulse login-stage-pulse-b" aria-hidden="true" />
 
       <div className="login-shell relative z-10 mx-auto flex min-h-[100dvh] w-full items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
         <section className="login-auth-card theme-card-strong theme-floating-shadow-strong w-full border backdrop-blur-2xl">
           {!adminPanel ? (
-            <div className="mx-auto flex w-full max-w-[680px] flex-col justify-center">
-
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <BrandHeart />
-                    <div>
-                      <p className="theme-text-main text-[28px] font-semibold leading-none">Space of us</p>
-                      <p className="theme-text-soft mt-1 text-xs font-semibold">Private Couple Space</p>
-                    </div>
+            <div className="mx-auto flex w-full max-w-[720px] flex-col justify-center">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <BrandHeart />
+                  <div>
+                    <p className="theme-text-main text-[28px] font-semibold leading-none">Space of us</p>
+                    <p className="theme-text-soft mt-1 text-xs font-semibold">Private Couple Space</p>
                   </div>
-                  <span className="theme-soft theme-text-soft grid h-11 w-11 place-items-center rounded-full border">
-                    <LockKeyhole className="h-5 w-5" />
+                </div>
+                <span className="theme-soft theme-text-soft grid h-11 w-11 place-items-center rounded-full border">
+                  <LockKeyhole className="h-5 w-5" />
+                </span>
+              </div>
+
+              <div className="theme-soft mt-7 w-fit rounded-full border p-1">
+                <div className="grid grid-cols-3 gap-1">
+                  {authModes.map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      className={`min-h-10 min-w-20 rounded-full px-4 text-sm font-semibold transition ${
+                        mode === item.key
+                          ? "bg-white text-[var(--accent-primary)] shadow-[0_10px_24px_rgba(90,102,112,0.08)]"
+                          : "theme-text-muted hover:bg-white/58 hover:text-[var(--foreground)]"
+                      }`}
+                      onClick={() => {
+                        setMode(item.key);
+                        setBindingExpanded(false);
+                        resetTransient();
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-7">
+                <h1 className="theme-text-main text-[clamp(2rem,4vw,3.4rem)] font-semibold leading-[1.04] tracking-[-0.03em]">
+                  {modeTitles[mode]}
+                </h1>
+                <p className="theme-text-muted mt-3 max-w-[36rem] text-sm leading-7">{modeDescription}</p>
+              </div>
+
+              <div className="mt-6 grid gap-3">
+                <label className="block">
+                  <span className="theme-text-soft mb-2 block text-xs font-semibold">
+                    {mode === "login" || mode === "recover" ? "用户名或邮箱" : "用户名"}
                   </span>
-                </div>
+                  <span className="theme-input flex min-h-12 items-center gap-3 rounded-[16px] px-3 transition">
+                    <UserRound className="theme-text-soft h-4 w-4" />
+                    <input
+                      className="theme-text-main min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[var(--text-soft)]"
+                      value={username}
+                      onChange={(event) => setUsername(event.target.value)}
+                      placeholder={mode === "login" || mode === "recover" ? "输入用户名或邮箱" : "设置登录用户名"}
+                      autoComplete="username"
+                    />
+                  </span>
+                </label>
 
-                <div className="theme-soft mt-7 w-fit rounded-full border p-1">
-                  <div className="grid grid-cols-3 gap-1">
-                    {authModes.map((item) => (
-                      <button
-                        key={item.key}
-                        className={`min-h-10 min-w-20 rounded-full px-4 text-sm font-semibold transition ${
-                          mode === item.key
-                            ? "bg-white text-[var(--accent-primary)] shadow-[0_10px_24px_rgba(90,102,112,0.08)]"
-                            : "theme-text-muted hover:bg-white/58 hover:text-[var(--foreground)]"
-                        }`}
-                        type="button"
-                        onClick={() => {
-                          setMode(item.key);
-                          setBindingExpanded(false);
-                          resetTransient();
-                        }}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-7">
-                  <h1 className="theme-text-main text-[clamp(2rem,4vw,3.4rem)] font-semibold leading-[1.04] tracking-[-0.03em]">
-                    {modeTitles[mode]}
-                  </h1>
-                  <p className="theme-text-muted mt-3 max-w-[36rem] text-sm leading-7">{modeDescription}</p>
-                </div>
-
-                <div className="mt-6 grid gap-3">
-                  <label className="block">
-                    <span className="theme-text-soft mb-2 block text-xs font-semibold">
-                      {mode === "login" || mode === "recover" ? "用户名或邮箱" : "用户名"}
-                    </span>
-                    <span className="theme-input flex min-h-12 items-center gap-3 rounded-[16px] px-3 transition">
-                      <UserRound className="theme-text-soft h-4 w-4" />
-                      <input
-                        className="theme-text-main min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[var(--text-soft)]"
-                        value={username}
-                        onChange={(event) => setUsername(event.target.value)}
-                        placeholder={mode === "login" || mode === "recover" ? "输入用户名或邮箱" : "输入用户名"}
-                        autoComplete="username"
-                      />
-                    </span>
-                  </label>
-
-                  {mode === "register" && (
-                    <>
-                      <label className="block">
-                        <span className="theme-text-soft mb-2 block text-xs font-semibold">显示名称</span>
-                        <span className="theme-input flex min-h-12 items-center gap-3 rounded-[16px] px-3 transition">
-                          <UserPlus className="theme-text-soft h-4 w-4" />
-                          <input
-                            className="theme-text-main min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[var(--text-soft)]"
-                            value={displayName}
-                            onChange={(event) => setDisplayName(event.target.value)}
-                            placeholder="显示给对方看的昵称"
-                          />
-                        </span>
-                      </label>
-
-                      <label className="block">
-                        <span className="theme-text-soft mb-2 block text-xs font-semibold">邮箱</span>
-                        <span className="theme-input flex min-h-12 items-center gap-3 rounded-[16px] px-3 transition">
-                          <Mail className="theme-text-soft h-4 w-4" />
-                          <input
-                            className="theme-text-main min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[var(--text-soft)]"
-                            value={email}
-                            onChange={(event) => setEmail(event.target.value)}
-                            placeholder="用于注册验证和密码找回"
-                            autoComplete="email"
-                          />
-                        </span>
-                      </label>
-                    </>
-                  )}
-
-                  {mode !== "recover" && (
+                {mode === "register" && (
+                  <>
                     <label className="block">
-                      <span className="theme-text-soft mb-2 block text-xs font-semibold">密码</span>
+                      <span className="theme-text-soft mb-2 block text-xs font-semibold">显示名称</span>
                       <span className="theme-input flex min-h-12 items-center gap-3 rounded-[16px] px-3 transition">
-                        <LockKeyhole className="theme-text-soft h-4 w-4" />
+                        <UserPlus className="theme-text-soft h-4 w-4" />
                         <input
                           className="theme-text-main min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[var(--text-soft)]"
-                          value={password}
-                          onChange={(event) => setPassword(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") void submit();
-                          }}
-                          placeholder="输入密码"
-                          type={showPassword ? "text" : "password"}
-                          autoComplete={mode === "register" ? "new-password" : "current-password"}
-                        />
-                        <button
-                          className="theme-text-soft grid h-8 w-8 place-items-center rounded-full transition hover:bg-[var(--accent-wash)] hover:text-[var(--foreground)]"
-                          type="button"
-                          onClick={() => setShowPassword((current) => !current)}
-                          aria-label={showPassword ? "隐藏密码" : "显示密码"}
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </span>
-                    </label>
-                  )}
-
-                  {((mode === "register" && email.trim()) ||
-                    (mode === "recover" && recoverStage === "request-code" && username.trim())) && (
-                    <div className="theme-soft grid gap-3 rounded-[20px] border p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="theme-text-soft text-xs font-semibold">图形验证码</p>
-                        <button
-                          className="theme-subtle-button inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold"
-                          type="button"
-                          onClick={() => void ensureCaptcha()}
-                        >
-                          <RefreshCcw className="h-3.5 w-3.5" />
-                          换一张
-                        </button>
-                      </div>
-                      <div className="grid gap-3 sm:grid-cols-[160px_1fr]">
-                        <button
-                          className="theme-card-strong overflow-hidden rounded-[16px] border p-0"
-                          type="button"
-                          onClick={() => void ensureCaptcha()}
-                        >
-                          {captchaSrc ? (
-                            <Image
-                              alt="图形验证码"
-                              src={captchaSrc}
-                              width={150}
-                              height={52}
-                              className="h-14 w-full object-cover"
-                              unoptimized
-                            />
-                          ) : (
-                            <span className="theme-text-soft grid h-14 place-items-center text-xs">
-                              点击加载验证码
-                            </span>
-                          )}
-                        </button>
-                        <label className="block">
-                          <span className="theme-text-soft mb-2 block text-xs font-semibold">输入验证码</span>
-                          <input
-                            className="theme-input min-h-12 w-full rounded-[16px] px-3 text-sm font-medium transition"
-                            value={captchaAnswer}
-                            onChange={(event) => setCaptchaAnswer(event.target.value)}
-                            placeholder="不区分大小写"
-                          />
-                        </label>
-                      </div>
-                    </div>
-                  )}
-
-                  {mode === "register" && (
-                    <div className="theme-soft grid gap-3 rounded-[20px] border p-4">
-                      <div className="flex flex-wrap items-end gap-3 sm:grid sm:grid-cols-[1fr_auto]">
-                        <label className="block">
-                          <span className="theme-text-soft mb-2 block text-xs font-semibold">邮箱验证码</span>
-                          <input
-                            className="theme-input min-h-12 w-full rounded-[16px] px-3 text-sm font-medium transition"
-                            value={emailCode}
-                            onChange={(event) => setEmailCode(event.target.value.toUpperCase())}
-                            placeholder="输入收到的验证码"
-                          />
-                        </label>
-                        <button
-                          className="theme-subtle-button inline-flex min-h-12 items-center justify-center rounded-[16px] px-4 text-sm font-semibold transition"
-                          type="button"
-                          onClick={() => void sendRegisterCode()}
-                          disabled={
-                            !email.trim() ||
-                            !captchaAnswer.trim() ||
-                            status === "checking" ||
-                            registerCodeCooldown > 0
-                          }
-                        >
-                          {registerCodeCooldown > 0 ? `${registerCodeCooldown}s 后重发` : "获取邮箱验证码"}
-                        </button>
-                      </div>
-                      <p className="theme-text-soft text-xs leading-6">
-                        发送邮箱验证码前会先校验图形验证码；同一邮箱需等待 1 分钟后才能再次发送。
-                      </p>
-                    </div>
-                  )}
-
-                  {mode === "recover" && recoverStage === "verify-code" && (
-                    <label className="block">
-                      <span className="theme-text-soft mb-2 block text-xs font-semibold">邮箱验证码</span>
-                      <input
-                        className="theme-input min-h-12 w-full rounded-[16px] px-3 text-sm font-medium transition"
-                        value={emailCode}
-                        onChange={(event) => setEmailCode(event.target.value.toUpperCase())}
-                        placeholder="输入邮箱里收到的验证码"
-                      />
-                    </label>
-                  )}
-
-                  {mode === "recover" && recoverStage === "reset-password" && (
-                    <label className="block">
-                      <span className="theme-text-soft mb-2 block text-xs font-semibold">新密码</span>
-                      <span className="theme-input flex min-h-12 items-center gap-3 rounded-[16px] px-3 transition">
-                        <LockKeyhole className="theme-text-soft h-4 w-4" />
-                        <input
-                          className="theme-text-main min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[var(--text-soft)]"
-                          value={newPassword}
-                          onChange={(event) => setNewPassword(event.target.value)}
-                          placeholder="设置新的登录密码"
-                          type={showPassword ? "text" : "password"}
+                          value={displayName}
+                          onChange={(event) => setDisplayName(event.target.value)}
+                          placeholder="显示给对方看的昵称"
                         />
                       </span>
                     </label>
-                  )}
-                </div>
 
-                <div className="theme-text-soft mt-4 min-h-6 text-xs font-semibold">
-                  <span
-                    className={
-                      status === "wrong"
-                        ? "text-[var(--accent-primary)]"
-                        : status === "done"
-                          ? "text-[#7d9b84]"
-                          : ""
-                    }
-                  >
-                    {message}
-                  </span>
-                </div>
-
-                <button
-                  className="theme-accent-button mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] px-4 text-sm font-semibold text-white shadow-[0_20px_46px_rgba(39,56,70,0.18)] transition hover:-translate-y-0.5 disabled:opacity-55"
-                  type="button"
-                  onClick={() => void submit()}
-                  disabled={status === "checking"}
-                >
-                  {status === "checking" ? "处理中" : primaryLabel}
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-
-                {mode === "recover" && recoverStage !== "request-code" && (
-                  <button
-                    className="theme-subtle-button mt-3 inline-flex min-h-10 items-center gap-2 rounded-[16px] px-4 text-sm font-semibold"
-                    type="button"
-                    onClick={() => {
-                      setRecoverStage("request-code");
-                      setEmailCode("");
-                      setRecoverGrantToken("");
-                      setRecoverMaskedEmail("");
-                      setNewPassword("");
-                      setMessage("");
-                    }}
-                  >
-                    <RefreshCcw className="h-4 w-4" />
-                    重新开始找回流程
-                  </button>
+                    <label className="block">
+                      <span className="theme-text-soft mb-2 block text-xs font-semibold">邮箱地址</span>
+                      <span className="theme-input flex min-h-12 items-center gap-3 rounded-[16px] px-3 transition">
+                        <Mail className="theme-text-soft h-4 w-4" />
+                        <input
+                          className="theme-text-main min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[var(--text-soft)]"
+                          value={email}
+                          onChange={(event) => setEmail(event.target.value)}
+                          placeholder="输入邮箱地址"
+                          autoComplete="email"
+                        />
+                      </span>
+                    </label>
+                  </>
                 )}
 
                 {mode !== "recover" && (
-                  <div className="theme-soft mt-6 rounded-[22px] border p-4">
-                    <button
-                      className="login-binding-toggle w-full"
-                      type="button"
-                      aria-expanded={bindingExpanded}
-                      onClick={() => setBindingExpanded((current) => !current)}
-                    >
-                      <span>
-                        <span className="theme-text-main block text-sm font-semibold">情侣绑定入口</span>
-                        <span className="theme-text-soft mt-1 block text-xs leading-6">
-                          登录后先发起绑定，再一起进入地图、约定、菜单和订单流。
-                        </span>
-                      </span>
-                      <ChevronDown
-                        className={`h-4 w-4 transition ${bindingExpanded ? "rotate-180" : ""}`}
+                  <label className="block">
+                    <span className="theme-text-soft mb-2 block text-xs font-semibold">登录密码</span>
+                    <span className="theme-input flex min-h-12 items-center gap-3 rounded-[16px] px-3 transition">
+                      <LockKeyhole className="theme-text-soft h-4 w-4" />
+                      <input
+                        className="theme-text-main min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[var(--text-soft)]"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") void submit();
+                        }}
+                        placeholder={mode === "register" ? "设置登录密码" : "输入登录密码"}
+                        type={showPassword ? "text" : "password"}
+                        autoComplete={mode === "register" ? "new-password" : "current-password"}
                       />
-                    </button>
-                    {bindingExpanded && (
-                      <div className="mt-4 rounded-[18px] border border-white/65 bg-white/54 p-4">
-                        <AccountBindingPanel compact />
-                      </div>
-                    )}
+                      <button
+                        className="theme-text-soft grid h-8 w-8 place-items-center rounded-full transition hover:bg-[var(--accent-wash)] hover:text-[var(--foreground)]"
+                        type="button"
+                        onClick={() => setShowPassword((current) => !current)}
+                        aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </span>
+                  </label>
+                )}
+
+                {((mode === "register" && email.trim()) ||
+                  (mode === "recover" && recoverStage === "request-code" && username.trim())) && (
+                  <div className="theme-soft grid gap-3 rounded-[20px] border p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="theme-text-soft text-xs font-semibold">图形验证码</p>
+                      <button
+                        className="theme-subtle-button inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold"
+                        type="button"
+                        onClick={() => void ensureCaptcha()}
+                      >
+                        <RefreshCcw className="h-3.5 w-3.5" />
+                        刷新验证码
+                      </button>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-[160px_1fr]">
+                      <button
+                        className="theme-card-strong overflow-hidden rounded-[16px] border p-0"
+                        type="button"
+                        onClick={() => void ensureCaptcha()}
+                      >
+                        {captchaSrc ? (
+                          <Image
+                            alt="图形验证码"
+                            src={captchaSrc}
+                            width={150}
+                            height={52}
+                            className="h-14 w-full object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <span className="grid h-14 place-items-center text-xs font-semibold text-[var(--text-muted)]">
+                            正在生成
+                          </span>
+                        )}
+                      </button>
+                      <input
+                        className="theme-input min-h-14 rounded-[16px] px-4 text-sm outline-none"
+                        value={captchaAnswer}
+                        onChange={(event) => setCaptchaAnswer(event.target.value)}
+                        placeholder="输入图中验证码"
+                        autoComplete="off"
+                      />
+                    </div>
                   </div>
                 )}
+
+                {mode === "register" && (
+                  <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+                    <input
+                      className="theme-input min-h-12 rounded-[16px] px-4 text-sm outline-none"
+                      value={emailCode}
+                      onChange={(event) => setEmailCode(event.target.value.toUpperCase())}
+                      placeholder="输入邮箱验证码"
+                    />
+                    <button
+                      type="button"
+                      className="theme-subtle-button min-h-12 rounded-[16px] px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={() => void sendRegisterCode()}
+                      disabled={!email.trim() || !captchaAnswer.trim() || registerCodeCooldown > 0}
+                    >
+                      {registerCodeCooldown > 0 ? `${registerCodeCooldown}s 后重发` : "发送验证码"}
+                    </button>
+                  </div>
+                )}
+
+                {mode === "recover" && recoverStage === "verify-code" && (
+                  <input
+                    className="theme-input min-h-12 rounded-[16px] px-4 text-sm outline-none"
+                    value={emailCode}
+                    onChange={(event) => setEmailCode(event.target.value.toUpperCase())}
+                    placeholder="输入邮箱验证码"
+                  />
+                )}
+
+                {mode === "recover" && recoverStage === "reset-password" && (
+                  <label className="block">
+                    <span className="theme-text-soft mb-2 block text-xs font-semibold">新的登录密码</span>
+                    <span className="theme-input flex min-h-12 items-center gap-3 rounded-[16px] px-3 transition">
+                      <LockKeyhole className="theme-text-soft h-4 w-4" />
+                      <input
+                        className="theme-text-main min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[var(--text-soft)]"
+                        value={newPassword}
+                        onChange={(event) => setNewPassword(event.target.value)}
+                        placeholder="输入新的登录密码"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="new-password"
+                      />
+                    </span>
+                  </label>
+                )}
               </div>
+
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--hero-ink)] px-6 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(39,56,70,0.16)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={() => void submit()}
+                  disabled={status === "checking"}
+                >
+                  {primaryLabel}
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+
+                <button
+                  type="button"
+                  className="theme-subtle-button min-h-12 rounded-full px-5 text-sm font-semibold"
+                  onClick={() => {
+                    resetTransient();
+                    setPassword("");
+                    setNewPassword("");
+                  }}
+                >
+                  清空状态
+                </button>
+              </div>
+
+              <div className={`mt-5 rounded-[18px] border px-4 py-3 text-sm ${statusClassName(status)}`}>
+                {message || "所有敏感数据请求都走本地接口，注册和找回流程已接入邮箱验证与图形验证码。"}
+              </div>
+
+              <div className="mt-6">
+                <button
+                  type="button"
+                  className="theme-soft flex w-full items-center justify-between rounded-[18px] border px-4 py-3 text-left"
+                  onClick={() => setBindingExpanded((current) => !current)}
+                  aria-expanded={bindingExpanded}
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-[#344451]">情侣绑定</p>
+                    <p className="mt-1 text-xs text-[#5A6670]/60">登录后可在这里生成邀请码或接受对方邀请。</p>
+                  </div>
+                  <ChevronDown className={`h-4 w-4 transition ${bindingExpanded ? "rotate-180" : ""}`} />
+                </button>
+                {bindingExpanded && <AccountBindingPanel compact className="mt-3" />}
+              </div>
+            </div>
           ) : (
-            <div className="mt-2">
+            <div className="grid gap-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <h1 className="text-[clamp(30px,5vw,48px)] font-semibold leading-tight tracking-normal text-[#273846]">
-                    管理界面
-                  </h1>
-                  <p className="mt-2 text-sm leading-6 text-[#5A6670]/62">
-                    管理员可以进入主站功能，并查看注册用户、绑定状态和系统提醒。
-                  </p>
+                <div className="flex items-center gap-3">
+                  <span className="theme-soft grid h-12 w-12 place-items-center rounded-full border">
+                    <UsersRound className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h1 className="text-2xl font-semibold text-[#344451]">管理后台</h1>
+                    <p className="mt-1 text-sm text-[#5A6670]/62">保留账户、告警和快速入口，便于审查与维护。</p>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    className="inline-flex min-h-10 items-center gap-2 rounded-[8px] border border-[#D8DDD8]/80 bg-[#FAFBF7]/74 px-3 text-sm font-semibold text-[#5A6670]"
-                    type="button"
-                    onClick={() => void loadAdminData()}
-                  >
-                    <RefreshCcw className="h-4 w-4" />
-                    刷新
-                  </button>
-                  <button
-                    className="inline-flex min-h-10 items-center gap-2 rounded-[8px] border border-[#F5DCE0] bg-[#F5DCE0]/54 px-3 text-sm font-semibold text-[#D86F82]"
-                    type="button"
-                    onClick={() => void logoutAdmin()}
-                  >
-                    <LogOut className="h-4 w-4" />
-                    退出后台
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--border-soft)] bg-white/72 px-5 text-sm font-semibold text-[#344451]"
+                  onClick={() => void logoutAdmin()}
+                >
+                  <LogOut className="h-4 w-4" />
+                  退出管理模式
+                </button>
+              </div>
+
+              <div className={`rounded-[18px] border px-4 py-3 text-sm ${statusClassName(status)}`}>
+                {message || "管理员会话已建立。"}
               </div>
 
               {alerts.length > 0 && (
-                <div className="mt-5 rounded-[8px] border border-[#F5B8C6]/70 bg-[#FFF1F4]/76 p-4 shadow-[0_18px_46px_rgba(216,111,130,0.10)]">
-                  <div className="flex items-start gap-3">
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/72 text-[#D86F82]">
-                      <AlertTriangle className="h-5 w-5" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-[#8F4152]">系统提醒</p>
-                      <div className="mt-2 space-y-2">
-                        {alerts.slice(0, 3).map((alert) => (
-                          <div key={alert.id} className="rounded-[7px] border border-white/70 bg-white/62 px-3 py-2">
-                            <p className="text-sm font-semibold text-[#344451]">{alert.title}</p>
-                            <p className="mt-1 text-xs leading-5 text-[#5A6670]/62">{alert.message}</p>
-                            <p className="mt-1 text-[11px] font-semibold text-[#5A6670]/42">
-                              {formatDateTime(alert.createdAt)}
-                            </p>
-                          </div>
-                        ))}
+                <div className="grid gap-3">
+                  {alerts.map((alert) => (
+                    <article key={alert.id} className="rounded-[18px] border border-amber-200 bg-amber-50 p-4 text-amber-900">
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                        <div>
+                          <p className="text-sm font-semibold">{alert.title}</p>
+                          <p className="mt-1 text-sm leading-6">{alert.message}</p>
+                          <p className="mt-2 text-xs text-amber-700/80">{formatDateTime(alert.createdAt)}</p>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    </article>
+                  ))}
                 </div>
               )}
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-[8px] border border-white/70 bg-white/58 p-4">
-                  <p className="text-xs font-semibold text-[#5A6670]/48">注册用户</p>
-                  <p className="mt-1 text-3xl font-semibold text-[#273846]">{users.length}</p>
-                </div>
-                <div className="rounded-[8px] border border-white/70 bg-white/58 p-4">
-                  <p className="text-xs font-semibold text-[#5A6670]/48">已绑定用户</p>
-                  <p className="mt-1 text-3xl font-semibold text-[#273846]">
-                    {users.filter((user) => Boolean(user.partnerUserId)).length}
-                  </p>
-                </div>
-                <div className="rounded-[8px] border border-white/70 bg-white/58 p-4">
-                  <p className="text-xs font-semibold text-[#5A6670]/48">待处理邀请</p>
-                  <p className="mt-1 text-3xl font-semibold text-[#273846]">
-                    {users.reduce(
-                      (total, user) =>
-                        total + (user.bindingRequests ?? []).filter((request) => request.status === "pending").length,
-                      0,
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              <div className="relative mt-5 overflow-hidden rounded-[8px] border border-white/72 bg-white/58 p-5 shadow-[0_22px_64px_rgba(90,102,112,0.10)] backdrop-blur-2xl">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_8%_0%,rgba(245,220,224,0.55),transparent_28%),radial-gradient(circle_at_90%_18%,rgba(214,232,240,0.62),transparent_34%)]" />
-                <div className="relative flex items-center gap-2">
-                  <span className="grid h-9 w-9 place-items-center rounded-full border border-white/80 bg-white/62 text-[#D86F82]">
-                    <LayoutDashboard className="h-4 w-4" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-semibold text-[#344451]">主站功能</p>
-                    <p className="mt-1 text-xs text-[#5A6670]/50">像启动台一样快速进入每一个页面。</p>
-                  </div>
-                </div>
-                <div className="relative mt-4 grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
-                  {adminQuickLinks.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.href}
-                        className="group flex min-h-24 flex-col items-center justify-center gap-2 rounded-[8px] border border-white/72 bg-white/54 px-3 text-sm font-semibold text-[#5A6670] shadow-[0_12px_30px_rgba(90,102,112,0.06)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-[#E8B8C2] hover:bg-white/72 hover:text-[#D86F82]"
-                        type="button"
-                        onClick={() => router.push(item.href)}
-                      >
-                        <span className="grid h-11 w-11 place-items-center rounded-full bg-[#FAFBF7]/78 text-[#5A6670]/70 transition group-hover:scale-110 group-hover:bg-[#F5DCE0]/72 group-hover:text-[#D86F82]">
-                          <Icon className="h-5 w-5" />
-                        </span>
-                        {item.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="mt-5 rounded-[8px] border border-[#D8DDD8]/76 bg-[#FAFBF7]/72 p-4">
-                <p className="text-sm font-semibold text-[#344451]">帮用户重置密码</p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-                  <input
-                    className="min-h-11 rounded-[8px] border border-[#D8DDD8]/88 bg-white/70 px-3 text-sm outline-none transition focus:border-[#E8B8C2]"
-                    value={resetUser}
-                    onChange={(event) => setResetUser(event.target.value)}
-                    placeholder="用户名"
-                  />
-                  <input
-                    className="min-h-11 rounded-[8px] border border-[#D8DDD8]/88 bg-white/70 px-3 text-sm outline-none transition focus:border-[#E8B8C2]"
-                    value={resetPassword}
-                    onChange={(event) => setResetPassword(event.target.value)}
-                    placeholder="新密码"
-                    type="password"
-                  />
-                  <button
-                    className="inline-flex min-h-11 items-center justify-center rounded-[8px] bg-[#273846] px-4 text-sm font-semibold text-white disabled:opacity-50"
-                    type="button"
-                    onClick={() => void adminResetPassword()}
-                    disabled={!resetUser.trim() || !resetPassword.trim()}
-                  >
-                    重置
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-5 rounded-[8px] border border-[#D8DDD8]/76 bg-[#FAFBF7]/72 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <UsersRound className="h-4 w-4 text-[#D86F82]" />
-                    <p className="text-sm font-semibold text-[#344451]">注册用户详情</p>
-                  </div>
-                  <span className="text-xs font-semibold text-[#5A6670]/48">{users.length} 人</span>
-                </div>
-                <p className="mt-2 text-xs leading-5 text-[#5A6670]/48">
-                  后台不会显示用户密码，只显示账号、邮箱、绑定和邀请状态。
-                </p>
-                <div className="mt-3 max-h-[420px] space-y-3 overflow-auto pr-1">
-                  {users.length === 0 && (
-                    <p className="rounded-[7px] border border-dashed border-[#D8DDD8] px-4 py-8 text-center text-sm text-[#5A6670]/52">
-                      暂无注册用户。
-                    </p>
-                  )}
-                  {users.map((user) => (
-                    <div key={user.id} className="rounded-[7px] border border-white/70 bg-white/66 px-3 py-3">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-[#344451]">{user.displayName}</p>
-                          <p className="mt-1 text-xs text-[#5A6670]/48">@{user.username}</p>
-                        </div>
-                        <button
-                          className="rounded-[7px] border border-[#D8DDD8]/80 bg-[#FAFBF7]/70 px-3 py-2 text-xs font-semibold text-[#5A6670]"
-                          type="button"
-                          onClick={() => setResetUser(user.username)}
-                        >
-                          选择重置
-                        </button>
-                      </div>
-                      <div className="mt-3 grid gap-2 text-xs leading-5 text-[#5A6670]/58 sm:grid-cols-2">
-                        <p>
-                          <span className="font-semibold text-[#344451]">用户 ID：</span>
-                          <span className="select-all">{user.id}</span>
-                        </p>
-                        <p>
-                          <span className="font-semibold text-[#344451]">邮箱：</span>
-                          {user.email || "未绑定"}
-                        </p>
-                        <p>
-                          <span className="font-semibold text-[#344451]">邮箱验证：</span>
-                          {user.emailVerifiedAt ? `已验证 · ${formatDateTime(user.emailVerifiedAt)}` : "未验证"}
-                        </p>
-                        <p>
-                          <span className="font-semibold text-[#344451]">密码更新时间：</span>
-                          {formatDateTime(user.passwordUpdatedAt)}
-                        </p>
-                        <p>
-                          <span className="font-semibold text-[#344451]">注册时间：</span>
-                          {formatDateTime(user.createdAt)}
-                        </p>
-                        <p>
-                          <span className="font-semibold text-[#344451]">最近登录：</span>
-                          {formatDateTime(user.lastLoginAt)}
-                        </p>
-                        <p>
-                          <span className="font-semibold text-[#344451]">绑定对象：</span>
-                          {user.partnerDisplayName || user.partnerUsername || "未绑定"}
-                        </p>
-                        <p>
-                          <span className="font-semibold text-[#344451]">邀请记录：</span>
-                          {(user.bindingRequests ?? []).length} 条
-                        </p>
-                      </div>
+              <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+                <div className="theme-card rounded-[20px] border p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[#344451]">账户列表</p>
+                      <p className="mt-1 text-xs text-[#5A6670]/60">展示已注册用户、邮箱状态与最近登录时间。</p>
                     </div>
-                  ))}
+                    <button
+                      type="button"
+                      className="theme-subtle-button rounded-full px-4 py-2 text-xs font-semibold"
+                      onClick={() => void loadAdminData()}
+                    >
+                      刷新数据
+                    </button>
+                  </div>
+
+                  <div className="mt-4 overflow-hidden rounded-[16px] border border-[var(--border-soft)]">
+                    <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr] gap-3 bg-white/76 px-4 py-3 text-xs font-semibold text-[#5A6670]/60">
+                      <span>用户</span>
+                      <span>邮箱</span>
+                      <span>最近登录</span>
+                      <span>状态</span>
+                    </div>
+                    <div className="divide-y divide-[var(--border-soft)]">
+                      {users.map((user) => (
+                        <div key={user.id} className="grid grid-cols-[1.2fr_1fr_1fr_1fr] gap-3 px-4 py-3 text-sm text-[#344451]">
+                          <div>
+                            <p className="font-semibold">{user.displayName || user.username}</p>
+                            <p className="text-xs text-[#5A6670]/56">@{user.username}</p>
+                          </div>
+                          <div className="truncate">{user.email || "未绑定"}</div>
+                          <div>{formatDateTime(user.lastLoginAt)}</div>
+                          <div>{user.emailVerifiedAt ? "已验证" : "未验证"}</div>
+                        </div>
+                      ))}
+                      {users.length === 0 && <div className="px-4 py-6 text-sm text-[#5A6670]/60">暂无用户数据。</div>}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4">
+                  <div className="theme-card rounded-[20px] border p-5">
+                    <p className="text-sm font-semibold text-[#344451]">快速入口</p>
+                    <div className="mt-4 grid gap-2">
+                      {adminQuickLinks.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            className="flex items-center justify-between rounded-[14px] border border-[var(--border-soft)] bg-white/64 px-4 py-3 text-sm font-semibold text-[#344451] transition hover:-translate-y-0.5"
+                          >
+                            <span className="flex items-center gap-3">
+                              <Icon className="h-4 w-4" />
+                              {item.label}
+                            </span>
+                            <ArrowRight className="h-4 w-4 text-[#5A6670]/56" />
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="theme-card rounded-[20px] border p-5">
+                    <p className="text-sm font-semibold text-[#344451]">重置用户密码</p>
+                    <div className="mt-4 grid gap-3">
+                      <input
+                        className="theme-input min-h-11 rounded-[14px] px-4 text-sm outline-none"
+                        value={resetUser}
+                        onChange={(event) => setResetUser(event.target.value)}
+                        placeholder="输入用户名"
+                      />
+                      <input
+                        className="theme-input min-h-11 rounded-[14px] px-4 text-sm outline-none"
+                        value={resetPassword}
+                        onChange={(event) => setResetPassword(event.target.value)}
+                        placeholder="输入新密码"
+                        type="password"
+                      />
+                      <button
+                        type="button"
+                        className="inline-flex min-h-11 items-center justify-center rounded-[14px] bg-[var(--hero-ink)] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                        onClick={() => void adminResetPassword()}
+                        disabled={!resetUser.trim() || !resetPassword.trim()}
+                      >
+                        执行重置
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

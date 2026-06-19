@@ -17,7 +17,15 @@ import { MemoryPageShell } from "@/components/MemoryNav";
 import { LocalPrivacyImage } from "@/components/LocalPrivacyImage";
 import { writeStoredThemePreset } from "@/components/ThemeController";
 import { cities } from "@/data/cities";
-import { buildCustomThemePreset, customThemePresetId, defaultCustomThemeColor, defaultThemePreset, isThemePresetId, normalizeCustomThemeColor, themePresetList, themePresets, type ThemePresetId } from "@/lib/themePresets";
+import {
+  customThemePresetId,
+  defaultCustomThemeColor,
+  defaultThemePreset,
+  isThemePresetId,
+  normalizeCustomThemeColor,
+  themePresets,
+  type ThemePresetId,
+} from "@/lib/themePresets";
 import {
   type AppSettings,
   defaultAnniversaryDate,
@@ -31,7 +39,7 @@ import {
 } from "@/data/appSettings";
 import type { PublicUserAccount } from "@/data/accounts";
 import type { AuthSessionInfo } from "@/lib/authSessionInfo";
-
+import ThemePresetSection from "@/components/settings/ThemePresetSection";
 
 const readFileAsDataUrl = (file: File) =>
   new Promise<string>((resolve, reject) => {
@@ -48,18 +56,14 @@ const postJson = async <T,>(url: string, payload: Record<string, unknown>) => {
     body: JSON.stringify(payload),
   });
   const data = (await response.json().catch(() => null)) as { error?: string } & T;
-  if (!response.ok) {
-    throw new Error(data?.error ?? "Request failed");
-  }
+  if (!response.ok) throw new Error(data?.error ?? "Request failed");
   return data as T;
 };
 
 const getJson = async <T,>(url: string) => {
   const response = await fetch(url, { cache: "no-store" });
   const data = (await response.json().catch(() => null)) as { error?: string } & T;
-  if (!response.ok) {
-    throw new Error(data?.error ?? `Request failed (${response.status})`);
-  }
+  if (!response.ok) throw new Error(data?.error ?? `Request failed (${response.status})`);
   return data as T;
 };
 
@@ -129,7 +133,7 @@ export default function SettingsExperience() {
       setThemePreset(accountPreset);
       setCustomThemeColor(normalizeCustomThemeColor(payload.user.customThemeColor));
       if (!payload.user.emailVerifiedAt) {
-        setSecurityStatus("当前账号还没有完成邮箱验证，建议尽快补绑邮箱。");
+        setSecurityStatus("当前账号还没有完成邮箱验证，建议尽快绑定邮箱。");
       }
     } catch (error) {
       setSecurityStatus(error instanceof Error ? error.message : "账号安全信息加载失败。");
@@ -195,7 +199,7 @@ export default function SettingsExperience() {
     setThemePreset(nextPreset);
     if (nextPreset === customThemePresetId) setCustomThemeColor(normalizedCustomColor);
     writeStoredThemePreset(nextPreset, normalizedCustomColor);
-    setThemeStatus("正在同步个人主题…");
+    setThemeStatus("正在保存个人主题设置。");
     try {
       const payload = await postJson<{ user: PublicUserAccount }>("/api/account/security", {
         action: "updateThemePreset",
@@ -208,7 +212,7 @@ export default function SettingsExperience() {
       setThemePreset(savedPreset);
       if (savedPreset === customThemePresetId) setCustomThemeColor(savedCustomColor);
       const savedLabel = savedPreset === customThemePresetId ? "自定义配色" : themePresets[savedPreset].label;
-      setThemeStatus(`个人主题已切换为 ${savedLabel}。`);
+      setThemeStatus(`主题已保存：${savedLabel}`);
     } catch (error) {
       setThemeStatus(error instanceof Error ? error.message : "个人主题保存失败。");
     }
@@ -243,13 +247,6 @@ export default function SettingsExperience() {
     void load();
   }, []);
 
-  const customThemePreview = buildCustomThemePreset(customThemeColor);
-  const currentThemeLabel = themePreset === customThemePresetId ? customThemePreview.label : themePresets[themePreset].label;
-  const buildPaletteGradient = (palette: { color: string }[]) => {
-    const stops = [0, 34, 68, 100];
-    return `linear-gradient(90deg, ${palette.map((item, index) => `${item.color} ${stops[index]}%`).join(", ")})`;
-  };
-
   return (
     <MemoryPageShell active="settings">
       <header>
@@ -258,219 +255,113 @@ export default function SettingsExperience() {
           <h1 className="text-[34px] font-semibold leading-tight text-[#5A6670]">设置</h1>
         </div>
         <p className="mt-2 text-sm font-medium text-[#5A6670]/58">
-          这里改动的是共享设置。换手机、换电脑后，登录同一账号也会看到同一份内容。
-        </p>
-        <p className="mt-2 text-xs font-semibold text-[#5A6670]/44">
-          当前公开入口仍然是国际托管。中国大陆网络偶尔偏慢时，可以稍后重试或切换网络。
+          这里集中管理首页展示、纪念日、天气城市、头像、账号安全与个人主题偏好。
         </p>
       </header>
 
       <section className="mt-10 grid gap-5">
-        <div className="theme-card theme-floating-shadow p-5">
-          <div className="flex items-center gap-3">
-            <Settings className="h-5 w-5 text-[var(--accent-primary)]" />
-            <div>
-              <p className="text-sm font-semibold text-[#5A6670]">个人主题预设</p>
-              <p className="mt-1 text-sm leading-6 text-[#5A6670]/62">
-                预设改为更淡的单色阶；也可以用色盘选一个主色，系统自动生成温和过渡。
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-5 rounded-[10px] border border-[color-mix(in_srgb,var(--border-soft)_82%,white)] bg-[color-mix(in_srgb,var(--surface-card-strong)_76%,white)] p-4">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-[#344451]">自定义配色</p>
-                <p className="mt-1 text-xs leading-5 text-[#5A6670]/62">选择一个喜欢的颜色，页面会自动变成更淡、更统一的同色系。</p>
-              </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <label className="relative flex h-11 w-16 cursor-pointer overflow-hidden rounded-[10px] border border-[var(--border-soft)] bg-[color-mix(in_srgb,var(--surface-card-strong)_82%,white)] p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.5)]">
-                  <span className="sr-only">选择自定义主题主色</span>
-                  <input
-                    aria-label="选择自定义主题主色"
-                    className="h-full w-full cursor-pointer rounded-[7px] border-0 bg-transparent p-0"
-                    type="color"
-                    value={customThemeColor}
-                    onChange={(event) => previewCustomThemeColor(event.target.value)}
-                  />
-                </label>
-                <button
-                  type="button"
-                  className="inline-flex min-h-10 items-center justify-center rounded-[9px] bg-[var(--hero-ink)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-primary)]"
-                  onClick={saveCustomThemeColor}
-                >
-                  保存自定义
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-[10px] border border-[color-mix(in_srgb,var(--border-soft)_76%,white)] bg-[color-mix(in_srgb,var(--surface-card)_74%,white)] p-3">
-              <div
-                className="h-10 rounded-[8px] border border-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.48)]"
-                style={{ backgroundImage: buildPaletteGradient(customThemePreview.palette) }}
-              />
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {customThemePreview.palette.map((item) => (
-                  <span
-                    className="inline-flex items-center gap-2 rounded-full border border-[color-mix(in_srgb,var(--border-soft)_72%,white)] bg-white/60 px-2.5 py-1 text-[11px] font-medium text-[var(--text-muted)]"
-                    key={item.label}
-                  >
-                    <span className="h-2.5 w-2.5 rounded-full border border-white/80" style={{ backgroundColor: item.color }} />
-                    {item.label}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {themePresetList.map((preset) => {
-              const active = themePreset === preset.id;
-              return (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => void updateThemePreset(preset.id)}
-                  className={`rounded-[10px] border p-4 text-left transition ${
-                    active
-                      ? "border-[color-mix(in_srgb,var(--accent-primary)_28%,var(--border-strong))] bg-[color-mix(in_srgb,var(--surface-card-strong)_90%,white)] shadow-[0_8px_18px_rgba(124,110,100,0.07)]"
-                      : "border-[var(--border-soft)] bg-[color-mix(in_srgb,var(--surface-card)_78%,white)] hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--accent-primary)_18%,var(--border-strong))]"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-[#344451]">{preset.label}</p>
-                      <p className="mt-2 min-h-10 text-xs leading-5 text-[#5A6670]/64">{preset.description}</p>
-                    </div>
-                    <span
-                      className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                        active ? "bg-[var(--accent-wash)] text-[var(--accent-primary)]" : "theme-muted theme-text-soft"
-                      }`}
-                    >
-                      {active ? "使用中" : "切换"}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 rounded-[10px] border border-[color-mix(in_srgb,var(--border-soft)_76%,white)] bg-[color-mix(in_srgb,var(--surface-card)_70%,white)] p-3">
-                    <div
-                      className="h-9 rounded-[8px] border border-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.48)]"
-                      style={{ backgroundImage: buildPaletteGradient(preset.palette) }}
-                    />
-                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      {preset.palette.map((item) => (
-                        <span
-                          className="inline-flex items-center gap-2 rounded-full border border-[color-mix(in_srgb,var(--border-soft)_72%,white)] bg-white/60 px-2.5 py-1 text-[11px] font-medium text-[var(--text-muted)]"
-                          key={item.label}
-                        >
-                          <span className="h-2.5 w-2.5 rounded-full border border-white/80" style={{ backgroundColor: item.color }} />
-                          {item.label}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="theme-soft theme-text-muted mt-4 rounded-[8px] border px-4 py-3 text-sm">
-            {themeStatus || `当前主题：${currentThemeLabel}`}
-          </div>
-        </div>
+        <ThemePresetSection
+          customThemeColor={customThemeColor}
+          themePreset={themePreset}
+          themeStatus={themeStatus}
+          onPreviewCustomThemeColor={previewCustomThemeColor}
+          onSaveCustomThemeColor={saveCustomThemeColor}
+          onSelectThemePreset={(presetId) => void updateThemePreset(presetId)}
+        />
 
         {session?.role === "site" && session.username && (
-        <div className="theme-card theme-floating-shadow rounded-[8px] border p-5">
-          <div className="flex items-center gap-3">
-            <ShieldCheck className="h-5 w-5 text-[#E8B8C2]" />
-            <div>
-              <p className="text-sm font-semibold text-[#5A6670]">账号安全</p>
-              <p className="mt-1 text-sm leading-6 text-[#5A6670]/62">
-                主动修改密码、绑定邮箱和更换邮箱都在这里完成，不再放在登录页里。
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-5 lg:grid-cols-2">
-            <div className="theme-soft rounded-[8px] border p-4">
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-[#D86F82]" />
-                <p className="text-sm font-semibold text-[#344451]">邮箱状态</p>
+          <div className="theme-card theme-floating-shadow rounded-[8px] border p-5">
+            <div className="flex items-center gap-3">
+              <ShieldCheck className="h-5 w-5 text-[#E8B8C2]" />
+              <div>
+                <p className="text-sm font-semibold text-[#5A6670]">账号安全</p>
+                <p className="mt-1 text-sm leading-6 text-[#5A6670]/62">
+                  当前账号可以在这里更新邮箱、修改密码，并把主题偏好同步到云端账号资料。
+                </p>
               </div>
-              <p className="mt-3 text-sm text-[#5A6670]/72">{user?.email || "当前还没有绑定邮箱"}</p>
-              <p className="mt-1 text-xs text-[#5A6670]/50">
-                {user?.emailVerifiedAt ? `已验证 · ${new Date(user.emailVerifiedAt).toLocaleString("zh-CN")}` : "未验证"}
-              </p>
+            </div>
 
-              <div className="mt-4 grid gap-3">
-                <input
-                  className="theme-input min-h-11 rounded-[8px] px-3 text-sm transition"
-                  value={nextEmail}
-                  onChange={(event) => setNextEmail(event.target.value)}
-                  placeholder="输入新的邮箱地址"
-                />
-                <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+            <div className="mt-5 grid gap-5 lg:grid-cols-2">
+              <div className="theme-soft rounded-[8px] border p-4">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-[#D86F82]" />
+                  <p className="text-sm font-semibold text-[#344451]">邮箱状态</p>
+                </div>
+                <p className="mt-3 text-sm text-[#5A6670]/72">{user?.email || "当前还没有绑定邮箱"}</p>
+                <p className="mt-1 text-xs text-[#5A6670]/50">
+                  {user?.emailVerifiedAt ? `已验证 · ${new Date(user.emailVerifiedAt).toLocaleString("zh-CN")}` : "未验证"}
+                </p>
+
+                <div className="mt-4 grid gap-3">
                   <input
                     className="theme-input min-h-11 rounded-[8px] px-3 text-sm transition"
-                    value={emailCode}
-                    onChange={(event) => setEmailCode(event.target.value.toUpperCase())}
-                    placeholder="输入邮箱验证码"
+                    value={nextEmail}
+                    onChange={(event) => setNextEmail(event.target.value)}
+                    placeholder="输入新的邮箱地址"
+                  />
+                  <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+                    <input
+                      className="theme-input min-h-11 rounded-[8px] px-3 text-sm transition"
+                      value={emailCode}
+                      onChange={(event) => setEmailCode(event.target.value.toUpperCase())}
+                      placeholder="输入邮箱验证码"
+                    />
+                    <button
+                      type="button"
+                      className="inline-flex min-h-11 items-center justify-center rounded-[8px] border border-[#D8DDD8]/82 bg-white/70 px-4 text-sm font-semibold text-[#5A6670]"
+                      onClick={() => void sendRebindCode()}
+                      disabled={sendingEmailCode}
+                    >
+                      {sendingEmailCode ? "发送中" : "发送验证码"}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className="inline-flex min-h-11 items-center justify-center rounded-[8px] bg-[#273846] px-4 text-sm font-semibold text-white"
+                    onClick={() => void updateEmail()}
+                    disabled={!nextEmail.trim() || !emailCode.trim()}
+                  >
+                    更新邮箱
+                  </button>
+                </div>
+              </div>
+
+              <div className="theme-soft rounded-[8px] border p-4">
+                <div className="flex items-center gap-2">
+                  <KeyRound className="h-4 w-4 text-[#D86F82]" />
+                  <p className="text-sm font-semibold text-[#344451]">修改密码</p>
+                </div>
+                <div className="mt-4 grid gap-3">
+                  <input
+                    className="theme-input min-h-11 rounded-[8px] px-3 text-sm transition"
+                    value={currentPassword}
+                    onChange={(event) => setCurrentPassword(event.target.value)}
+                    placeholder="输入当前密码"
+                    type="password"
+                  />
+                  <input
+                    className="theme-input min-h-11 rounded-[8px] px-3 text-sm transition"
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    placeholder="输入新的密码"
+                    type="password"
                   />
                   <button
                     type="button"
-                    className="inline-flex min-h-11 items-center justify-center rounded-[8px] border border-[#D8DDD8]/82 bg-white/70 px-4 text-sm font-semibold text-[#5A6670]"
-                    onClick={() => void sendRebindCode()}
-                    disabled={sendingEmailCode}
+                    className="inline-flex min-h-11 items-center justify-center rounded-[8px] bg-[#273846] px-4 text-sm font-semibold text-white"
+                    onClick={() => void changePassword()}
+                    disabled={!currentPassword.trim() || !newPassword.trim()}
                   >
-                    {sendingEmailCode ? "发送中" : "发送验证码"}
+                    保存新密码
                   </button>
                 </div>
-                <button
-                  type="button"
-                  className="inline-flex min-h-11 items-center justify-center rounded-[8px] bg-[#273846] px-4 text-sm font-semibold text-white"
-                  onClick={() => void updateEmail()}
-                  disabled={!nextEmail.trim() || !emailCode.trim()}
-                >
-                  更新邮箱
-                </button>
               </div>
             </div>
 
-            <div className="theme-soft rounded-[8px] border p-4">
-              <div className="flex items-center gap-2">
-                <KeyRound className="h-4 w-4 text-[#D86F82]" />
-                <p className="text-sm font-semibold text-[#344451]">修改密码</p>
-              </div>
-              <div className="mt-4 grid gap-3">
-                <input
-                  className="theme-input min-h-11 rounded-[8px] px-3 text-sm transition"
-                  value={currentPassword}
-                  onChange={(event) => setCurrentPassword(event.target.value)}
-                  placeholder="当前密码"
-                  type="password"
-                />
-                <input
-                  className="theme-input min-h-11 rounded-[8px] px-3 text-sm transition"
-                  value={newPassword}
-                  onChange={(event) => setNewPassword(event.target.value)}
-                  placeholder="新的密码"
-                  type="password"
-                />
-                <button
-                  type="button"
-                  className="inline-flex min-h-11 items-center justify-center rounded-[8px] bg-[#273846] px-4 text-sm font-semibold text-white"
-                  onClick={() => void changePassword()}
-                  disabled={!currentPassword.trim() || !newPassword.trim()}
-                >
-                  保存新密码
-                </button>
-              </div>
+            <div className="theme-soft theme-text-muted mt-4 rounded-[8px] border px-4 py-3 text-sm">
+              {securityStatus || "账号安全信息已接入云端，支持多设备同步使用。"}
             </div>
           </div>
-
-          <div className="theme-soft theme-text-muted mt-4 rounded-[8px] border px-4 py-3 text-sm">
-            {securityStatus || "账号安全信息已接入云端，支持多设备同步使用。"}
-          </div>
-        </div>
         )}
 
         <div className="theme-card theme-floating-shadow rounded-[8px] border p-5">
@@ -479,7 +370,7 @@ export default function SettingsExperience() {
             <div>
               <p className="text-sm font-semibold text-[#5A6670]">基础设置</p>
               <p className="mt-1 text-sm leading-6 text-[#5A6670]/62">
-                纪念日名称、开始日期、天气城市和情侣头像都会走云端同步。
+                这里控制纪念日名称、起始日期、首页天气城市，以及情侣头像展示。
               </p>
             </div>
           </div>
@@ -488,29 +379,29 @@ export default function SettingsExperience() {
             <label className="grid gap-1">
               <span className="text-xs font-semibold text-[#5A6670]/48">纪念日名称</span>
               <input
-                className="min-h-10 rounded-[7px] border border-[#D8DDD8]/80 bg-[#FAFBF7]/70 px-3 text-sm text-[#5A6670] outline-none transition focus:border-[#A8C8DC] focus:bg-white"
+                className="theme-input min-h-10 rounded-[7px] px-3 text-sm transition"
                 value={anniversaryLabel}
-                onChange={(event) => updateBasicSetting({ anniversaryLabel: event.target.value }, "纪念日名称已同步。")}
+                onChange={(event) => updateBasicSetting({ anniversaryLabel: event.target.value })}
               />
             </label>
             <label className="grid gap-1">
               <span className="text-xs font-semibold text-[#5A6670]/48">纪念日开始日期</span>
               <input
-                className="min-h-10 rounded-[7px] border border-[#D8DDD8]/80 bg-[#FAFBF7]/70 px-3 text-sm text-[#5A6670] outline-none transition focus:border-[#A8C8DC] focus:bg-white"
+                className="theme-input min-h-10 rounded-[7px] px-3 text-sm transition"
                 value={anniversaryDate}
                 placeholder="2025.01.01"
-                onChange={(event) => updateBasicSetting({ anniversaryDate: event.target.value }, "纪念日日期已同步。")}
+                onChange={(event) => updateBasicSetting({ anniversaryDate: event.target.value })}
               />
             </label>
           </div>
 
           <div className="mt-5">
-            <p className="text-xs font-semibold text-[#5A6670]/48">首页天气城市（最多 {maxWeatherCities} 个）</p>
+            <p className="text-xs font-semibold text-[#5A6670]/48">沿途天气城市（最多 {maxWeatherCities} 个）</p>
             <div className="mt-2 grid gap-2 sm:grid-cols-3">
               {Array.from({ length: maxWeatherCities }).map((_, index) => (
                 <select
                   key={`weather-slot-${index}`}
-                  className="min-h-10 rounded-[7px] border border-[#D8DDD8]/80 bg-[#FAFBF7]/70 px-3 text-sm text-[#5A6670] outline-none transition focus:border-[#A8C8DC] focus:bg-white"
+                  className="theme-input min-h-10 rounded-[7px] px-3 text-sm transition"
                   value={weatherCityIds[index] ?? ""}
                   onChange={(event) => updateWeatherCity(index, event.target.value)}
                 >
@@ -536,11 +427,11 @@ export default function SettingsExperience() {
               </label>
               <button
                 type="button"
-                className="inline-flex items-center gap-2 rounded-[7px] border border-[#D8DDD8] px-4 py-2 text-sm font-semibold text-[#5A6670]/64 transition hover:bg-white/60"
-                onClick={() => updateBasicSetting({ coupleLogo: defaultCoupleLogo }, "头像已恢复默认。")}
+                className="inline-flex items-center gap-2 rounded-[7px] border border-[#D8DDD8] px-4 py-2 text-sm font-semibold text-[#5A6670]/72 transition hover:bg-white/60"
+                onClick={() => updateBasicSetting({ coupleLogo: defaultCoupleLogo }, "头像已恢复默认设置。")}
               >
                 <RotateCcw className="h-4 w-4" />
-                恢复默认
+                恢复默认头像
               </button>
             </div>
           </div>
@@ -554,8 +445,8 @@ export default function SettingsExperience() {
             <div className="flex items-center gap-3">
               <MessageCircleMore className="h-5 w-5 text-[#D86F82]" />
               <div>
-                <p className="text-sm font-semibold text-[#344451]">意见反馈</p>
-                <p className="mt-1 text-sm leading-6 text-[#5A6670]/62">单独进入反馈页提交问题、建议或使用感受，管理员会同步收到。</p>
+                <p className="text-sm font-semibold text-[#344451]">反馈与建议</p>
+                <p className="mt-1 text-sm leading-6 text-[#5A6670]/62">把使用中遇到的问题、体验意见或想补充的功能记录下来。</p>
               </div>
             </div>
           </Link>
@@ -568,8 +459,8 @@ export default function SettingsExperience() {
               <div className="flex items-center gap-3">
                 <MailPlus className="h-5 w-5 text-[#D86F82]" />
                 <div>
-                  <p className="text-sm font-semibold text-[#344451]">管理员收件箱</p>
-                  <p className="mt-1 text-sm leading-6 text-[#5A6670]/62">查看用户反馈，并进入邮件发送中心批量给用户发送自定义内容。</p>
+                  <p className="text-sm font-semibold text-[#344451]">管理员反馈箱</p>
+                  <p className="mt-1 text-sm leading-6 text-[#5A6670]/62">查看用户反馈、处理待办和系统侧的人工检查事项。</p>
                 </div>
               </div>
             </Link>
@@ -578,8 +469,8 @@ export default function SettingsExperience() {
               <div className="flex items-center gap-3">
                 <ShieldCheck className="h-5 w-5 text-[#A8C8DC]" />
                 <div>
-                  <p className="text-sm font-semibold text-[#344451]">管理员区</p>
-                  <p className="mt-1 text-sm leading-6 text-[#5A6670]/62">管理员入口只对管理员账户显示。</p>
+                  <p className="text-sm font-semibold text-[#344451]">管理员反馈箱</p>
+                  <p className="mt-1 text-sm leading-6 text-[#5A6670]/62">仅管理员会话可见。普通站点账号保留反馈入口，不直接进入后台收件箱。</p>
                 </div>
               </div>
             </div>
@@ -587,7 +478,7 @@ export default function SettingsExperience() {
         </div>
 
         <div className="theme-soft theme-text-muted rounded-[8px] border px-4 py-3 text-sm shadow-[0_12px_28px_rgba(90,102,112,0.06)]">
-          {isSaving ? "正在同步到云端…" : status || "设置页已接入云端同步。"}
+          {isSaving ? "正在同步设置，请稍候。" : status || "所有基础设置会优先写入本地，再同步到云端接口。"}
         </div>
       </section>
     </MemoryPageShell>
