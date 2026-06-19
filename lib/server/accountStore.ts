@@ -1,4 +1,4 @@
-import { createHmac, randomInt, randomUUID, timingSafeEqual } from "crypto";
+import { createHmac, randomBytes, randomInt, randomUUID, scryptSync, timingSafeEqual } from "crypto";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import {
@@ -130,13 +130,29 @@ const legacyHashSecrets = () =>
     (secret, index, secrets): secret is string => Boolean(secret) && secrets.indexOf(secret) === index,
   );
 
+const scryptHashPrefix = "scrypt:v1";
+const scryptKeyLength = 64;
+
 const hashWithSecret = (value: string, salt: string, secret: string) =>
   createHmac("sha256", secret).update(`${salt}:${value}`).digest("base64url");
 
-export const hashAccountSecret = (value: string, salt: string) => hashWithSecret(value, salt, accountHashSecret());
+const hashWithScrypt = (value: string, context: string, secret: string, randomSalt = randomBytes(16).toString("base64url")) => {
+  const derived = scryptSync(`${secret}:${value}`, `${context}:${randomSalt}`, scryptKeyLength).toString("base64url");
+  return `${scryptHashPrefix}:${randomSalt}:${derived}`;
+};
 
-const verifyAccountSecret = (value: string, salt: string, hash: string) =>
-  legacyHashSecrets().some((secret) => safeEqual(hashWithSecret(value, salt, secret), hash));
+export const hashAccountSecret = (value: string, salt: string) => hashWithScrypt(value, salt, accountHashSecret());
+
+const verifyScryptAccountSecret = (value: string, context: string, hash: string) => {
+  const [prefix, version, randomSalt, expectedHash, extra] = hash.split(":");
+  if (`${prefix}:${version}` !== scryptHashPrefix || !randomSalt || !expectedHash || extra) return false;
+  return legacyHashSecrets().some((secret) => safeEqual(hashWithScrypt(value, context, secret, randomSalt), hash));
+};
+
+const verifyAccountSecret = (value: string, salt: string, hash: string) => {
+  if (hash.startsWith(`${scryptHashPrefix}:`)) return verifyScryptAccountSecret(value, salt, hash);
+  return legacyHashSecrets().some((secret) => safeEqual(hashWithSecret(value, salt, secret), hash));
+};
 
 export const createBindingInviteCode = () =>
   Array.from({ length: 8 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[randomInt(32)]).join("");
@@ -493,7 +509,7 @@ export const createAccountBindingRequest = async (username: string, inviteCode: 
 
   const to = store.users.find((account) => {
     if (!account.bindingInviteCodeHash || account.id === from.id || account.partnerUserId) return false;
-    return safeEqual(hashAccountSecret(code, account.id), account.bindingInviteCodeHash);
+    return verifyAccountSecret(code, account.id, account.bindingInviteCodeHash);
   });
 
   if (!to) throw new Error("Invite code not found");
