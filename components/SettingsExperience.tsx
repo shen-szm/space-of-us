@@ -245,6 +245,10 @@ export default function SettingsExperience() {
 
   const customThemePreview = buildCustomThemePreset(customThemeColor);
   const currentThemeLabel = themePreset === customThemePresetId ? customThemePreview.label : themePresets[themePreset].label;
+  const buildPaletteGradient = (palette: { color: string }[]) => {
+    const stops = [0, 34, 68, 100];
+    return `linear-gradient(90deg, ${palette.map((item, index) => `${item.color} ${stops[index]}%`).join(", ")})`;
+  };
 
   return (
     <MemoryPageShell active="settings">
@@ -277,14 +281,14 @@ export default function SettingsExperience() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-[#344451]">自定义配色</p>
-                <p className="mt-1 text-xs leading-5 text-[#5A6670]/62">选择一个喜欢的颜色，页面会自动变成更淡的同色系。</p>
+                <p className="mt-1 text-xs leading-5 text-[#5A6670]/62">选择一个喜欢的颜色，页面会自动变成更淡、更统一的同色系。</p>
               </div>
               <div className="flex shrink-0 items-center gap-3">
-                <label className="relative flex h-11 w-16 cursor-pointer overflow-hidden rounded-[9px] border border-[var(--border-soft)] bg-white p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.45)]">
+                <label className="relative flex h-11 w-16 cursor-pointer overflow-hidden rounded-[10px] border border-[var(--border-soft)] bg-[color-mix(in_srgb,var(--surface-card-strong)_82%,white)] p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.5)]">
                   <span className="sr-only">选择自定义主题主色</span>
                   <input
-                    aria-label="个人主题保存失败。"
-                    className="h-full w-full cursor-pointer rounded-[6px] border-0 bg-transparent p-0"
+                    aria-label="选择自定义主题主色"
+                    className="h-full w-full cursor-pointer rounded-[7px] border-0 bg-transparent p-0"
                     type="color"
                     value={customThemeColor}
                     onChange={(event) => previewCustomThemeColor(event.target.value)}
@@ -292,7 +296,7 @@ export default function SettingsExperience() {
                 </label>
                 <button
                   type="button"
-                  className="inline-flex min-h-10 items-center justify-center rounded-[8px] bg-[var(--hero-ink)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-primary)]"
+                  className="inline-flex min-h-10 items-center justify-center rounded-[9px] bg-[var(--hero-ink)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-primary)]"
                   onClick={saveCustomThemeColor}
                 >
                   保存自定义
@@ -300,20 +304,20 @@ export default function SettingsExperience() {
               </div>
             </div>
 
-            <div className="mt-4 rounded-[8px] border border-white/70 bg-white/30 p-3">
-              <div className="flex h-8 overflow-hidden rounded-[7px] border border-white/70">
+            <div className="mt-4 rounded-[10px] border border-[color-mix(in_srgb,var(--border-soft)_76%,white)] bg-[color-mix(in_srgb,var(--surface-card)_74%,white)] p-3">
+              <div
+                className="h-10 rounded-[8px] border border-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.48)]"
+                style={{ backgroundImage: buildPaletteGradient(customThemePreview.palette) }}
+              />
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {customThemePreview.palette.map((item) => (
                   <span
-                    aria-label={item.label}
-                    className="min-w-0 flex-1 border-r border-white/70 last:border-r-0"
+                    className="inline-flex items-center gap-2 rounded-full border border-[color-mix(in_srgb,var(--border-soft)_72%,white)] bg-white/60 px-2.5 py-1 text-[11px] font-medium text-[var(--text-muted)]"
                     key={item.label}
-                    style={{ backgroundColor: item.color }}
-                  />
-                ))}
-              </div>
-              <div className="mt-2 grid grid-cols-4 gap-1 text-center text-[10px] leading-4 text-[var(--text-muted)]">
-                {customThemePreview.palette.map((item) => (
-                  <span className="truncate" key={item.label}>{item.label}</span>
+                  >
+                    <span className="h-2.5 w-2.5 rounded-full border border-white/80" style={{ backgroundColor: item.color }} />
+                    {item.label}
+                  </span>
                 ))}
               </div>
             </div>
@@ -329,8 +333,8 @@ export default function SettingsExperience() {
                   onClick={() => void updateThemePreset(preset.id)}
                   className={`rounded-[10px] border p-4 text-left transition ${
                     active
-                      ? "border-[color-mix(in_srgb,var(--accent-primary)_34%,var(--border-strong))] bg-[color-mix(in_srgb,var(--surface-card-strong)_88%,white)] shadow-[0_10px_24px_rgba(126,106,96,0.10)]"
-                      : "border-[var(--border-soft)] bg-[color-mix(in_srgb,var(--surface-card)_78%,white)] hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--accent-primary)_24%,var(--border-strong))]"
+                      ? "border-[color-mix(in_srgb,var(--accent-primary)_28%,var(--border-strong))] bg-[color-mix(in_srgb,var(--surface-card-strong)_90%,white)] shadow-[0_8px_18px_rgba(124,110,100,0.07)]"
+                      : "border-[var(--border-soft)] bg-[color-mix(in_srgb,var(--surface-card)_78%,white)] hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--accent-primary)_18%,var(--border-strong))]"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -347,20 +351,20 @@ export default function SettingsExperience() {
                     </span>
                   </div>
 
-                  <div className="mt-4 rounded-[8px] border border-[color-mix(in_srgb,var(--border-soft)_82%,white)] bg-white/34 p-3">
-                    <div className="flex h-7 overflow-hidden rounded-[7px] border border-white/70 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.32)]">
+                  <div className="mt-4 rounded-[10px] border border-[color-mix(in_srgb,var(--border-soft)_76%,white)] bg-[color-mix(in_srgb,var(--surface-card)_70%,white)] p-3">
+                    <div
+                      className="h-9 rounded-[8px] border border-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.48)]"
+                      style={{ backgroundImage: buildPaletteGradient(preset.palette) }}
+                    />
+                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                       {preset.palette.map((item) => (
                         <span
-                          aria-label={item.label}
-                          className="min-w-0 flex-1 border-r border-white/64 last:border-r-0"
+                          className="inline-flex items-center gap-2 rounded-full border border-[color-mix(in_srgb,var(--border-soft)_72%,white)] bg-white/60 px-2.5 py-1 text-[11px] font-medium text-[var(--text-muted)]"
                           key={item.label}
-                          style={{ backgroundColor: item.color }}
-                        />
-                      ))}
-                    </div>
-                    <div className="mt-2 grid grid-cols-4 gap-1 text-center text-[10px] leading-4 text-[var(--text-muted)]">
-                      {preset.palette.map((item) => (
-                        <span className="truncate" key={item.label}>{item.label}</span>
+                        >
+                          <span className="h-2.5 w-2.5 rounded-full border border-white/80" style={{ backgroundColor: item.color }} />
+                          {item.label}
+                        </span>
                       ))}
                     </div>
                   </div>

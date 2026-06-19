@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac, randomBytes, randomInt, timingSafeEqual } from "crypto";
 import { assertWritableStorageConfigured, readJsonValue, writeJsonValue } from "@/lib/server/supabase";
 
 export type EmailCodePurpose = "register" | "recover" | "rebind";
@@ -70,8 +70,11 @@ const safeEqual = (left: string, right: string) => {
   return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
 };
 
-const verificationSecret = () =>
-  process.env.AUTH_COOKIE_SECRET ?? process.env.ACCOUNT_HASH_SECRET ?? "space-of-us-verification-v1";
+const verificationSecret = () => {
+  const secret = process.env.VERIFICATION_SECRET ?? process.env.AUTH_COOKIE_SECRET ?? process.env.ACCOUNT_HASH_SECRET;
+  if (!secret) throw new Error("VERIFICATION_SECRET or AUTH_COOKIE_SECRET is required");
+  return secret;
+};
 
 const hashValue = (kind: string, salt: string, value: string) =>
   createHmac("sha256", verificationSecret()).update(`${kind}:${salt}:${value}`).digest("base64url");
@@ -170,11 +173,10 @@ const normalizeStore = (value: unknown): VerificationStore => {
   };
 };
 
-const randomToken = (length = 32) =>
-  Array.from({ length }, () => Math.floor(Math.random() * 36).toString(36)).join("");
+const randomToken = (length = 32) => randomBytes(Math.ceil((length * 3) / 4)).toString("base64url").slice(0, length);
 
 const randomCode = (length = 6) =>
-  Array.from({ length }, () => captchaAlphabet[Math.floor(Math.random() * captchaAlphabet.length)]).join("");
+  Array.from({ length }, () => captchaAlphabet[randomInt(captchaAlphabet.length)]).join("");
 
 export async function createCaptchaChallenge() {
   const answer = randomCode(5);

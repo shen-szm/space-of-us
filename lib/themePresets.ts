@@ -1,4 +1,4 @@
-export const customThemePresetId = "custom-morandi" as const;
+﻿export const customThemePresetId = "custom-morandi" as const;
 
 export const staticThemePresetIds = [
   "cream-blush",
@@ -81,16 +81,16 @@ const buildPalette = (colors: ThemeColors): ThemePaletteItem[] => [
 export const deriveMonoThemeColors = (baseColor: string): ThemeColors => {
   const primary = normalizeCustomThemeColor(baseColor);
   return {
-    background: mixHex(primary, "#FBFAF7", 0.1),
-    foreground: mixHex(primary, "#32373A", 0.16),
-    card: mixHex(primary, "#FFFFFF", 0.045),
-    soft: mixHex(primary, "#F8F5F0", 0.16),
-    borderSoft: mixHex(primary, "#EEE8DF", 0.24),
-    borderStrong: mixHex(primary, "#D8CEC3", 0.34),
+    background: mixHex(primary, "#FCFAF8", 0.045),
+    foreground: mixHex(primary, "#38424A", 0.11),
+    card: mixHex(primary, "#FFFFFF", 0.02),
+    soft: mixHex(primary, "#F8F4EF", 0.075),
+    borderSoft: mixHex(primary, "#E7DED6", 0.14),
+    borderStrong: mixHex(primary, "#D6C8BE", 0.21),
     primary,
-    secondary: mixHex(primary, "#F3EEE7", 0.52),
-    highlight: mixHex(primary, "#FFFFFF", 0.3),
-    wash: mixHex(primary, "#FFFFFF", 0.14),
+    secondary: mixHex(primary, "#F4EEE8", 0.22),
+    highlight: mixHex(primary, "#FFFFFF", 0.14),
+    wash: mixHex(primary, "#FFFFFF", 0.07),
   };
 };
 
@@ -114,7 +114,7 @@ export const buildCustomThemePreset = (color: unknown): ThemePreset => {
   return {
     id: customThemePresetId,
     label: "自定义配色",
-    description: "选一个主色，系统自动生成更淡的同色阶页面。",
+    description: "用你选中的主色生成一套柔和、统一的莫兰迪色阶。",
     colors,
     palette: buildPalette(colors),
   };
@@ -123,51 +123,51 @@ export const buildCustomThemePreset = (color: unknown): ThemePreset => {
 export const themePresetList: ThemePreset[] = [
   buildStaticPreset({
     id: "cream-blush",
-    label: "奶油粉雾",
-    description: "柔和奶粉色阶，像窗边透进来的淡光。",
-    color: "#D4AAA6",
+    label: "奶油微醺",
+    description: "轻雾奶油底色配合微醺豆沙，适合温柔、安静的页面氛围。",
+    color: "#C8A7A1",
   }),
   buildStaticPreset({
     id: "peach-sky",
-    label: "杏桃薄光",
-    description: "淡杏色统一铺开，温暖但不发闷。",
-    color: "#D7B196",
+    label: "蜜桃天光",
+    description: "桃杏色主调更明亮，适合带一点晴天感的轻盈界面。",
+    color: "#CCB09A",
   }),
   buildStaticPreset({
     id: "mint-cherry",
-    label: "薄荷灰绿",
-    description: "浅绿灰色阶，整体清爽、安静。",
-    color: "#A8BCAD",
+    label: "薄荷樱雾",
+    description: "偏冷的薄荷灰绿带一点樱粉，适合更清爽的情侣空间。",
+    color: "#AAB5A8",
   }),
   buildStaticPreset({
     id: "butter-garden",
-    label: "黄油燕麦",
-    description: "麦色和奶油感更自然，像暖桌布。",
-    color: "#CDBB8F",
+    label: "黄油花园",
+    description: "柔黄和灰橄榄更偏生活感，适合照片和日常记录较多的页面。",
+    color: "#C7B79F",
   }),
   buildStaticPreset({
     id: "rose-clay",
     label: "玫瑰陶土",
-    description: "玫瑰灰更轻，保留亲密感，不偏甜。",
-    color: "#C99E98",
+    description: "更有存在感的玫瑰陶粉，适合强调纪念感和陪伴感。",
+    color: "#C09A94",
   }),
   buildStaticPreset({
     id: "oat-linen",
     label: "燕麦亚麻",
-    description: "燕麦色的单色过渡，干净、耐看。",
-    color: "#BFA989",
+    description: "中性燕麦色更克制，适合把内容和照片放在第一位。",
+    color: "#B7A896",
   }),
   buildStaticPreset({
     id: "mauve-milk",
-    label: "雾紫奶茶",
-    description: "灰紫被拉淡后更像奶茶阴影。",
-    color: "#B8A2B4",
+    label: "雾紫奶霜",
+    description: "带一点雾紫的奶灰调，适合更安静、偏夜晚感的主题。",
+    color: "#B29FA8",
   }),
   buildStaticPreset({
     id: "sage-hearth",
-    label: "鼠尾暖居",
-    description: "鼠尾草的淡色阶，温和且不占注意力。",
-    color: "#9EAE98",
+    label: "鼠尾草壁炉",
+    description: "沉静的鼠尾草灰绿更耐看，适合长期使用的常驻主题。",
+    color: "#A1AB9C",
   }),
 ];
 
@@ -175,5 +175,6 @@ export const themePresets: Record<ThemePresetId, ThemePreset> = {
   ...Object.fromEntries(themePresetList.map((preset) => [preset.id, preset])),
   [customThemePresetId]: buildCustomThemePreset(defaultCustomThemeColor),
 } as Record<ThemePresetId, ThemePreset>;
+
 export const isThemePresetId = (value: unknown): value is ThemePresetId =>
   typeof value === "string" && themePresetIds.includes(value as ThemePresetId);

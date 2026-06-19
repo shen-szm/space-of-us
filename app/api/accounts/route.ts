@@ -7,6 +7,7 @@ import {
   resetAccountPasswordByUsername,
 } from "@/lib/server/accountStore";
 import { consumePasswordResetGrant, verifyEmailCode } from "@/lib/server/verificationStore";
+import { isValidManagedPassword, managedPasswordPolicyText } from "@/lib/server/passwordPolicy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
     const emailCode = cleanString(payload.emailCode, 12).toUpperCase();
     if (
       !isValidUsername(username) ||
-      password.length < 4 ||
+      !isValidManagedPassword(password) ||
       email.length < 5 ||
       !email.includes("@") ||
       emailCode.length < 4
@@ -98,8 +99,11 @@ export async function POST(request: NextRequest) {
   if (payload.action === "resetPassword") {
     const grantToken = cleanString(payload.grantToken, 160);
     const newPassword = cleanString(payload.newPassword, 80);
-    if (!grantToken || newPassword.length < 4) {
+    if (!grantToken) {
       return NextResponse.json({ error: "Invalid reset fields" }, { status: 400 });
+    }
+    if (!isValidManagedPassword(newPassword)) {
+      return NextResponse.json({ error: managedPasswordPolicyText }, { status: 400 });
     }
 
     try {
@@ -119,8 +123,11 @@ export async function POST(request: NextRequest) {
     if (authError) return authError;
 
     const newPassword = cleanString(payload.newPassword, 80);
-    if (!isValidUsername(username) || newPassword.length < 4) {
+    if (!isValidUsername(username)) {
       return NextResponse.json({ error: "Invalid admin reset fields" }, { status: 400 });
+    }
+    if (!isValidManagedPassword(newPassword)) {
+      return NextResponse.json({ error: managedPasswordPolicyText }, { status: 400 });
     }
 
     try {

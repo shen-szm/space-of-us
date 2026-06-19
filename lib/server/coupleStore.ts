@@ -95,7 +95,7 @@ const normalizeStore = (value: unknown): CoupleHubStore => {
       partners: {
         a: isRecord(partners.a)
           ? {
-              name: typeof partners.a.name === "string" ? partners.a.name : "我",
+              name: typeof partners.a.name === "string" ? partners.a.name : "\u6211",
               avatar: typeof partners.a.avatar === "string" ? partners.a.avatar : undefined,
               joinedAt: typeof partners.a.joinedAt === "string" ? partners.a.joinedAt : new Date().toISOString(),
             }
@@ -158,7 +158,8 @@ export const createInviteCode = () =>
   randomBytes(4).toString("base64url").replaceAll(/[^A-Z0-9]/gi, "").slice(0, 6).toUpperCase();
 
 export const hashInviteCode = (code: string) => {
-  const secret = process.env.AUTH_COOKIE_SECRET ?? "map-of-us-local-dev";
+  const secret = process.env.AUTH_COOKIE_SECRET;
+  if (!secret) throw new Error("AUTH_COOKIE_SECRET is required");
   return createHmac("sha256", secret).update(code.trim().toUpperCase()).digest("base64url");
 };
 

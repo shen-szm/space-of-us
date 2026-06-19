@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import {
   type AgreementCategory,
@@ -38,7 +39,7 @@ const asPartnerRole = (value: unknown): PartnerRole =>
   partnerRoles.has(String(value)) ? (value as PartnerRole) : "a";
 
 const now = () => new Date().toISOString();
-const id = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const id = (prefix: string) => `${prefix}-${randomUUID()}`;
 const otherRole = (role: PartnerRole): PartnerRole => (role === "a" ? "b" : "a");
 
 const syncStoreWithBinding = async (scopeKey: string, username: string) => {

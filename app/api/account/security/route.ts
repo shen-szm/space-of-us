@@ -8,6 +8,7 @@ import {
   updateAccountThemePreset,
 } from "@/lib/server/accountStore";
 import { verifyEmailCode } from "@/lib/server/verificationStore";
+import { isValidManagedPassword, managedPasswordPolicyText } from "@/lib/server/passwordPolicy";
 import { isThemePresetId } from "@/lib/themePresets";
 
 export const dynamic = "force-dynamic";
@@ -52,8 +53,8 @@ export async function POST(request: NextRequest) {
     if (payload.action === "changePassword") {
       const currentPassword = cleanString(payload.currentPassword, 80);
       const newPassword = cleanString(payload.newPassword, 80);
-      if (currentPassword.length < 4 || newPassword.length < 4) {
-        return NextResponse.json({ error: "Invalid password fields" }, { status: 400 });
+      if (!isValidManagedPassword(currentPassword) || !isValidManagedPassword(newPassword)) {
+        return NextResponse.json({ error: managedPasswordPolicyText }, { status: 400 });
       }
       const user = await changeOwnAccountPassword({
         username: session.username,

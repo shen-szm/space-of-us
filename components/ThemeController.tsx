@@ -46,8 +46,8 @@ const applyThemePreset = (preset: ThemePresetId, customThemeColor?: string) => {
     "--text-muted": "color-mix(in srgb, " + colors.foreground + " 72%, transparent)",
     "--text-soft": "color-mix(in srgb, " + colors.foreground + " 54%, transparent)",
     "--hero-ink": colors.foreground,
-    "--hero-glow-a": colors.highlight,
-    "--hero-glow-b": colors.secondary,
+    "--hero-glow-a": "color-mix(in srgb, " + colors.wash + " 78%, white)",
+    "--hero-glow-b": "color-mix(in srgb, " + colors.highlight + " 82%, white)",
   };
   root.dataset.uiTheme = preset;
   document.body.dataset.uiTheme = preset;

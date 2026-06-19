@@ -1,24 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f5f0ea;
-  --foreground: #5f6670;
-  --surface-shell: rgb(245 240 234 / 0.84);
-  --surface-card: rgb(255 252 249 / 0.78);
-  --surface-card-strong: rgb(255 254 252 / 0.9);
-  --surface-soft: rgb(243 237 232 / 0.9);
-  --surface-muted: rgb(238 232 226 / 0.72);
-  --border-soft: rgb(214 204 196 / 0.76);
-  --border-strong: rgb(198 186 177 / 0.84);
-  --accent-primary: #bf7b7b;
-  --accent-secondary: #9eb0bc;
-  --accent-highlight: #e6d5d1;
-  --accent-wash: rgb(230 213 209 / 0.34);
-  --text-muted: rgb(95 102 112 / 0.72);
-  --text-soft: rgb(95 102 112 / 0.54);
-  --hero-ink: #3f4d58;
-  --hero-glow-a: rgb(230 213 209 / 0.74);
-  --hero-glow-b: rgb(208 218 226 / 0.72);
+  --background: #faf7f3;
+  --foreground: #5b5d63;
+  --surface-shell: rgb(250 247 243 / 0.9);
+  --surface-card: rgb(255 253 251 / 0.84);
+  --surface-card-strong: rgb(255 255 254 / 0.94);
+  --surface-soft: rgb(246 241 236 / 0.92);
+  --surface-muted: rgb(241 234 228 / 0.76);
+  --border-soft: rgb(224 214 205 / 0.82);
+  --border-strong: rgb(210 198 188 / 0.9);
+  --accent-primary: #c8a7a1;
+  --accent-secondary: #eaded7;
+  --accent-highlight: #f5ede8;
+  --accent-wash: rgb(236 226 219 / 0.42);
+  --text-muted: rgb(91 93 99 / 0.72);
+  --text-soft: rgb(91 93 99 / 0.54);
+  --hero-ink: #50545a;
+  --hero-glow-a: rgb(244 234 228 / 0.76);
+  --hero-glow-b: rgb(248 243 238 / 0.92);
   --shadow-soft: 0 18px 48px rgb(98 88 80 / 0.08);
   --shadow-strong: 0 30px 82px rgb(98 88 80 / 0.14);
   --font-geist-sans: system-ui, "Segoe UI", Arial, Helvetica, sans-serif;
@@ -138,8 +138,9 @@ body {
 
 .theme-page {
   background:
-    radial-gradient(circle at 12% 0%, var(--hero-glow-a), transparent 26%),
-    radial-gradient(circle at 88% 20%, var(--hero-glow-b), transparent 32%),
+    radial-gradient(circle at 50% -10%, color-mix(in srgb, var(--hero-glow-a) 78%, white), transparent 38%),
+    radial-gradient(circle at 12% 46%, color-mix(in srgb, var(--hero-glow-b) 58%, white), transparent 34%),
+    radial-gradient(circle at 88% 58%, color-mix(in srgb, var(--hero-glow-b) 54%, white), transparent 32%),
     var(--background);
   color: var(--foreground);
 }
@@ -268,8 +269,8 @@ body {
 
 .theme-hero-glow {
   background:
-    radial-gradient(circle at 16% 0%, var(--hero-glow-a), transparent 28%),
-    radial-gradient(circle at 92% 20%, var(--hero-glow-b), transparent 32%);
+    radial-gradient(circle at 18% 10%, color-mix(in srgb, var(--hero-glow-a) 74%, white), transparent 30%),
+    radial-gradient(circle at 84% 18%, color-mix(in srgb, var(--hero-glow-b) 66%, white), transparent 34%);
 }
 
 .theme-preview-swatch {
@@ -279,8 +280,8 @@ body {
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--border-soft) 92%, white);
   background:
-    radial-gradient(circle at 22% 18%, color-mix(in srgb, var(--accent-highlight) 86%, white), transparent 24%),
-    linear-gradient(135deg, color-mix(in srgb, var(--accent-secondary) 44%, white), var(--background));
+    radial-gradient(circle at 24% 22%, color-mix(in srgb, var(--accent-highlight) 92%, white), transparent 26%),
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-primary) 34%, white), var(--background));
 }
 
 button {
@@ -313,10 +314,10 @@ button {
   z-index: -1;
   border-radius: 999px;
   background:
-    radial-gradient(circle at 30% 30%, rgb(245 220 224 / 0.5), transparent 42%),
-    radial-gradient(circle at 75% 50%, rgb(214 232 240 / 0.58), transparent 46%);
+    radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--accent-highlight) 88%, white), transparent 42%),
+    radial-gradient(circle at 75% 50%, color-mix(in srgb, var(--accent-wash) 84%, white), transparent 46%);
   filter: blur(18px);
-  opacity: 0.72;
+  opacity: 0.68;
   transition:
     opacity 0.3s ease,
     transform 0.3s ease;
@@ -371,8 +372,8 @@ button {
 
 .login-paper {
   background:
-    radial-gradient(circle at 16% 16%, color-mix(in srgb, var(--hero-glow-a) 86%, white), transparent 24%),
-    radial-gradient(circle at 82% 74%, color-mix(in srgb, var(--hero-glow-b) 86%, white), transparent 28%),
+    radial-gradient(circle at 18% 14%, color-mix(in srgb, var(--hero-glow-a) 82%, white), transparent 24%),
+    radial-gradient(circle at 84% 72%, color-mix(in srgb, var(--hero-glow-b) 82%, white), transparent 28%),
     linear-gradient(135deg, rgb(255 255 255 / 0.62), transparent 44%),
     var(--background);
 }

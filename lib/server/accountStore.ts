@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac, randomInt, randomUUID, timingSafeEqual } from "crypto";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import {
@@ -119,16 +119,16 @@ const normalizeStore = (value: unknown): AccountStore => {
   };
 };
 
-const accountHashSecret = () =>
-  process.env.ACCOUNT_HASH_SECRET ?? process.env.AUTH_COOKIE_SECRET ?? "space-of-us-account-hash-v1";
+const accountHashSecret = () => {
+  const secret = process.env.ACCOUNT_HASH_SECRET;
+  if (!secret) throw new Error("ACCOUNT_HASH_SECRET is required");
+  return secret;
+};
 
 const legacyHashSecrets = () =>
-  [
-    accountHashSecret(),
-    process.env.AUTH_COOKIE_SECRET,
-    "map-of-us-local-dev",
-    "space-of-us-account-hash-v1",
-  ].filter((secret, index, secrets): secret is string => Boolean(secret) && secrets.indexOf(secret) === index);
+  [process.env.ACCOUNT_HASH_SECRET, process.env.AUTH_COOKIE_SECRET].filter(
+    (secret, index, secrets): secret is string => Boolean(secret) && secrets.indexOf(secret) === index,
+  );
 
 const hashWithSecret = (value: string, salt: string, secret: string) =>
   createHmac("sha256", secret).update(`${salt}:${value}`).digest("base64url");
@@ -139,7 +139,7 @@ const verifyAccountSecret = (value: string, salt: string, hash: string) =>
   legacyHashSecrets().some((secret) => safeEqual(hashWithSecret(value, salt, secret), hash));
 
 export const createBindingInviteCode = () =>
-  Array.from({ length: 8 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
+  Array.from({ length: 8 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[randomInt(32)]).join("");
 
 const safeEqual = (left: string, right: string) => {
   const leftBuffer = Buffer.from(left);
@@ -251,7 +251,7 @@ export const registerAccount = async ({
 
   const timestamp = new Date().toISOString();
   const account: UserAccount = {
-    id: `user-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `user-${randomUUID()}`,
     username: normalizedUsername,
     displayName: displayName.trim() || username.trim(),
     email: normalizedEmail,
@@ -510,7 +510,7 @@ export const createAccountBindingRequest = async (username: string, inviteCode: 
 
   const timestamp = new Date().toISOString();
   const request: AccountBindingRequest = {
-    id: `bind-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `bind-${randomUUID()}`,
     fromUserId: from.id,
     fromUsername: from.username,
     fromDisplayName: from.displayName,

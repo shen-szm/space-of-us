@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+﻿import { NextResponse, type NextRequest } from "next/server";
 import { normalizeAppSettings } from "@/data/appSettings";
 import { requireSiteSession } from "@/lib/server/auth";
 import { assertWritableStorageConfigured, readJsonValue, writeJsonValue } from "@/lib/server/supabase";
@@ -31,7 +31,10 @@ async function writeStore(settings: unknown) {
   return normalized;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authError = requireSiteSession(request);
+  if (authError) return authError;
+
   try {
     return NextResponse.json({ settings: await readStore() });
   } catch (error) {

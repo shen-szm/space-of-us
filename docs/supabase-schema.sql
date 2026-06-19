@@ -7,7 +7,8 @@ create table if not exists public.map_of_us_store (
   updated_at timestamptz not null default now()
 );
 
-alter table public.map_of_us_store disable row level security;
+alter table public.map_of_us_store enable row level security;
+revoke all on public.map_of_us_store from anon, authenticated;
 
 insert into storage.buckets (id, name, public)
 values ('map-of-us', 'map-of-us', false)

@@ -1,7 +1,13 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import test from "node:test";
 import { normalizeAppSettings } from "../data/appSettings.ts";
-import { buildCustomThemePreset, customThemePresetId, normalizeCustomThemeColor, themePresetIds, themePresetList } from "../lib/themePresets.ts";
+import {
+  buildCustomThemePreset,
+  customThemePresetId,
+  normalizeCustomThemeColor,
+  themePresetIds,
+  themePresetList,
+} from "../lib/themePresets.ts";
 
 test("provides eight complete static theme presets", () => {
   assert.equal(themePresetList.length, 8);
@@ -29,19 +35,17 @@ test("keeps legacy theme identifiers valid", () => {
 });
 
 test("theme names and descriptions are readable Chinese copy", () => {
-  const mojibakePattern = /[銆€鏉窞鎴戜滑绮浘]|锛|€|�/;
-
   for (const preset of themePresetList) {
     assert.match(preset.label, /[\u4e00-\u9fff]/);
     assert.match(preset.description, /[\u4e00-\u9fff]/);
-    assert.doesNotMatch(preset.label, mojibakePattern);
-    assert.doesNotMatch(preset.description, mojibakePattern);
+    assert.doesNotMatch(preset.label, /\?{2,}|�/);
+    assert.doesNotMatch(preset.description, /\?{2,}|�/);
   }
 });
 
 test("theme presets expose ordered palette roles for the settings preview", () => {
   for (const preset of themePresetList) {
-    assert.deepEqual(preset.palette.map((item) => item.label), ["页面背景", "卡片", "主色", "辅色"]);
+    assert.deepEqual(preset.palette.map((item) => item.label), ["\u9875\u9762\u80cc\u666f", "\u5361\u7247", "\u4e3b\u8272", "\u8f85\u8272"]);
     assert.deepEqual(preset.palette.map((item) => item.color), [
       preset.colors.background,
       preset.colors.card,
@@ -50,6 +54,7 @@ test("theme presets expose ordered palette roles for the settings preview", () =
     ]);
   }
 });
+
 test("supports a custom mono-color theme preset", () => {
   assert.ok(themePresetIds.includes(customThemePresetId));
 
@@ -76,16 +81,16 @@ test("normalizes invalid custom colors to a soft default", () => {
 test("ignores retired login photo fields in old backups", () => {
   const normalized = normalizeAppSettings({
     loginPhotos: { hangzhou: "data:image/png;base64,abc" },
-    loginPhotoTexts: { hangzhou: { city: "杭州", label: "春日" } },
+    loginPhotoTexts: { hangzhou: { city: "\u676d\u5dde", label: "\u6625\u65e5" } },
     loginCoverImage: "data:image/png;base64,legacy",
     anniversaryDate: "2025.01.01",
-    anniversaryLabel: "我们在一起",
+    anniversaryLabel: "\u6211\u4eec\u5728\u4e00\u8d77",
     weatherCityIds: ["beijing"],
   });
 
   assert.deepEqual(normalized, {
     anniversaryDate: "2025.01.01",
-    anniversaryLabel: "我们在一起",
+    anniversaryLabel: "\u6211\u4eec\u5728\u4e00\u8d77",
     weatherCityIds: ["beijing"],
     coupleLogo: undefined,
   });

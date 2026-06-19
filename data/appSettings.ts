@@ -1,4 +1,4 @@
-export const appSettingsStorageKey = "mapofus:settings";
+﻿export const appSettingsStorageKey = "mapofus:settings";
 export const appSettingsUpdatedEvent = "mapofus:settings-updated";
 
 export type AppSettings = {
@@ -8,9 +8,8 @@ export type AppSettings = {
   coupleLogo?: string;
 };
 
-
 export const defaultAnniversaryDate = "2025.01.01";
-export const defaultAnniversaryLabel = "我们在一起";
+export const defaultAnniversaryLabel = "\u6211\u4eec\u5728\u4e00\u8d77";
 export const defaultWeatherCityIds = ["beijing", "shanghai", "guangzhou"];
 export const maxWeatherCities = 3;
 export const defaultCoupleLogo = "/logo/couple-logo-placeholder.svg";

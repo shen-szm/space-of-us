@@ -23,16 +23,11 @@ const secureCookie = process.env.NODE_ENV === "production" && process.env.MAP_OF
 
 const getSecret = () => process.env.AUTH_COOKIE_SECRET;
 
-const defaultPasswords: Record<AuthRole, string> = {
-  site: "1234",
-  admin: "admin1234",
-};
 
 const getPasswords = (role: AuthRole) => {
   const configured = role === "admin" ? process.env.ADMIN_PASSWORD : process.env.SITE_PASSWORD;
-  const defaults = defaultPasswords[role];
 
-  return configured && configured !== defaults ? [configured, defaults] : [configured || defaults];
+  return configured ? [configured] : [];
 };
 
 const safeEqual = (left: string, right: string) => {
@@ -141,8 +136,8 @@ export const getMissingAuthEnv = (includePasswords = false) => {
   const missing: string[] = [];
 
   if (!process.env.AUTH_COOKIE_SECRET) missing.push("AUTH_COOKIE_SECRET");
-  if (includePasswords && getPasswords("site").length === 0) missing.push("SITE_PASSWORD");
-  if (includePasswords && getPasswords("admin").length === 0) missing.push("ADMIN_PASSWORD");
+  if (includePasswords && !process.env.SITE_PASSWORD) missing.push("SITE_PASSWORD");
+  if (includePasswords && !process.env.ADMIN_PASSWORD) missing.push("ADMIN_PASSWORD");
 
   return missing;
 };

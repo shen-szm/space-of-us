@@ -1,7 +1,11 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
+﻿import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAdminSession } from "@/lib/server/auth";
+import {
+  isValidManagedPassword,
+  managedPasswordPolicyText,
+} from "@/lib/server/passwordPolicy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -24,18 +28,16 @@ export async function POST(request: NextRequest) {
   if (!target) {
     return NextResponse.json({ error: "Invalid target" }, { status: 400 });
   }
-  if (newPassword.length < 1 || newPassword.length > 64) {
-    return NextResponse.json({ error: "Password length must be 1-64" }, { status: 400 });
+  if (!isValidManagedPassword(newPassword)) {
+    return NextResponse.json({ error: managedPasswordPolicyText }, { status: 400 });
   }
 
-  // Update the running server immediately (verifyPassword reads process.env).
   if (target === "site") {
     process.env.SITE_PASSWORD = newPassword;
   } else {
     process.env.ADMIN_PASSWORD = newPassword;
   }
 
-  // Persist to the desktop auth config so the new password survives restarts.
   const configPath = process.env.MAP_OF_US_AUTH_CONFIG;
   if (configPath) {
     try {

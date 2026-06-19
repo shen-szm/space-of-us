@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import type { AdminAlert } from "@/data/adminAlerts";
 
@@ -15,19 +16,9 @@ const cleanedEnvValue = (value?: string | null) => {
   return trimmed || undefined;
 };
 
-const uniqueDefined = (...values: Array<string | undefined>) =>
-  [...new Set(values.map((value) => cleanedEnvValue(value)).filter((value): value is string => Boolean(value)))];
-
 const rawSupabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseUrl = normalizeSupabaseUrl(rawSupabaseUrl);
-const supabaseKeys = uniqueDefined(
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  process.env.SUPABASE_SECRET_KEY,
-  process.env.SUPABASE_PUBLISHABLE_KEY,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-  process.env.SUPABASE_ANON_KEY,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-);
+const supabaseServiceRoleKey = cleanedEnvValue(process.env.SUPABASE_SERVICE_ROLE_KEY);
 const shouldUseLocalFileStorage = process.env.MAP_OF_US_STORAGE_MODE === "local";
 
 export const supabaseStorageBucket = process.env.SUPABASE_STORAGE_BUCKET ?? "map-of-us";
@@ -35,7 +26,7 @@ const privateImagePrefix = "supabase-private://";
 const signedUrlExpiresInSeconds = 60 * 60 * 24;
 const adminAlertsKey = "admin-alerts";
 
-export const isSupabaseConfigured = !shouldUseLocalFileStorage && Boolean(supabaseUrl && supabaseKeys.length > 0);
+export const isSupabaseConfigured = !shouldUseLocalFileStorage && Boolean(supabaseUrl && supabaseServiceRoleKey);
 export const shouldRequirePersistentStorage = process.env.NODE_ENV === "production" && !shouldUseLocalFileStorage;
 
 const getSupabaseConfigProblem = () => {
@@ -44,8 +35,8 @@ const getSupabaseConfigProblem = () => {
   if ((rawSupabaseUrl ?? "").includes("/rest/v1")) {
     return "SUPABASE_URL should be the project URL, not the /rest/v1 Data API endpoint.";
   }
-  if (supabaseKeys.length === 0) {
-    return "A Supabase server key is missing. Set SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SECRET_KEY.";
+  if (!supabaseServiceRoleKey) {
+    return "A Supabase service role key is missing. Set SUPABASE_SERVICE_ROLE_KEY.";
   }
 
   return null;
@@ -76,18 +67,8 @@ const toSupabaseError = (error: unknown) => {
   return error instanceof Error ? error : new Error(text || "Supabase request failed");
 };
 
-const shouldRetryWithNextKey = (error: unknown) => {
-  const text = getErrorText(error).toLowerCase();
-  return (
-    text.includes("invalid api key") ||
-    text.includes("jwt") ||
-    text.includes("not authorized") ||
-    text.includes("permission denied")
-  );
-};
-
-const createSupabaseAdmin = (key: string) =>
-  createClient(supabaseUrl!, key, {
+const createSupabaseAdmin = () =>
+  createClient(supabaseUrl!, supabaseServiceRoleKey!, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -95,25 +76,13 @@ const createSupabaseAdmin = (key: string) =>
   });
 
 async function runWithSupabaseAdmin<T>(operation: (client: ReturnType<typeof createSupabaseAdmin>) => Promise<T>) {
-  if (shouldUseLocalFileStorage || !supabaseUrl || supabaseKeys.length === 0) return null;
+  if (shouldUseLocalFileStorage || !supabaseUrl || !supabaseServiceRoleKey) return null;
 
-  let lastError: Error | null = null;
-
-  for (const key of supabaseKeys) {
-    const client = createSupabaseAdmin(key);
-
-    try {
-      return await operation(client);
-    } catch (error) {
-      const nextError = toSupabaseError(error);
-      lastError = nextError;
-      if (!shouldRetryWithNextKey(nextError)) {
-        throw nextError;
-      }
-    }
+  try {
+    return await operation(createSupabaseAdmin());
+  } catch (error) {
+    throw toSupabaseError(error);
   }
-
-  throw lastError ?? new Error("Supabase request failed");
 }
 
 export function assertWritableStorageConfigured() {
@@ -124,8 +93,8 @@ export function assertWritableStorageConfigured() {
 }
 
 export function getSupabaseAdmin() {
-  if (shouldUseLocalFileStorage || !supabaseUrl || supabaseKeys.length === 0) return null;
-  return createSupabaseAdmin(supabaseKeys[0]);
+  if (shouldUseLocalFileStorage || !supabaseUrl || !supabaseServiceRoleKey) return null;
+  return createSupabaseAdmin();
 }
 
 export async function readJsonValue<T>(key: string, fallback: T): Promise<T> {
@@ -183,7 +152,7 @@ export async function recordAdminAlert(alert: Omit<AdminAlert, "id" | "createdAt
   const alerts = await listAdminAlerts().catch(() => []);
   const nextAlert: AdminAlert = {
     ...alert,
-    id: `alert-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `alert-${randomUUID()}`,
     createdAt: new Date().toISOString(),
   };
 
@@ -227,8 +196,8 @@ export async function uploadDataImage(value: string, pathPrefix: string, fallbac
     if (isStorageQuotaError(error)) {
       await recordAdminAlert({
         type: "storage_quota",
-        title: "存储空间已满",
-        message: "用户上传文件失败，Supabase Storage 可用空间可能已经用完。",
+        title: "\u5b58\u50a8\u7a7a\u95f4\u5df2\u6ee1",
+        message: "\u7528\u6237\u4e0a\u4f20\u6587\u4ef6\u5931\u8d25\uff0cSupabase Storage \u53ef\u7528\u7a7a\u95f4\u53ef\u80fd\u5df2\u7ecf\u7528\u5b8c\u3002",
         source: filePath,
       });
       throw new StorageQuotaExceededError();

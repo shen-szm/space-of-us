@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { type UserFeedback, type UserFeedbackCategory } from "@/data/feedback";
 import { findPublicAccount } from "@/lib/server/accountStore";
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
 
   const timestamp = new Date().toISOString();
   const feedback: UserFeedback = {
-    id: `feedback-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `feedback-${randomUUID()}`,
     username: user.username,
     displayName: user.displayName,
     email: user.email,

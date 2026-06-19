@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell } = require("electron");
+﻿const { app, BrowserWindow, shell } = require("electron");
 const { spawn } = require("node:child_process");
 const crypto = require("node:crypto");
 const fs = require("node:fs");
@@ -40,8 +40,8 @@ function readOrCreateAuthConfig() {
   }
 
   const config = {
-    sitePassword: process.env.SITE_PASSWORD || "1234",
-    adminPassword: process.env.ADMIN_PASSWORD || "admin1234",
+    sitePassword: process.env.SITE_PASSWORD || crypto.randomBytes(12).toString("base64url"),
+    adminPassword: process.env.ADMIN_PASSWORD || crypto.randomBytes(16).toString("base64url"),
     cookieSecret: process.env.AUTH_COOKIE_SECRET || crypto.randomBytes(32).toString("base64url"),
   };
 
@@ -213,3 +213,6 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", shutdown);
+
+
+
