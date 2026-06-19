@@ -130,6 +130,7 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
         <div className="theme-divider mt-3 border-t pt-3">
           <p className="theme-text-soft text-[11px] font-semibold">灵感来源</p>
           <div className="theme-text-muted mt-2 space-y-2 text-xs leading-6">
+            <p>感谢原博主的开源分享。</p>
             <p>
               GitHub：
               <a

@@ -22,6 +22,7 @@ import {
 } from "@/data/progress";
 import {
   readAppSettings,
+  normalizeAppSettings,
   writeAppSettings,
   defaultAnniversaryDate,
   defaultAnniversaryLabel,
@@ -29,17 +30,7 @@ import {
   defaultWeatherCityIds,
   maxWeatherCities,
   type AppSettings,
-  type LoginPhotoText,
 } from "@/data/appSettings";
-import {
-  deleteLoginPhotoText,
-  deleteLoginPhoto,
-  loginPhotosUpdatedEvent,
-  readLoginPhotoTexts,
-  readLoginPhotos,
-  writeLoginPhotoText,
-  writeLoginPhoto,
-} from "@/data/loginPhotoStore";
 import {
   readSharedItems,
   saveSharedItems,
@@ -52,7 +43,6 @@ import {
   writeAdminMode,
 } from "@/data/adminMode";
 import { LocalPrivacyImage } from "@/components/LocalPrivacyImage";
-import { withVersion } from "@/lib/appVersion";
 
 type StoredItem = SharedItem;
 type CityAssetStore = Record<string, string>;
@@ -98,19 +88,6 @@ const configs = {
 } satisfies Record<string, ToolConfig>;
 
 const auxiliaryStorageKeys = ["mapofus:favorites", "mapofus:anniversaries", "mapofus:capsules"] as const;
-const loginPhotoFallback = (fileName: string) => withVersion(`/photos/login/${fileName}.jpg`);
-
-const loginPhotoSlots = [
-  { id: "hangzhou", city: "杭州", label: "春日湖畔", fallback: loginPhotoFallback("hangzhou") },
-  { id: "shanghai", city: "上海", label: "外滩傍晚", fallback: loginPhotoFallback("shanghai") },
-  { id: "macau", city: "澳门", label: "旧城光影", fallback: loginPhotoFallback("macau") },
-  { id: "hongkong", city: "香港", label: "夜色亮起", fallback: loginPhotoFallback("hongkong") },
-  { id: "qingdao", city: "青岛", label: "海风经过", fallback: loginPhotoFallback("qingdao") },
-  { id: "zhengzhou", city: "郑州", label: "见面那天", fallback: loginPhotoFallback("zhengzhou") },
-  { id: "zhuhai", city: "珠海", label: "海边散步", fallback: loginPhotoFallback("zhuhai") },
-  { id: "guangzhou", city: "广州", label: "旧街热气", fallback: loginPhotoFallback("guangzhou") },
-  { id: "jinan", city: "济南", label: "泉边小记", fallback: loginPhotoFallback("jinan") },
-] as const;
 
 const useAdminMode = () => {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -180,52 +157,6 @@ const imageFileToSettingImage = (file: File) =>
 
     image.src = url;
   });
-
-const normalizeAppSettings = (value: unknown): AppSettings => {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
-
-  const settings = value as AppSettings & { loginCoverImage?: string };
-  const loginPhotos =
-    settings.loginPhotos && typeof settings.loginPhotos === "object" && !Array.isArray(settings.loginPhotos)
-      ? Object.fromEntries(
-          Object.entries(settings.loginPhotos).filter(
-            ([key, photo]) =>
-              loginPhotoSlots.some((slot) => slot.id === key) &&
-              typeof photo === "string" &&
-              photo.startsWith("data:image/"),
-          ),
-        )
-      : {};
-  const loginPhotoTexts =
-    settings.loginPhotoTexts && typeof settings.loginPhotoTexts === "object" && !Array.isArray(settings.loginPhotoTexts)
-      ? Object.fromEntries(
-          Object.entries(settings.loginPhotoTexts)
-            .filter(([key]) => loginPhotoSlots.some((slot) => slot.id === key))
-            .map(([key, value]) => {
-              if (typeof value !== "object" || value === null || Array.isArray(value)) return [key, {}];
-              const item = value as LoginPhotoText;
-
-              return [
-                key,
-                {
-                  city: typeof item.city === "string" ? item.city : undefined,
-                  label: typeof item.label === "string" ? item.label : undefined,
-                },
-              ];
-            }),
-        )
-      : {};
-
-  if (
-    Object.keys(loginPhotos).length === 0 &&
-    typeof settings.loginCoverImage === "string" &&
-    settings.loginCoverImage.startsWith("data:image/")
-  ) {
-    return { loginPhotos: { hangzhou: settings.loginCoverImage }, loginPhotoTexts };
-  }
-
-  return { loginPhotos, loginPhotoTexts };
-};
 
 const daysUntil = (value?: string) => {
   if (!value || !/^\d{4}\.\d{2}\.\d{2}$/.test(value)) return null;
@@ -570,7 +501,6 @@ export function SettingsPage() {
   const isAdmin = useAdminMode();
   const [memoryCount, setMemoryCount] = useState(0);
   const [appSettings, setAppSettings] = useState<AppSettings>({});
-  const [loginPhotos, setLoginPhotos] = useState<Record<string, string>>({});
   const [adminCode, setAdminCode] = useState("");
   const [adminError, setAdminError] = useState("");
   const [status, setStatus] = useState("");
@@ -592,115 +522,10 @@ export function SettingsPage() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadMemoryCount();
-      const settings = readAppSettings();
-      const legacyPhotos = settings.loginPhotos ?? {};
-      const nextSettings = { ...settings, loginPhotos: undefined };
-
-      setAppSettings(nextSettings);
-      void Promise.all(Object.entries(legacyPhotos).map(([slotId, image]) => writeLoginPhoto(slotId, image)))
-        .then(async () => {
-          if (Object.keys(legacyPhotos).length > 0) writeAppSettings(nextSettings);
-          setLoginPhotos(await readLoginPhotos());
-          const loginPhotoTexts = await readLoginPhotoTexts();
-          setAppSettings((current) => ({ ...current, loginPhotoTexts }));
-        })
-        .catch(() => {
-          setLoginPhotos(legacyPhotos);
-        });
+      setAppSettings(readAppSettings());
     }, 0);
-
-    const handleLoginPhotosUpdate = () => {
-      void readLoginPhotos().then(setLoginPhotos).catch(() => setLoginPhotos({}));
-      void readLoginPhotoTexts()
-        .then((texts) => setAppSettings((current) => ({ ...current, loginPhotoTexts: texts })))
-        .catch(() => {});
-    };
-
-    window.addEventListener(loginPhotosUpdatedEvent, handleLoginPhotosUpdate);
-
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener(loginPhotosUpdatedEvent, handleLoginPhotosUpdate);
-    };
+    return () => window.clearTimeout(timer);
   }, []);
-
-  const updateLoginPhoto = async (slotId: string, event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!isAdmin) {
-      setStatus("请先进入管理员模式");
-      event.target.value = "";
-      return;
-    }
-    if (!file || isWorking) return;
-
-    setIsWorking(true);
-    setStatus("");
-
-    try {
-      const image = await imageFileToSettingImage(file);
-      await writeLoginPhoto(slotId, image);
-      setLoginPhotos(await readLoginPhotos());
-      setStatus("登录照片已更新");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "登录照片更新失败，请选择一张图片");
-    } finally {
-      setIsWorking(false);
-      event.target.value = "";
-    }
-  };
-
-  const resetLoginPhoto = (slotId: string) => {
-    if (!isAdmin) {
-      setStatus("请先进入管理员模式");
-      return;
-    }
-
-    void deleteLoginPhoto(slotId)
-      .then(async () => {
-        setLoginPhotos(await readLoginPhotos());
-        setStatus("登录照片已恢复默认");
-      })
-      .catch((error) => setStatus(error instanceof Error ? error.message : "登录照片恢复失败，请稍后再试"));
-  };
-
-  const updateLoginPhotoText = (slotId: string, field: keyof LoginPhotoText, value: string) => {
-    if (!isAdmin) {
-      setStatus("请先进入管理员模式");
-      return;
-    }
-
-    const nextText = {
-      ...(appSettings.loginPhotoTexts?.[slotId] ?? {}),
-      [field]: value,
-    };
-    const nextSettings = {
-      ...appSettings,
-      loginPhotoTexts: {
-        ...(appSettings.loginPhotoTexts ?? {}),
-        [slotId]: nextText,
-      },
-    };
-
-    setAppSettings(nextSettings);
-    void writeLoginPhotoText(slotId, nextText)
-      .then(() => setStatus("登录文字已更新"))
-      .catch((error) => setStatus(error instanceof Error ? error.message : "登录文字更新失败，请稍后再试"));
-  };
-
-  const resetLoginPhotoText = (slotId: string) => {
-    if (!isAdmin) {
-      setStatus("请先进入管理员模式");
-      return;
-    }
-
-    const nextTexts = { ...(appSettings.loginPhotoTexts ?? {}) };
-    delete nextTexts[slotId];
-
-    setAppSettings({ ...appSettings, loginPhotoTexts: nextTexts });
-    void deleteLoginPhotoText(slotId)
-      .then(() => setStatus("登录文字已恢复默认"))
-      .catch((error) => setStatus(error instanceof Error ? error.message : "登录文字恢复失败，请稍后再试"));
-  };
 
   const anniversaryDate = appSettings.anniversaryDate ?? "";
   const anniversaryLabel = appSettings.anniversaryLabel ?? "";
@@ -811,11 +636,7 @@ export function SettingsPage() {
       memories,
       cityAssets: assetData?.assets ?? {},
       auxiliary: Object.fromEntries(auxiliaryStorageKeys.map((key) => [key, readJsonArray(key)])),
-      settings: {
-        ...readAppSettings(),
-        loginPhotos: await readLoginPhotos(),
-        loginPhotoTexts: await readLoginPhotoTexts(),
-      },
+      settings: readAppSettings(),
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -875,16 +696,8 @@ export function SettingsPage() {
       });
       if (payload.settings) {
         const nextSettings = normalizeAppSettings(payload.settings);
-        await Promise.all(
-          Object.entries(nextSettings.loginPhotos ?? {}).map(([slotId, image]) => writeLoginPhoto(slotId, image)),
-        );
-        await Promise.all(
-          Object.entries(nextSettings.loginPhotoTexts ?? {}).map(([slotId, text]) => writeLoginPhotoText(slotId, text)),
-        );
-        const settingsWithoutPhotos = { ...nextSettings, loginPhotos: undefined };
-        writeAppSettings(settingsWithoutPhotos);
-        setAppSettings(settingsWithoutPhotos);
-        setLoginPhotos(await readLoginPhotos());
+        writeAppSettings(nextSettings);
+        setAppSettings(nextSettings);
       }
       window.dispatchEvent(new CustomEvent(memoryStoreUpdatedEvent, { detail: data.memories }));
       setMemoryCount(Object.values(data.memories).flat().length);
@@ -1136,105 +949,6 @@ export function SettingsPage() {
           </div>
         </div>
 
-        <div className="rounded-[8px] border border-[#D8DDD8]/78 bg-[#FAFBF7]/76 p-5 shadow-[0_12px_28px_rgba(90,102,112,0.06)] md:col-span-2">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-[#5A6670]">登录照片</p>
-              <p className="mt-2 text-sm leading-6 text-[#5A6670]/62">
-                对应登录界面底部的 9 张照片。替换某一格后，大背景、相框和缩略图都会同步使用这一张。
-              </p>
-            </div>
-            <p className="text-xs font-semibold text-[#5A6670]/42">
-              已自定义 {Object.keys(loginPhotos).length} / {loginPhotoSlots.length}
-            </p>
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {loginPhotoSlots.map((slot) => {
-              const customPhoto = loginPhotos[slot.id];
-              const customText = appSettings.loginPhotoTexts?.[slot.id];
-              const src = customPhoto ?? slot.fallback;
-              const titleValue = customText?.city ?? slot.city;
-              const labelValue = customText?.label ?? slot.label;
-
-              return (
-                <div
-                  className="rounded-[8px] border border-[#D8DDD8]/70 bg-white/34 p-3"
-                  key={slot.id}
-                >
-                  <div className="relative aspect-[4/3] overflow-hidden rounded-[7px] bg-[#D6E8F0]/24">
-                    <LocalPrivacyImage
-                      className="h-full w-full object-cover"
-                      src={src}
-                      alt={`${slot.city} 登录照片预览`}
-                      fill
-                      sizes="(max-width: 768px) 50vw, 260px"
-                    />
-                  </div>
-                  <div className="mt-3 grid gap-2">
-                    <label className="grid gap-1">
-                      <span className="text-xs font-semibold text-[#5A6670]/48">标题</span>
-                      <input
-                        className="min-h-10 rounded-[7px] border border-[#D8DDD8]/80 bg-[#FAFBF7]/70 px-3 text-sm font-semibold text-[#5A6670] outline-none transition focus:border-[#A8C8DC] focus:bg-white"
-                        value={titleValue}
-                        onChange={(event) => updateLoginPhotoText(slot.id, "city", event.target.value)}
-                        disabled={!isAdmin}
-                      />
-                    </label>
-                    <label className="grid gap-1">
-                      <span className="text-xs font-semibold text-[#5A6670]/48">副标题</span>
-                      <input
-                        className="min-h-10 rounded-[7px] border border-[#D8DDD8]/80 bg-[#FAFBF7]/70 px-3 text-sm text-[#5A6670] outline-none transition focus:border-[#A8C8DC] focus:bg-white"
-                        value={labelValue}
-                        onChange={(event) => updateLoginPhotoText(slot.id, "label", event.target.value)}
-                        disabled={!isAdmin}
-                      />
-                    </label>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between gap-3">
-                    <p className="text-xs text-[#5A6670]/44">
-                      {customPhoto || customText ? "已自定义" : "默认内容"}
-                    </p>
-                    <div className="flex shrink-0 gap-2">
-                      <label
-                        className={`grid h-9 w-9 place-items-center rounded-[7px] border border-[#A8C8DC] text-[#A8C8DC] transition hover:bg-[#D6E8F0]/36 ${
-                          isWorking || !isAdmin ? "pointer-events-none opacity-45" : ""
-                        }`}
-                        title={`更换${slot.city}登录照片`}
-                      >
-                        <Upload className="h-4 w-4" />
-                        <input
-                          className="hidden"
-                          type="file"
-                          accept="image/*"
-                          onChange={(event) => updateLoginPhoto(slot.id, event)}
-                          disabled={isWorking || !isAdmin}
-                        />
-                      </label>
-                      <button
-                        className="grid h-9 w-9 place-items-center rounded-[7px] border border-[#D8DDD8] text-[#5A6670]/58 transition hover:bg-white/68 disabled:opacity-35"
-                        type="button"
-                        onClick={() => resetLoginPhoto(slot.id)}
-                        disabled={isWorking || !isAdmin || !customPhoto}
-                        title={`恢复${slot.city}默认照片`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                      <button
-                        className="rounded-[7px] border border-[#D8DDD8] px-3 text-xs font-semibold text-[#5A6670]/58 transition hover:bg-white/68 disabled:opacity-35"
-                        type="button"
-                        onClick={() => resetLoginPhotoText(slot.id)}
-                        disabled={isWorking || !isAdmin || !customText}
-                      >
-                        文字
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
         <div className="rounded-[8px] border border-[#D8DDD8]/78 bg-[#FAFBF7]/76 p-5 shadow-[0_12px_28px_rgba(90,102,112,0.06)]">
           <p className="text-sm font-semibold text-[#5A6670]">本地回忆</p>
           <p className="mt-2 text-3xl font-semibold text-[#E8B8C2]">{memoryCount}</p>

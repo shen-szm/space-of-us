@@ -22,7 +22,7 @@ export async function prepareStandaloneAssets(root = process.cwd()) {
   );
 
   await Promise.all(
-    ["localMemories.private.json", "cityAssets.private.json", "loginPhotos.private.json"].map((fileName) =>
+    ["localMemories.private.json", "cityAssets.private.json"].map((fileName) =>
       rm(path.join(standaloneDir, "data", fileName), { force: true }),
     ),
   );

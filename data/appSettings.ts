@@ -2,18 +2,12 @@ export const appSettingsStorageKey = "mapofus:settings";
 export const appSettingsUpdatedEvent = "mapofus:settings-updated";
 
 export type AppSettings = {
-  loginPhotos?: Record<string, string>;
-  loginPhotoTexts?: Record<string, LoginPhotoText>;
   anniversaryDate?: string;
   anniversaryLabel?: string;
   weatherCityIds?: string[];
   coupleLogo?: string;
 };
 
-export type LoginPhotoText = {
-  city?: string;
-  label?: string;
-};
 
 export const defaultAnniversaryDate = "2025.01.01";
 export const defaultAnniversaryLabel = "我们在一起";
@@ -44,27 +38,7 @@ const isValidLogo = (value: unknown): value is string =>
 export const normalizeAppSettings = (value: unknown): AppSettings => {
   if (!isRecord(value)) return defaultAppSettings;
 
-  const settings = value as AppSettings & { loginCoverImage?: string };
-  const loginPhotos =
-    isRecord(settings.loginPhotos)
-      ? Object.fromEntries(
-          Object.entries(settings.loginPhotos).filter(
-            ([, item]) => typeof item === "string" && item.startsWith("data:image/"),
-          ),
-        )
-      : {};
-  const loginPhotoTexts =
-    isRecord(settings.loginPhotoTexts)
-      ? Object.fromEntries(
-          Object.entries(settings.loginPhotoTexts).map(([key, item]) => [
-            key,
-            {
-              city: cleanString(isRecord(item) ? item.city : undefined, 40),
-              label: cleanString(isRecord(item) ? item.label : undefined, 80),
-            },
-          ]),
-        )
-      : {};
+  const settings = value as AppSettings;
   const anniversaryDate = cleanString(settings.anniversaryDate, 12);
   const weatherCityIds = Array.isArray(settings.weatherCityIds)
     ? settings.weatherCityIds
@@ -73,21 +47,11 @@ export const normalizeAppSettings = (value: unknown): AppSettings => {
     : undefined;
 
   const normalized: AppSettings = {
-    loginPhotos,
-    loginPhotoTexts,
     anniversaryDate: anniversaryDate && datePattern.test(anniversaryDate) ? anniversaryDate : undefined,
     anniversaryLabel: cleanString(settings.anniversaryLabel, 40),
     weatherCityIds: weatherCityIds && weatherCityIds.length > 0 ? weatherCityIds : undefined,
     coupleLogo: isValidLogo(settings.coupleLogo) ? settings.coupleLogo : undefined,
   };
-
-  if (
-    Object.keys(loginPhotos).length === 0 &&
-    typeof settings.loginCoverImage === "string" &&
-    settings.loginCoverImage.startsWith("data:image/")
-  ) {
-    normalized.loginPhotos = { hangzhou: settings.loginCoverImage };
-  }
 
   return normalized;
 };
@@ -97,9 +61,7 @@ const hasMeaningfulAppSettings = (settings: AppSettings) =>
     settings.anniversaryDate ||
       settings.anniversaryLabel ||
       settings.coupleLogo ||
-      (settings.weatherCityIds?.length ?? 0) > 0 ||
-      Object.keys(settings.loginPhotos ?? {}).length > 0 ||
-      Object.keys(settings.loginPhotoTexts ?? {}).length > 0,
+      (settings.weatherCityIds?.length ?? 0) > 0,
   );
 
 export const readAppSettings = (): AppSettings => {

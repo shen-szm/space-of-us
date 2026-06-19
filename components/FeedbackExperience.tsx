@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Lock, MessageCircleMore, Send, Sparkles } from "lucide-react";
+import { CheckCircle2, MessageCircleMore, Send, Sparkles } from "lucide-react";
 import { MemoryPageShell } from "@/components/MemoryNav";
 import type { PublicUserAccount } from "@/data/accounts";
 import type { UserFeedbackCategory } from "@/data/feedback";
@@ -118,12 +118,6 @@ export default function FeedbackExperience() {
               ))}
             </div>
 
-            <div className="theme-soft mt-4 rounded-[8px] border px-4 py-3 text-sm text-[#5A6670]/66">
-              <div className="flex items-start gap-2">
-                <Lock className="mt-0.5 h-4 w-4 text-[#D86F82]" />
-                <p>提交后仅管理员后台 `/admin/inbox` 可见，普通账户不会看到反馈列表。</p>
-              </div>
-            </div>
           </div>
 
           <div className="theme-card theme-floating-shadow rounded-[8px] border p-5">

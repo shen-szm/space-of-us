@@ -9,7 +9,6 @@ import {
   Mail,
   MailPlus,
   MessageCircleMore,
-  RefreshCcw,
   RotateCcw,
   Settings,
   ShieldCheck,
@@ -18,11 +17,9 @@ import { MemoryPageShell } from "@/components/MemoryNav";
 import { LocalPrivacyImage } from "@/components/LocalPrivacyImage";
 import { themePresetUpdatedEvent, writeStoredThemePreset } from "@/components/ThemeController";
 import { cities } from "@/data/cities";
-import { withVersion } from "@/lib/appVersion";
 import { defaultThemePreset, themePresets, type ThemePresetId } from "@/lib/themePresets";
 import {
   type AppSettings,
-  type LoginPhotoText,
   defaultAnniversaryDate,
   defaultAnniversaryLabel,
   defaultCoupleLogo,
@@ -32,30 +29,9 @@ import {
   saveAppSettings,
   syncAppSettings,
 } from "@/data/appSettings";
-import {
-  deleteLoginPhoto,
-  deleteLoginPhotoText,
-  readLoginPhotoTexts,
-  readLoginPhotos,
-  writeLoginPhoto,
-  writeLoginPhotoText,
-} from "@/data/loginPhotoStore";
 import type { PublicUserAccount } from "@/data/accounts";
 import type { AuthSessionInfo } from "@/lib/authSessionInfo";
 
-const loginPhotoFallback = (fileName: string) => withVersion(`/photos/login/${fileName}.jpg`);
-
-const loginPhotoSlots = [
-  { id: "hangzhou", city: "杭州", label: "春日湖边", fallback: loginPhotoFallback("hangzhou") },
-  { id: "shanghai", city: "上海", label: "外滩傍晚", fallback: loginPhotoFallback("shanghai") },
-  { id: "macau", city: "澳门", label: "旧城光影", fallback: loginPhotoFallback("macau") },
-  { id: "hongkong", city: "香港", label: "夜色亮起", fallback: loginPhotoFallback("hongkong") },
-  { id: "qingdao", city: "青岛", label: "海风经过", fallback: loginPhotoFallback("qingdao") },
-  { id: "zhengzhou", city: "郑州", label: "见面那天", fallback: loginPhotoFallback("zhengzhou") },
-  { id: "zhuhai", city: "珠海", label: "海边散步", fallback: loginPhotoFallback("zhuhai") },
-  { id: "guangzhou", city: "广州", label: "旧街热气", fallback: loginPhotoFallback("guangzhou") },
-  { id: "jinan", city: "济南", label: "泉边小记", fallback: loginPhotoFallback("jinan") },
-] as const;
 
 const readFileAsDataUrl = (file: File) =>
   new Promise<string>((resolve, reject) => {
@@ -89,7 +65,6 @@ const getJson = async <T,>(url: string) => {
 
 export default function SettingsExperience() {
   const [settings, setSettings] = useState<AppSettings>(() => readAppSettings());
-  const [loginPhotos, setLoginPhotos] = useState<Record<string, string>>({});
   const [status, setStatus] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [securityStatus, setSecurityStatus] = useState("");
@@ -142,68 +117,6 @@ export default function SettingsExperience() {
       await persistSettings({ ...settings, coupleLogo: image }, "头像已同步到云端。");
     } finally {
       event.target.value = "";
-    }
-  };
-
-  const updateLoginPhoto = async (slotId: string, event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const image = await readFileAsDataUrl(file);
-      await writeLoginPhoto(slotId, image);
-      setLoginPhotos(await readLoginPhotos());
-      setStatus("登录照片已同步。");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "登录照片保存失败。");
-    } finally {
-      event.target.value = "";
-    }
-  };
-
-  const resetLoginPhoto = async (slotId: string) => {
-    try {
-      await deleteLoginPhoto(slotId);
-      setLoginPhotos(await readLoginPhotos());
-      setStatus("登录照片已恢复默认。");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "登录照片恢复失败。");
-    }
-  };
-
-  const updateLoginPhotoText = async (slotId: string, field: keyof LoginPhotoText, value: string) => {
-    const nextText = {
-      ...(settings.loginPhotoTexts?.[slotId] ?? {}),
-      [field]: value,
-    };
-    const nextSettings = {
-      ...settings,
-      loginPhotoTexts: {
-        ...(settings.loginPhotoTexts ?? {}),
-        [slotId]: nextText,
-      },
-    };
-
-    setSettings(nextSettings);
-
-    try {
-      await writeLoginPhotoText(slotId, nextText);
-      setStatus("登录照片文案已同步。");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "登录照片文案保存失败。");
-    }
-  };
-
-  const resetLoginPhotoText = async (slotId: string) => {
-    const nextTexts = { ...(settings.loginPhotoTexts ?? {}) };
-    delete nextTexts[slotId];
-    setSettings((current) => ({ ...current, loginPhotoTexts: nextTexts }));
-
-    try {
-      await deleteLoginPhotoText(slotId);
-      setStatus("登录照片文案已恢复默认。");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "登录照片文案恢复失败。");
     }
   };
 
@@ -298,14 +211,9 @@ export default function SettingsExperience() {
         const authSession = await getJson<AuthSessionInfo>("/api/auth/session");
         setSession(authSession);
 
-        const [serverSettings, photos, texts] = await Promise.all([
-          syncAppSettings(),
-          readLoginPhotos(),
-          readLoginPhotoTexts(),
-          authSession.role === "site" && authSession.username ? loadSecurity() : Promise.resolve(),
-        ]);
-        setSettings({ ...serverSettings, loginPhotoTexts: texts });
-        setLoginPhotos(photos);
+        const serverSettings = await syncAppSettings();
+        setSettings(serverSettings);
+        if (authSession.role === "site" && authSession.username) await loadSecurity();
       } catch (error) {
         setStatus(error instanceof Error ? error.message : "云端数据加载失败，请稍后刷新。");
       }
@@ -366,11 +274,16 @@ export default function SettingsExperience() {
                     </span>
                   </div>
                   <p className="mt-2 text-xs leading-6 text-[#5A6670]/56">{preset.description}</p>
-                  <div className="mt-3 flex gap-2">
-                    <span className="theme-preview-swatch" style={{ background: preset.colors.shell }} />
-                    <span className="theme-preview-swatch" style={{ background: preset.colors.card }} />
-                    <span className="theme-preview-swatch" style={{ background: preset.colors.primary }} />
-                    <span className="theme-preview-swatch" style={{ background: preset.colors.secondary }} />
+                  <div className="mt-4 border-t border-[var(--border-soft)] pt-3">
+                    <p className="text-[11px] font-semibold text-[var(--text-soft)]">配色方案</p>
+                    <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2">
+                      {[["页面背景", preset.colors.background], ["卡片", preset.colors.card], ["主色", preset.colors.primary], ["辅色", preset.colors.secondary]].map(([label, color]) => (
+                        <span className="flex min-w-0 items-center gap-2 text-[11px] text-[var(--text-muted)]" key={label}>
+                          <span className="h-4 w-4 shrink-0 rounded-full border border-[var(--border-soft)]" style={{ background: color }} />
+                          <span className="truncate">{label}</span>
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </button>
               );
@@ -547,83 +460,6 @@ export default function SettingsExperience() {
                 恢复默认
               </button>
             </div>
-          </div>
-        </div>
-
-        <div className="theme-card theme-floating-shadow rounded-[8px] border p-5">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-[#5A6670]">登录照片</p>
-              <p className="mt-2 text-sm leading-6 text-[#5A6670]/62">
-                对应登录界面的照片、标题和副标题。这里的内容双方都可以修改，并会跟随账号在不同设备同步。
-              </p>
-            </div>
-            <p className="text-xs font-semibold text-[#5A6670]/42">
-              已自定义 {Object.keys(loginPhotos).length} / {loginPhotoSlots.length}
-            </p>
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {loginPhotoSlots.map((slot) => {
-              const customPhoto = loginPhotos[slot.id];
-              const customText = settings.loginPhotoTexts?.[slot.id];
-              const src = customPhoto ?? slot.fallback;
-              const titleValue = customText?.city ?? slot.city;
-              const labelValue = customText?.label ?? slot.label;
-
-              return (
-                <div className="rounded-[8px] border border-[#D8DDD8]/70 bg-white/34 p-3" key={slot.id}>
-                  <div className="relative aspect-[4/3] overflow-hidden rounded-[7px] bg-[#D6E8F0]/24">
-                    <LocalPrivacyImage
-                      className="h-full w-full object-cover"
-                      src={src}
-                      alt={`${slot.city} 登录照片预览`}
-                      fill
-                      sizes="(min-width: 1280px) 320px, (min-width: 640px) 45vw, 100vw"
-                    />
-                  </div>
-
-                  <div className="mt-3 grid gap-2">
-                    <input
-                      className="min-h-10 rounded-[7px] border border-[#D8DDD8]/80 bg-[#FAFBF7]/76 px-3 text-sm text-[#5A6670] outline-none transition focus:border-[#A8C8DC] focus:bg-white"
-                      value={titleValue}
-                      onChange={(event) => void updateLoginPhotoText(slot.id, "city", event.target.value)}
-                      placeholder="标题"
-                    />
-                    <input
-                      className="min-h-10 rounded-[7px] border border-[#D8DDD8]/80 bg-[#FAFBF7]/76 px-3 text-sm text-[#5A6670] outline-none transition focus:border-[#A8C8DC] focus:bg-white"
-                      value={labelValue}
-                      onChange={(event) => void updateLoginPhotoText(slot.id, "label", event.target.value)}
-                      placeholder="副标题"
-                    />
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-[7px] border border-[#D8DDD8] px-3 py-2 text-xs font-semibold text-[#5A6670]/72 transition hover:bg-white/60">
-                      <ImagePlus className="h-4 w-4" />
-                      更换照片
-                      <input type="file" accept="image/*" className="hidden" onChange={(event) => void updateLoginPhoto(slot.id, event)} />
-                    </label>
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-2 rounded-[7px] border border-[#D8DDD8] px-3 py-2 text-xs font-semibold text-[#5A6670]/64 transition hover:bg-white/60"
-                      onClick={() => void resetLoginPhoto(slot.id)}
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                      恢复照片
-                    </button>
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-2 rounded-[7px] border border-[#D8DDD8] px-3 py-2 text-xs font-semibold text-[#5A6670]/64 transition hover:bg-white/60"
-                      onClick={() => void resetLoginPhotoText(slot.id)}
-                    >
-                      <RefreshCcw className="h-4 w-4" />
-                      恢复文案
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
 
