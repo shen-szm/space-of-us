@@ -79,3 +79,18 @@ test("account password endpoints use the shared managed password policy", async 
     assert.doesNotMatch(source, /(?:password|newPassword|currentPassword)\.length\s*</);
   }
 });
+test("account secret hashing uses randomized scrypt hashes", async () => {
+  const source = await readFile(path.join(process.cwd(), "lib", "server", "accountStore.ts"), "utf8");
+
+  assert.match(source, /scryptSync/);
+  assert.match(source, /randomBytes/);
+  assert.match(source, /scrypt:v1/);
+  assert.doesNotMatch(source, /export const hashAccountSecret = \(value: string, salt: string\) => hashWithSecret/);
+});
+
+test("binding invite lookup verifies stored hashes instead of regenerating them", async () => {
+  const source = await readFile(path.join(process.cwd(), "lib", "server", "accountStore.ts"), "utf8");
+
+  assert.match(source, /verifyAccountSecret\(code, account\.id, account\.bindingInviteCodeHash\)/);
+  assert.doesNotMatch(source, /safeEqual\(hashAccountSecret\(code, account\.id\), account\.bindingInviteCodeHash\)/);
+});
