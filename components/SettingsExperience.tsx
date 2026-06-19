@@ -17,7 +17,7 @@ import { MemoryPageShell } from "@/components/MemoryNav";
 import { LocalPrivacyImage } from "@/components/LocalPrivacyImage";
 import { themePresetUpdatedEvent, writeStoredThemePreset } from "@/components/ThemeController";
 import { cities } from "@/data/cities";
-import { defaultThemePreset, themePresets, type ThemePresetId } from "@/lib/themePresets";
+import { defaultThemePreset, themePresetList, themePresets, type ThemePresetId } from "@/lib/themePresets";
 import {
   type AppSettings,
   defaultAnniversaryDate,
@@ -240,7 +240,7 @@ export default function SettingsExperience() {
       <section className="mt-10 grid gap-5">
         <div className="theme-card theme-floating-shadow p-5">
           <div className="flex items-center gap-3">
-            <Settings className="h-5 w-5 text-[#E8B8C2]" />
+            <Settings className="h-5 w-5 text-[var(--accent-primary)]" />
             <div>
               <p className="text-sm font-semibold text-[#5A6670]">个人主题预设</p>
               <p className="mt-1 text-sm leading-6 text-[#5A6670]/62">
@@ -250,37 +250,48 @@ export default function SettingsExperience() {
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {Object.values(themePresets).map((preset) => {
+            {themePresetList.map((preset) => {
               const active = themePreset === preset.id;
               return (
                 <button
                   key={preset.id}
                   type="button"
                   onClick={() => void updateThemePreset(preset.id)}
-                  className={`rounded-[8px] border p-4 text-left transition ${
+                  className={`rounded-[10px] border p-4 text-left transition ${
                     active
-                      ? "border-[color-mix(in_srgb,var(--accent-primary)_22%,white)] bg-[color-mix(in_srgb,var(--surface-card-strong)_82%,white)] shadow-[0_16px_38px_rgba(140,110,102,0.10)]"
-                      : "border-[var(--border-soft)] bg-[color-mix(in_srgb,var(--surface-card)_74%,white)] hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--accent-primary)_18%,white)]"
+                      ? "border-[color-mix(in_srgb,var(--accent-primary)_34%,var(--border-strong))] bg-[color-mix(in_srgb,var(--surface-card-strong)_88%,white)] shadow-[0_10px_24px_rgba(126,106,96,0.10)]"
+                      : "border-[var(--border-soft)] bg-[color-mix(in_srgb,var(--surface-card)_78%,white)] hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--accent-primary)_24%,var(--border-strong))]"
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-[#344451]">{preset.label}</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-[#344451]">{preset.label}</p>
+                      <p className="mt-2 min-h-10 text-xs leading-5 text-[#5A6670]/64">{preset.description}</p>
+                    </div>
                     <span
-                      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
                         active ? "bg-[var(--accent-wash)] text-[var(--accent-primary)]" : "theme-muted theme-text-soft"
                       }`}
                     >
                       {active ? "使用中" : "切换"}
                     </span>
                   </div>
-                  <p className="mt-2 text-xs leading-6 text-[#5A6670]/56">{preset.description}</p>
-                  <div className="mt-4 border-t border-[var(--border-soft)] pt-3">
-                    <p className="text-[11px] font-semibold text-[var(--text-soft)]">配色方案</p>
-                    <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2">
-                      {[["页面背景", preset.colors.background], ["卡片", preset.colors.card], ["主色", preset.colors.primary], ["辅色", preset.colors.secondary]].map(([label, color]) => (
-                        <span className="flex min-w-0 items-center gap-2 text-[11px] text-[var(--text-muted)]" key={label}>
-                          <span className="h-4 w-4 shrink-0 rounded-full border border-[var(--border-soft)]" style={{ background: color }} />
-                          <span className="truncate">{label}</span>
+
+                  <div className="mt-4 rounded-[8px] border border-[color-mix(in_srgb,var(--border-soft)_82%,white)] bg-white/34 p-3">
+                    <div className="flex h-7 overflow-hidden rounded-[7px] border border-white/70 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.32)]">
+                      {preset.palette.map((item) => (
+                        <span
+                          aria-label={item.label}
+                          className="min-w-0 flex-1 border-r border-white/64 last:border-r-0"
+                          key={item.label}
+                          style={{ backgroundColor: item.color }}
+                        />
+                      ))}
+                    </div>
+                    <div className="mt-2 grid grid-cols-4 gap-1 text-center text-[10px] leading-4 text-[var(--text-muted)]">
+                      {preset.palette.map((item) => (
+                        <span className="truncate" key={item.label}>
+                          {item.label}
                         </span>
                       ))}
                     </div>

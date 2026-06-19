@@ -29,6 +29,28 @@ test("keeps legacy theme identifiers valid", () => {
   }
 });
 
+test("theme names and descriptions are readable Chinese copy", () => {
+  const mojibakePattern = /[銆€鏉窞鎴戜滑绮浘]|锛|€|�/;
+
+  for (const preset of themePresetList) {
+    assert.match(preset.label, /[\u4e00-\u9fff]/);
+    assert.match(preset.description, /[\u4e00-\u9fff]/);
+    assert.doesNotMatch(preset.label, mojibakePattern);
+    assert.doesNotMatch(preset.description, mojibakePattern);
+  }
+});
+
+test("theme presets expose ordered palette roles for the settings preview", () => {
+  for (const preset of themePresetList) {
+    assert.deepEqual(preset.palette.map((item) => item.label), ["页面背景", "卡片", "主色", "辅色"]);
+    assert.deepEqual(preset.palette.map((item) => item.color), [
+      preset.colors.background,
+      preset.colors.card,
+      preset.colors.primary,
+      preset.colors.secondary,
+    ]);
+  }
+});
 test("ignores retired login photo fields in old backups", () => {
   const normalized = normalizeAppSettings({
     loginPhotos: { hangzhou: "data:image/png;base64,abc" },
