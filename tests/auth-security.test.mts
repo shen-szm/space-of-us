@@ -119,6 +119,15 @@ test("entry experience delegates shared auth metadata to a dedicated module", as
   assert.doesNotMatch(source, /const adminQuickLinks =/);
 });
 
+test("memory navigation restores dialog trigger focus only after closing", async () => {
+  const source = await readFile(memoryNavPath, "utf8");
+
+  assert.match(source, /wasSupportOpenRef\.current && !supportOpen/);
+  assert.match(source, /wasSupportPreviewOpenRef\.current && !supportPreviewOpen/);
+  assert.doesNotMatch(source, /if \(!supportOpen\) supportTriggerRef\.current\?\.focus\(\)/);
+  assert.doesNotMatch(source, /if \(!supportPreviewOpen\) supportPreviewTriggerRef\.current\?\.focus\(\)/);
+});
+
 test("settings experience delegates theme preset rendering to a dedicated section", async () => {
   const source = await readFile(settingsExperiencePath, "utf8");
 

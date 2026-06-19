@@ -200,6 +200,8 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
   const supportPreviewDialogRef = useRef<HTMLDivElement>(null);
   const supportTriggerRef = useRef<HTMLButtonElement>(null);
   const supportPreviewTriggerRef = useRef<HTMLButtonElement>(null);
+  const wasSupportOpenRef = useRef(false);
+  const wasSupportPreviewOpenRef = useRef(false);
   const supportTitleId = useId();
   const supportPreviewTitleId = useId();
 
@@ -234,11 +236,13 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
   }, [supportOpen, supportPreviewOpen]);
 
   useEffect(() => {
-    if (!supportOpen) supportTriggerRef.current?.focus();
+    if (wasSupportOpenRef.current && !supportOpen) supportTriggerRef.current?.focus();
+    wasSupportOpenRef.current = supportOpen;
   }, [supportOpen]);
 
   useEffect(() => {
-    if (!supportPreviewOpen) supportPreviewTriggerRef.current?.focus();
+    if (wasSupportPreviewOpenRef.current && !supportPreviewOpen) supportPreviewTriggerRef.current?.focus();
+    wasSupportPreviewOpenRef.current = supportPreviewOpen;
   }, [supportPreviewOpen]);
 
   return (
