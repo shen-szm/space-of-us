@@ -1,4 +1,6 @@
-export const themePresetIds = [
+export const customThemePresetId = "custom-morandi" as const;
+
+export const staticThemePresetIds = [
   "cream-blush",
   "peach-sky",
   "mint-cherry",
@@ -9,6 +11,9 @@ export const themePresetIds = [
   "sage-hearth",
 ] as const;
 
+export const themePresetIds = [...staticThemePresetIds, customThemePresetId] as const;
+
+export type StaticThemePresetId = (typeof staticThemePresetIds)[number];
 export type ThemePresetId = (typeof themePresetIds)[number];
 export type ThemeColors = {
   background: string;
@@ -32,159 +37,143 @@ export type ThemePreset = {
   palette: ThemePaletteItem[];
 };
 
-export const defaultThemePreset: ThemePresetId = "cream-blush";
+export const defaultThemePreset: StaticThemePresetId = "cream-blush";
+export const defaultCustomThemeColor = "#C7A49D";
 
-const withPalette = (preset: Omit<ThemePreset, "palette">): ThemePreset => ({
-  ...preset,
-  palette: [
-    { label: "页面背景", color: preset.colors.background },
-    { label: "卡片", color: preset.colors.card },
-    { label: "主色", color: preset.colors.primary },
-    { label: "辅色", color: preset.colors.secondary },
-  ],
-});
+const paletteLabels: ThemePaletteRole[] = ["页面背景", "卡片", "主色", "辅色"];
+
+const clampChannel = (value: number) => Math.max(0, Math.min(255, Math.round(value)));
+
+const parseHexColor = (value: string): [number, number, number] | null => {
+  const clean = value.trim().replace(/^#/, "");
+  const expanded = clean.length === 3 ? clean.split("").map((char) => char + char).join("") : clean;
+  if (!/^[0-9a-fA-F]{6}$/.test(expanded)) return null;
+  return [0, 2, 4].map((index) => Number.parseInt(expanded.slice(index, index + 2), 16)) as [number, number, number];
+};
+
+const toHex = ([red, green, blue]: [number, number, number]) =>
+  "#" + [red, green, blue].map((value) => clampChannel(value).toString(16).padStart(2, "0")).join("").toUpperCase();
+
+const mixHex = (base: string, target: string, baseWeight: number) => {
+  const baseRgb = parseHexColor(base) ?? parseHexColor(defaultCustomThemeColor)!;
+  const targetRgb = parseHexColor(target) ?? [255, 255, 255];
+  const targetWeight = 1 - baseWeight;
+  return toHex([
+    baseRgb[0] * baseWeight + targetRgb[0] * targetWeight,
+    baseRgb[1] * baseWeight + targetRgb[1] * targetWeight,
+    baseRgb[2] * baseWeight + targetRgb[2] * targetWeight,
+  ] as [number, number, number]);
+};
+
+export const normalizeCustomThemeColor = (value: unknown) => {
+  if (typeof value !== "string") return defaultCustomThemeColor;
+  const rgb = parseHexColor(value);
+  return rgb ? toHex(rgb) : defaultCustomThemeColor;
+};
+
+const buildPalette = (colors: ThemeColors): ThemePaletteItem[] => [
+  { label: paletteLabels[0], color: colors.background },
+  { label: paletteLabels[1], color: colors.card },
+  { label: paletteLabels[2], color: colors.primary },
+  { label: paletteLabels[3], color: colors.secondary },
+];
+
+export const deriveMonoThemeColors = (baseColor: string): ThemeColors => {
+  const primary = normalizeCustomThemeColor(baseColor);
+  return {
+    background: mixHex(primary, "#FBFAF7", 0.1),
+    foreground: mixHex(primary, "#32373A", 0.16),
+    card: mixHex(primary, "#FFFFFF", 0.045),
+    soft: mixHex(primary, "#F8F5F0", 0.16),
+    borderSoft: mixHex(primary, "#EEE8DF", 0.24),
+    borderStrong: mixHex(primary, "#D8CEC3", 0.34),
+    primary,
+    secondary: mixHex(primary, "#F3EEE7", 0.52),
+    highlight: mixHex(primary, "#FFFFFF", 0.3),
+    wash: mixHex(primary, "#FFFFFF", 0.14),
+  };
+};
+
+const buildStaticPreset = ({
+  id,
+  label,
+  description,
+  color,
+}: {
+  id: StaticThemePresetId;
+  label: string;
+  description: string;
+  color: string;
+}): ThemePreset => {
+  const colors = deriveMonoThemeColors(color);
+  return { id, label, description, colors, palette: buildPalette(colors) };
+};
+
+export const buildCustomThemePreset = (color: unknown): ThemePreset => {
+  const colors = deriveMonoThemeColors(normalizeCustomThemeColor(color));
+  return {
+    id: customThemePresetId,
+    label: "自定义配色",
+    description: "选一个主色，系统自动生成更淡的同色阶页面。",
+    colors,
+    palette: buildPalette(colors),
+  };
+};
 
 export const themePresetList: ThemePreset[] = [
-  withPalette({
+  buildStaticPreset({
     id: "cream-blush",
     label: "奶油粉雾",
-    description: "奶白、雾粉和豆沙灰铺开，像午后窗帘透进来的柔光。",
-    colors: {
-      background: "#F4EEE9",
-      foreground: "#5D5652",
-      card: "#FFFDFC",
-      soft: "#EFE7E2",
-      borderSoft: "#D7CCC5",
-      borderStrong: "#C7B8B0",
-      primary: "#B98582",
-      secondary: "#C7A49D",
-      highlight: "#E7D4CF",
-      wash: "#F2E4E1",
-    },
+    description: "柔和奶粉色阶，像窗边透进来的淡光。",
+    color: "#D4AAA6",
   }),
-  withPalette({
+  buildStaticPreset({
     id: "peach-sky",
-    label: "杏桃晨光",
-    description: "杏桃、米橙和浅陶色靠近一组，明亮但不刺眼。",
-    colors: {
-      background: "#F5EDE4",
-      foreground: "#5E5851",
-      card: "#FFFDF9",
-      soft: "#EFE4DA",
-      borderSoft: "#DACBBE",
-      borderStrong: "#C9B6A7",
-      primary: "#BD8A74",
-      secondary: "#D2AE92",
-      highlight: "#EBD5C6",
-      wash: "#F4E4D7",
-    },
+    label: "杏桃薄光",
+    description: "淡杏色统一铺开，温暖但不发闷。",
+    color: "#D7B196",
   }),
-  withPalette({
+  buildStaticPreset({
     id: "mint-cherry",
-    label: "薄荷樱桃",
-    description: "灰绿底色里只留一点樱桃粉，清新但不跳脱。",
-    colors: {
-      background: "#EEF1EA",
-      foreground: "#565F58",
-      card: "#FCFEFA",
-      soft: "#E6ECE4",
-      borderSoft: "#C8D1C6",
-      borderStrong: "#B4C0B4",
-      primary: "#A97883",
-      secondary: "#8FA696",
-      highlight: "#D8C8CC",
-      wash: "#EAE3E4",
-    },
+    label: "薄荷灰绿",
+    description: "浅绿灰色阶，整体清爽、安静。",
+    color: "#A8BCAD",
   }),
-  withPalette({
+  buildStaticPreset({
     id: "butter-garden",
-    label: "黄油花园",
-    description: "黄油米和鼠尾草绿都压低饱和，整体更像暖桌布。",
-    colors: {
-      background: "#F1ECDD",
-      foreground: "#5F5C50",
-      card: "#FFFDF4",
-      soft: "#EAE2D0",
-      borderSoft: "#D3C9B3",
-      borderStrong: "#BFB39C",
-      primary: "#A68C64",
-      secondary: "#9BA382",
-      highlight: "#E1D4B9",
-      wash: "#EFE5CF",
-    },
+    label: "黄油燕麦",
+    description: "麦色和奶油感更自然，像暖桌布。",
+    color: "#CDBB8F",
   }),
-  withPalette({
+  buildStaticPreset({
     id: "rose-clay",
     label: "玫瑰陶土",
-    description: "玫瑰灰和陶土棕保持同一暖度，亲密但不甜腻。",
-    colors: {
-      background: "#F0E7E3",
-      foreground: "#625855",
-      card: "#FFFDFC",
-      soft: "#E9DDD8",
-      borderSoft: "#D4C2BA",
-      borderStrong: "#BFA9A0",
-      primary: "#A46F68",
-      secondary: "#B98C7B",
-      highlight: "#DEC5BD",
-      wash: "#EEDBD6",
-    },
+    description: "玫瑰灰更轻，保留亲密感，不偏甜。",
+    color: "#C99E98",
   }),
-  withPalette({
+  buildStaticPreset({
     id: "oat-linen",
     label: "燕麦亚麻",
-    description: "燕麦、亚麻和浅榛色叠在一起，像自然光下的餐桌。",
-    colors: {
-      background: "#F0EADF",
-      foreground: "#5D594F",
-      card: "#FFFDF8",
-      soft: "#E8E0D1",
-      borderSoft: "#D1C7B6",
-      borderStrong: "#BDAF9B",
-      primary: "#9F8262",
-      secondary: "#B4A283",
-      highlight: "#DED0BA",
-      wash: "#EEE2D0",
-    },
+    description: "燕麦色的单色过渡，干净、耐看。",
+    color: "#BFA989",
   }),
-  withPalette({
+  buildStaticPreset({
     id: "mauve-milk",
     label: "雾紫奶茶",
-    description: "奶茶底里加入灰紫，柔软安静，适合长时间停留。",
-    colors: {
-      background: "#EFE8EC",
-      foreground: "#5D5860",
-      card: "#FFFDFE",
-      soft: "#E8DEE4",
-      borderSoft: "#D0C1CB",
-      borderStrong: "#BCAAB7",
-      primary: "#92788D",
-      secondary: "#B49BA8",
-      highlight: "#D8C5D1",
-      wash: "#ECE0E7",
-    },
+    description: "灰紫被拉淡后更像奶茶阴影。",
+    color: "#B8A2B4",
   }),
-  withPalette({
+  buildStaticPreset({
     id: "sage-hearth",
     label: "鼠尾暖居",
-    description: "鼠尾草绿和暖灰褐收在同一层次里，克制、耐看。",
-    colors: {
-      background: "#E9EDE5",
-      foreground: "#555E55",
-      card: "#FCFEFA",
-      soft: "#E1E8DE",
-      borderSoft: "#C4CEBF",
-      borderStrong: "#ADB9A8",
-      primary: "#7F9078",
-      secondary: "#A28E7D",
-      highlight: "#CDD8C8",
-      wash: "#E3EADD",
-    },
+    description: "鼠尾草的淡色阶，温和且不占注意力。",
+    color: "#9EAE98",
   }),
 ];
 
-export const themePresets: Record<ThemePresetId, ThemePreset> = Object.fromEntries(
-  themePresetList.map((preset) => [preset.id, preset]),
-) as Record<ThemePresetId, ThemePreset>;
+export const themePresets: Record<ThemePresetId, ThemePreset> = {
+  ...Object.fromEntries(themePresetList.map((preset) => [preset.id, preset])),
+  [customThemePresetId]: buildCustomThemePreset(defaultCustomThemeColor),
+} as Record<ThemePresetId, ThemePreset>;
 export const isThemePresetId = (value: unknown): value is ThemePresetId =>
   typeof value === "string" && themePresetIds.includes(value as ThemePresetId);

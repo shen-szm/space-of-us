@@ -1,10 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { normalizeAppSettings } from "../data/appSettings.ts";
-import { themePresetIds, themePresetList } from "../lib/themePresets.ts";
+import { buildCustomThemePreset, customThemePresetId, normalizeCustomThemeColor, themePresetIds, themePresetList } from "../lib/themePresets.ts";
 
-test("provides eight complete theme presets", () => {
-  assert.equal(themePresetIds.length, 8);
+test("provides eight complete static theme presets", () => {
   assert.equal(themePresetList.length, 8);
 
   for (const preset of themePresetList) {
@@ -51,6 +50,29 @@ test("theme presets expose ordered palette roles for the settings preview", () =
     ]);
   }
 });
+test("supports a custom mono-color theme preset", () => {
+  assert.ok(themePresetIds.includes(customThemePresetId));
+
+  const preset = buildCustomThemePreset("#d8aaa4");
+  assert.equal(preset.id, customThemePresetId);
+  assert.equal(preset.colors.primary, "#D8AAA4");
+  assert.deepEqual(preset.palette.map((item) => item.label), ["\u9875\u9762\u80cc\u666f", "\u5361\u7247", "\u4e3b\u8272", "\u8f85\u8272"]);
+  assert.deepEqual(preset.palette.map((item) => item.color), [
+    preset.colors.background,
+    preset.colors.card,
+    preset.colors.primary,
+    preset.colors.secondary,
+  ]);
+  assert.notEqual(preset.colors.background, preset.colors.primary);
+  assert.notEqual(preset.colors.card, preset.colors.primary);
+});
+
+test("normalizes invalid custom colors to a soft default", () => {
+  assert.equal(normalizeCustomThemeColor("#abc"), "#AABBCC");
+  assert.equal(normalizeCustomThemeColor("#D8AAA4"), "#D8AAA4");
+  assert.equal(normalizeCustomThemeColor("not-a-color"), "#C7A49D");
+});
+
 test("ignores retired login photo fields in old backups", () => {
   const normalized = normalizeAppSettings({
     loginPhotos: { hangzhou: "data:image/png;base64,abc" },

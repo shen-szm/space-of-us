@@ -86,7 +86,8 @@ export async function POST(request: NextRequest) {
       if (!isThemePresetId(themePreset)) {
         return NextResponse.json({ error: "Invalid theme preset" }, { status: 400 });
       }
-      const user = await updateAccountThemePreset({ username: session.username, themePreset });
+      const customThemeColor = cleanString(payload.customThemeColor, 20);
+      const user = await updateAccountThemePreset({ username: session.username, themePreset, customThemeColor });
       return NextResponse.json({ ok: true, user });
     }
   } catch (error) {

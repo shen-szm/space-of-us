@@ -15,9 +15,9 @@ import {
 } from "lucide-react";
 import { MemoryPageShell } from "@/components/MemoryNav";
 import { LocalPrivacyImage } from "@/components/LocalPrivacyImage";
-import { themePresetUpdatedEvent, writeStoredThemePreset } from "@/components/ThemeController";
+import { writeStoredThemePreset } from "@/components/ThemeController";
 import { cities } from "@/data/cities";
-import { defaultThemePreset, themePresetList, themePresets, type ThemePresetId } from "@/lib/themePresets";
+import { buildCustomThemePreset, customThemePresetId, defaultCustomThemeColor, defaultThemePreset, isThemePresetId, normalizeCustomThemeColor, themePresetList, themePresets, type ThemePresetId } from "@/lib/themePresets";
 import {
   type AppSettings,
   defaultAnniversaryDate,
@@ -76,6 +76,7 @@ export default function SettingsExperience() {
   const [emailCode, setEmailCode] = useState("");
   const [sendingEmailCode, setSendingEmailCode] = useState(false);
   const [themePreset, setThemePreset] = useState<ThemePresetId>(defaultThemePreset);
+  const [customThemeColor, setCustomThemeColor] = useState(defaultCustomThemeColor);
   const [themeStatus, setThemeStatus] = useState("");
 
   const anniversaryLabel = settings.anniversaryLabel ?? defaultAnniversaryLabel;
@@ -124,7 +125,9 @@ export default function SettingsExperience() {
     try {
       const payload = await getJson<{ user: PublicUserAccount }>("/api/account/security");
       setUser(payload.user);
-      setThemePreset((payload.user.themePreset as ThemePresetId) || defaultThemePreset);
+      const accountPreset = isThemePresetId(payload.user.themePreset) ? payload.user.themePreset : defaultThemePreset;
+      setThemePreset(accountPreset);
+      setCustomThemeColor(normalizeCustomThemeColor(payload.user.customThemeColor));
       if (!payload.user.emailVerifiedAt) {
         setSecurityStatus("当前账号还没有完成邮箱验证，建议尽快补绑邮箱。");
       }
@@ -187,22 +190,40 @@ export default function SettingsExperience() {
     }
   };
 
-  const updateThemePreset = async (nextPreset: ThemePresetId) => {
+  const updateThemePreset = async (nextPreset: ThemePresetId, nextCustomColor = customThemeColor) => {
+    const normalizedCustomColor = normalizeCustomThemeColor(nextCustomColor);
     setThemePreset(nextPreset);
-    writeStoredThemePreset(nextPreset);
-    window.dispatchEvent(new CustomEvent(themePresetUpdatedEvent));
+    if (nextPreset === customThemePresetId) setCustomThemeColor(normalizedCustomColor);
+    writeStoredThemePreset(nextPreset, normalizedCustomColor);
     setThemeStatus("正在同步个人主题…");
     try {
       const payload = await postJson<{ user: PublicUserAccount }>("/api/account/security", {
         action: "updateThemePreset",
         themePreset: nextPreset,
+        customThemeColor: nextPreset === customThemePresetId ? normalizedCustomColor : undefined,
       });
       setUser(payload.user);
-      setThemePreset((payload.user.themePreset as ThemePresetId) || nextPreset);
-      setThemeStatus(`个人主题已切换为 ${themePresets[nextPreset].label}。`);
+      const savedPreset = isThemePresetId(payload.user.themePreset) ? payload.user.themePreset : nextPreset;
+      const savedCustomColor = normalizeCustomThemeColor(payload.user.customThemeColor ?? normalizedCustomColor);
+      setThemePreset(savedPreset);
+      if (savedPreset === customThemePresetId) setCustomThemeColor(savedCustomColor);
+      const savedLabel = savedPreset === customThemePresetId ? "自定义配色" : themePresets[savedPreset].label;
+      setThemeStatus(`个人主题已切换为 ${savedLabel}。`);
     } catch (error) {
       setThemeStatus(error instanceof Error ? error.message : "个人主题保存失败。");
     }
+  };
+
+  const previewCustomThemeColor = (nextColor: string) => {
+    const normalizedCustomColor = normalizeCustomThemeColor(nextColor);
+    setCustomThemeColor(normalizedCustomColor);
+    setThemePreset(customThemePresetId);
+    writeStoredThemePreset(customThemePresetId, normalizedCustomColor);
+    setThemeStatus("正在预览自定义配色，点击保存后会同步到账号。");
+  };
+
+  const saveCustomThemeColor = () => {
+    void updateThemePreset(customThemePresetId, customThemeColor);
   };
 
   useEffect(() => {
@@ -221,6 +242,9 @@ export default function SettingsExperience() {
 
     void load();
   }, []);
+
+  const customThemePreview = buildCustomThemePreset(customThemeColor);
+  const currentThemeLabel = themePreset === customThemePresetId ? customThemePreview.label : themePresets[themePreset].label;
 
   return (
     <MemoryPageShell active="settings">
@@ -244,8 +268,54 @@ export default function SettingsExperience() {
             <div>
               <p className="text-sm font-semibold text-[#5A6670]">个人主题预设</p>
               <p className="mt-1 text-sm leading-6 text-[#5A6670]/62">
-                这些配色只影响当前账号自己的页面视觉，不会改动对方看到的主题。
+                预设改为更淡的单色阶；也可以用色盘选一个主色，系统自动生成温和过渡。
               </p>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-[10px] border border-[color-mix(in_srgb,var(--border-soft)_82%,white)] bg-[color-mix(in_srgb,var(--surface-card-strong)_76%,white)] p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[#344451]">自定义配色</p>
+                <p className="mt-1 text-xs leading-5 text-[#5A6670]/62">选择一个喜欢的颜色，页面会自动变成更淡的同色系。</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-3">
+                <label className="relative flex h-11 w-16 cursor-pointer overflow-hidden rounded-[9px] border border-[var(--border-soft)] bg-white p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.45)]">
+                  <span className="sr-only">选择自定义主题主色</span>
+                  <input
+                    aria-label="个人主题保存失败。"
+                    className="h-full w-full cursor-pointer rounded-[6px] border-0 bg-transparent p-0"
+                    type="color"
+                    value={customThemeColor}
+                    onChange={(event) => previewCustomThemeColor(event.target.value)}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="inline-flex min-h-10 items-center justify-center rounded-[8px] bg-[var(--hero-ink)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-primary)]"
+                  onClick={saveCustomThemeColor}
+                >
+                  保存自定义
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-[8px] border border-white/70 bg-white/30 p-3">
+              <div className="flex h-8 overflow-hidden rounded-[7px] border border-white/70">
+                {customThemePreview.palette.map((item) => (
+                  <span
+                    aria-label={item.label}
+                    className="min-w-0 flex-1 border-r border-white/70 last:border-r-0"
+                    key={item.label}
+                    style={{ backgroundColor: item.color }}
+                  />
+                ))}
+              </div>
+              <div className="mt-2 grid grid-cols-4 gap-1 text-center text-[10px] leading-4 text-[var(--text-muted)]">
+                {customThemePreview.palette.map((item) => (
+                  <span className="truncate" key={item.label}>{item.label}</span>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -290,9 +360,7 @@ export default function SettingsExperience() {
                     </div>
                     <div className="mt-2 grid grid-cols-4 gap-1 text-center text-[10px] leading-4 text-[var(--text-muted)]">
                       {preset.palette.map((item) => (
-                        <span className="truncate" key={item.label}>
-                          {item.label}
-                        </span>
+                        <span className="truncate" key={item.label}>{item.label}</span>
                       ))}
                     </div>
                   </div>
@@ -302,7 +370,7 @@ export default function SettingsExperience() {
           </div>
 
           <div className="theme-soft theme-text-muted mt-4 rounded-[8px] border px-4 py-3 text-sm">
-            {themeStatus || `当前主题：${themePresets[themePreset].label}`}
+            {themeStatus || `当前主题：${currentThemeLabel}`}
           </div>
         </div>
 

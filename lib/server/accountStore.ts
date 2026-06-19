@@ -11,7 +11,7 @@ import {
   toPublicAccount,
 } from "@/data/accounts";
 import type { PartnerRole } from "@/data/couple";
-import { defaultThemePreset, isThemePresetId, type ThemePresetId } from "@/lib/themePresets";
+import { customThemePresetId, defaultThemePreset, isThemePresetId, normalizeCustomThemeColor, type ThemePresetId } from "@/lib/themePresets";
 import { getPrivateDataFilePath } from "@/lib/server/dataDir";
 import { assertWritableStorageConfigured, getSupabaseAdmin, readJsonValue, writeJsonValue } from "@/lib/server/supabase";
 
@@ -102,6 +102,7 @@ const cleanAccount = (value: unknown): UserAccount | null => {
     partnerUsername: typeof value.partnerUsername === "string" ? normalizeUsername(value.partnerUsername) : undefined,
     partnerDisplayName: typeof value.partnerDisplayName === "string" ? value.partnerDisplayName : undefined,
     themePreset: isThemePresetId(value.themePreset) ? value.themePreset : defaultThemePreset,
+    customThemeColor: typeof value.customThemeColor === "string" ? normalizeCustomThemeColor(value.customThemeColor) : undefined,
     bindingRequests: Array.isArray(value.bindingRequests)
       ? value.bindingRequests
           .map(cleanBindingRequest)
@@ -376,9 +377,11 @@ export const updateAccountEmail = async ({
 export const updateAccountThemePreset = async ({
   username,
   themePreset,
+  customThemeColor,
 }: {
   username: string;
   themePreset: ThemePresetId;
+  customThemeColor?: string;
 }) => {
   const normalized = normalizeUsername(username);
   const store = await readAccountStore();
@@ -386,6 +389,7 @@ export const updateAccountThemePreset = async ({
   if (!account) throw new Error("Account not found");
 
   account.themePreset = isThemePresetId(themePreset) ? themePreset : defaultThemePreset;
+  account.customThemeColor = account.themePreset === customThemePresetId ? normalizeCustomThemeColor(customThemeColor) : undefined;
   account.updatedAt = new Date().toISOString();
   await writeAccountStore(store);
   return toPublicAccount(account);

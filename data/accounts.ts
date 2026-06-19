@@ -35,6 +35,7 @@ export type UserAccount = {
   partnerUsername?: string;
   partnerDisplayName?: string;
   themePreset?: string;
+  customThemeColor?: string;
   bindingRequests?: AccountBindingRequest[];
 };
 
@@ -54,6 +55,7 @@ export type PublicUserAccount = {
   partnerUsername?: string;
   partnerDisplayName?: string;
   themePreset?: string;
+  customThemeColor?: string;
   bindingRequests?: AccountBindingRequest[];
 };
 
@@ -81,5 +83,6 @@ export const toPublicAccount = (account: UserAccount): PublicUserAccount => ({
   partnerUsername: account.partnerUsername,
   partnerDisplayName: account.partnerDisplayName,
   themePreset: account.themePreset,
+  customThemeColor: account.customThemeColor,
   bindingRequests: account.bindingRequests ?? [],
 });
