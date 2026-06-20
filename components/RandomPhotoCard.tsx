@@ -71,7 +71,7 @@ export function MusicRecommendationCard({ className = "" }: Readonly<{ className
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <Headphones className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
-          <p className="theme-text-main truncate text-sm font-semibold">今日配乐</p>
+          <p className="theme-text-main truncate text-sm font-semibold">今日推荐</p>
         </div>
         <button
           className="theme-subtle-button inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)]"
