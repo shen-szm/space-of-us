@@ -75,7 +75,6 @@ test("guest home stays isolated from private data sources", async () => {
   );
   assert.match(guestSource, /demoLitProvinceIds/);
   assert.match(guestSource, /readOnly/);
-  assert.match(guestSource, /href="\/login"/);
 });
 
 test("logout returns to the public guest home", async () => {
@@ -86,4 +85,16 @@ test("logout returns to the public guest home", async () => {
 
   assert.match(source, /router\.push\("\/"\)/);
   assert.match(source, new RegExp("\\u9000\\u51fa\\u767b\\u5f55"));
+});
+test("guest home opens login only after a page click", async () => {
+  const guestSource = await readFile(
+    path.join(process.cwd(), "components", "GuestHomeExperience.tsx"),
+    "utf8",
+  );
+
+  assert.match(guestSource, /useRouter/);
+  assert.match(guestSource, /router\.push\("\/login"\)/);
+  assert.match(guestSource, /onClick=\{openLogin\}/);
+  assert.doesNotMatch(guestSource, /登录进入自己的空间|登录、注册或找回密码/);
+  assert.doesNotMatch(guestSource, /href="\/login"/);
 });
