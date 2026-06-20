@@ -38,14 +38,14 @@ type NavItem = {
 };
 
 const navItems = [
-  { key: "map", label: "\u5730\u56fe", icon: MapIcon, href: "/map" },
-  { key: "couple", label: "\u60c5\u4fa3\u4e2d\u5fc3", icon: Heart, href: "/couple" },
-  { key: "memories", label: "\u56de\u5fc6\u8bb0\u5f55", icon: BookOpen, href: "/memories" },
-  { key: "favorites", label: "\u5730\u70b9\u6536\u85cf", icon: Heart, href: "/favorites" },
-  { key: "anniversaries", label: "\u7eaa\u5ff5\u65e5", icon: CalendarDays, href: "/anniversaries" },
-  { key: "capsule", label: "\u65f6\u5149\u5b9d\u76d2", icon: Archive, href: "/time-capsule" },
-  { key: "settings", label: "\u8bbe\u7f6e", icon: Settings, href: "/settings" },
-  { key: "feedback", label: "\u610f\u89c1\u53cd\u9988", icon: MessageCircleMore, href: "/feedback" },
+  { key: "map", label: "地图", icon: MapIcon, href: "/map" },
+  { key: "couple", label: "情侣中心", icon: Heart, href: "/couple" },
+  { key: "memories", label: "回忆记录", icon: BookOpen, href: "/memories" },
+  { key: "favorites", label: "地点收藏", icon: Heart, href: "/favorites" },
+  { key: "anniversaries", label: "纪念日", icon: CalendarDays, href: "/anniversaries" },
+  { key: "capsule", label: "时光宝盒", icon: Archive, href: "/time-capsule" },
+  { key: "settings", label: "设置", icon: Settings, href: "/settings" },
+  { key: "feedback", label: "意见反馈", icon: MessageCircleMore, href: "/feedback" },
 ] satisfies NavItem[];
 
 const focusableSelector = [
@@ -251,8 +251,8 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
         <div className="mx-auto grid h-14 w-14 place-items-center">
           <Heart className="h-10 w-10 fill-[var(--accent-highlight)] text-[color-mix(in_srgb,var(--accent-primary)_72%,white)]" />
         </div>
-        <p className="theme-text-main mt-2 text-lg font-semibold">\u6211\u4eec\u7684\u5730\u56fe</p>
-        <p className="theme-text-soft mt-1 text-xs">\u53ea\u5c5e\u4e8e\u4e24\u4e2a\u4eba\u7684\u56de\u5fc6\u7a7a\u95f4</p>
+        <p className="theme-text-main mt-2 text-lg font-semibold">我们的地图</p>
+        <p className="theme-text-soft mt-1 text-xs">只属于两个人的回忆空间</p>
       </div>
 
       <nav aria-label="Primary navigation" className="mt-10 space-y-2">
@@ -260,39 +260,39 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
       </nav>
 
       <div className="theme-card theme-floating-shadow mt-10 rounded-[8px] border p-4 text-sm leading-7 theme-text-muted">
-        \u5728\u5730\u56fe\u7684\u6bcf\u4e2a\u89d2\u843d\uff0c\u6162\u6162\u6536\u85cf\u4f60\u4eec\u4e00\u8d77\u8d70\u8fc7\u3001\u60f3\u53bb\u3001\u60f3\u8bb0\u4f4f\u7684\u6545\u4e8b\u3002
+        在地图的每个角落，慢慢收藏你们一起走过、想去、想记住的故事。
         <Heart className="ml-1 inline h-3.5 w-3.5 fill-[var(--accent-highlight)] text-[color-mix(in_srgb,var(--accent-primary)_72%,white)]" />
       </div>
 
       <div className="theme-card theme-floating-shadow mt-4 overflow-hidden rounded-[8px] border p-4">
         <div className="flex items-center gap-2">
           <Heart className="h-3.5 w-3.5 fill-[var(--accent-highlight)] text-[color-mix(in_srgb,var(--accent-primary)_72%,white)]" />
-          <p className="theme-text-main text-xs font-semibold">\u5173\u4e8e\u8fd9\u4e2a\u7a7a\u95f4</p>
+          <p className="theme-text-main text-xs font-semibold">关于这个空间</p>
         </div>
         <p className="theme-text-muted mt-2 text-xs leading-6">
-          \u8fd9\u91cc\u7528\u6765\u88c5\u4e0b\u4e24\u4e2a\u4eba\u7684\u57ce\u5e02\u8db3\u8ff9\u3001\u7eaa\u5ff5\u65e5\u3001\u5fc3\u613f\u6e05\u5355\uff0c\u8fd8\u6709\u90a3\u4e9b\u53ea\u60f3\u7559\u7ed9\u5f7c\u6b64\u7684\u5c0f\u7ea6\u5b9a\u3002
+          这里用来装下两个人的城市足迹、纪念日、心愿清单，还有那些只想留给彼此的小约定。
         </p>
 
         <div className="theme-divider mt-3 border-t pt-3">
-          <p className="theme-text-soft text-[11px] font-semibold">\u8fd9\u91cc\u4f1a\u8bb0\u5f55\u4ec0\u4e48</p>
+          <p className="theme-text-soft text-[11px] font-semibold">这里会记录什么</p>
           <p className="theme-text-muted mt-1 text-xs leading-6">
-            \u60f3\u5403\u7684\u5c0f\u5e97\u3001\u60f3\u559d\u7684\u5976\u8336\u3001\u60f3\u4e00\u8d77\u53bb\u7684\u5730\u65b9\u3001\u5df2\u7ecf\u53d1\u751f\u7684\u77ac\u95f4\uff0c\u90fd\u53ef\u4ee5\u88ab\u8f7b\u8f7b\u653e\u8fdb Space of us\u3002
+            想吃的小店、想喝的奶茶、想一起去的地方、已经发生的瞬间，都可以被轻轻放进 Space of us。
           </p>
         </div>
 
         <div className="theme-divider mt-3 border-t pt-3">
-          <p className="theme-text-soft text-[11px] font-semibold">\u6211\u4eec\u7684\u7ea6\u5b9a</p>
+          <p className="theme-text-soft text-[11px] font-semibold">我们的约定</p>
           <div className="mt-2 rounded-[7px] border border-[color-mix(in_srgb,var(--accent-primary)_18%,white)] bg-[var(--accent-wash)] px-3 py-2 text-xs leading-6 theme-text-muted">
-            \u4e0d\u8d76\u65f6\u95f4\uff0c\u4e0d\u6015\u9057\u5fd8\u3002\u628a\u559c\u6b22\u7684\u4e8b\u60c5\u4e00\u4ef6\u4ef6\u5b58\u4e0b\u6765\uff0c\u7b49\u6709\u7a7a\u7684\u65f6\u5019\u4e00\u8d77\u5b8c\u6210\u3002
+            不赶时间，不怕遗忘。把喜欢的事情一件件存下来，等有空的时候一起完成。
           </div>
         </div>
 
         <div className="theme-divider mt-3 border-t pt-3">
-          <p className="theme-text-soft text-[11px] font-semibold">\u7075\u611f\u6765\u6e90</p>
+          <p className="theme-text-soft text-[11px] font-semibold">灵感来源</p>
           <div className="theme-text-muted mt-2 space-y-2 text-xs leading-6">
-            <p>\u611f\u8c22\u539f\u4f5c\u8005\u7684\u5f00\u6e90\u5206\u4eab\u3002</p>
+            <p>感谢原作者的开源分享。</p>
             <p>
-              GitHub\uff1a
+              GitHub：
               <a
                 className="ml-1 inline-flex items-center gap-1 text-[var(--accent-primary)] underline decoration-[var(--accent-highlight)] underline-offset-2 transition hover:opacity-80"
                 href="https://github.com/zkeyoned/map-of-us-template"
@@ -303,14 +303,14 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
                 <ExternalLink className="h-3 w-3" />
               </a>
             </p>
-            <p>\u6296\u97f3 ID\uff1asz00726yd</p>
+            <p>抖音 ID：sz00726yd</p>
           </div>
         </div>
 
         <div className="theme-divider mt-3 border-t pt-3">
-          <p className="theme-text-soft text-[11px] font-semibold">\u8d5e\u52a9\u652f\u6301</p>
+          <p className="theme-text-soft text-[11px] font-semibold">赞助支持</p>
           <p className="theme-text-muted mt-2 text-xs leading-6">
-            \u5982\u679c\u8fd9\u4e2a\u9879\u76ee\u5bf9\u4f60\u6709\u5e2e\u52a9\uff0c\u613f\u610f\u7684\u8bdd\u53ef\u4ee5\u901a\u8fc7\u8d5e\u52a9\u652f\u6301\u7ee7\u7eed\u5b8c\u5584 Space of us\u3002
+            如果这个项目对你有帮助，愿意的话可以通过赞助支持继续完善 Space of us。
           </p>
           <button
             ref={supportTriggerRef}
@@ -321,7 +321,7 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
             onClick={() => setSupportOpen(true)}
           >
             <HandHeart className="h-3.5 w-3.5" />
-            \u613f\u610f\u652f\u6301
+            愿意支持
           </button>
         </div>
 
@@ -338,24 +338,24 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
 
       {supportOpen && (
         <DialogShell
-          closeLabel="\u5173\u95ed\u8d5e\u52a9\u56fe\u7247"
+          closeLabel="关闭赞助图片"
           className="relative max-h-full w-full max-w-[980px] overflow-auto rounded-[12px] bg-white p-3 shadow-[0_28px_80px_rgba(52,68,81,0.28)]"
           dialogRef={supportDialogRef}
           labelledBy={supportTitleId}
           onClose={() => setSupportOpen(false)}
           onKeyDown={(event) => trapDialogTabKey(event.nativeEvent, supportDialogRef.current)}
           overlayClassName="fixed inset-0 z-[120] flex items-center justify-center bg-[#344451]/66 px-6 py-10 backdrop-blur-sm"
-          title="\u8d5e\u52a9\u652f\u6301"
+          title="赞助支持"
         >
           <button
             ref={supportPreviewTriggerRef}
-            aria-label="\u6253\u5f00\u5927\u56fe\u9884\u89c8"
+            aria-label="打开大图预览"
             className="relative mx-auto block w-full max-w-[920px]"
             type="button"
             onClick={() => setSupportPreviewOpen(true)}
           >
             <Image
-              alt="\u8d5e\u52a9\u652f\u6301\u6536\u6b3e\u7801"
+              alt="赞助支持收款码"
               className="h-auto w-full rounded-[8px]"
               height={1599}
               priority
@@ -375,7 +375,7 @@ export function MemorySidebar({ active }: Readonly<{ active: MemoryNavKey }>) {
           onClose={() => setSupportPreviewOpen(false)}
           onKeyDown={(event) => trapDialogTabKey(event.nativeEvent, supportPreviewDialogRef.current)}
           overlayClassName="fixed inset-0 z-[130] flex items-center justify-center bg-[#161F27]/88 px-4 py-6 backdrop-blur-md"
-          title="\u8d5e\u52a9\u4e8c\u7ef4\u7801\u5927\u56fe\u9884\u89c8"
+          title="赞助二维码大图预览"
         >
           <div className="mx-auto w-full max-w-[1280px]">
             <Image alt="Support QR preview" className="h-auto w-full rounded-[10px]" height={1599} src="/photos/support-qr.jpg" width={1280} />
@@ -429,7 +429,7 @@ export function MemoryPageShell({
           href="/"
         >
           <ShieldCheck className="h-4 w-4" />
-          \u8fd4\u56de\u63a7\u5236\u53f0
+          返回控制台
         </Link>
       )}
     </main>

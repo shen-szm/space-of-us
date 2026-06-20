@@ -1,4 +1,4 @@
-﻿import assert from "node:assert/strict";
+import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
@@ -126,6 +126,12 @@ test("memory navigation restores dialog trigger focus only after closing", async
   assert.match(source, /wasSupportPreviewOpenRef\.current && !supportPreviewOpen/);
   assert.doesNotMatch(source, /if \(!supportOpen\) supportTriggerRef\.current\?\.focus\(\)/);
   assert.doesNotMatch(source, /if \(!supportPreviewOpen\) supportPreviewTriggerRef\.current\?\.focus\(\)/);
+});
+
+test("memory navigation does not render raw unicode escape sequences", async () => {
+  const source = await readFile(memoryNavPath, "utf8");
+
+  assert.doesNotMatch(source, /\\u[0-9a-fA-F]{4}/);
 });
 
 test("settings experience delegates theme preset rendering to a dedicated section", async () => {

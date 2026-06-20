@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { getReadableDisplayName } from "../data/accounts.ts";
 import { createAuthSessionInfo } from "../lib/authSessionInfo.ts";
 
 test("reports an authenticated admin session without a registered username", () => {
@@ -24,4 +25,9 @@ test("reports an anonymous session", () => {
     role: null,
     username: null,
   });
+});
+
+test("falls back to username for unreadable legacy display names", () => {
+  assert.equal(getReadableDisplayName("??", "test1294264091"), "test1294264091");
+  assert.equal(getReadableDisplayName("张小姐", "zhang"), "张小姐");
 });

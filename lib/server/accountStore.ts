@@ -8,6 +8,7 @@ import {
   type BindingRequestStatus,
   type UserAccount,
   defaultAccountStore,
+  getReadableDisplayName,
   toPublicAccount,
 } from "@/data/accounts";
 import type { PartnerRole } from "@/data/couple";
@@ -84,7 +85,7 @@ const cleanAccount = (value: unknown): UserAccount | null => {
   return {
     id: value.id,
     username: normalizeUsername(value.username),
-    displayName: value.displayName,
+    displayName: getReadableDisplayName(value.displayName, normalizeUsername(value.username)),
     email: typeof value.email === "string" ? normalizeEmail(value.email) : undefined,
     emailVerifiedAt: typeof value.emailVerifiedAt === "string" ? value.emailVerifiedAt : undefined,
     passwordHash: value.passwordHash,

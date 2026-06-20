@@ -67,10 +67,15 @@ export const defaultAccountStore = (): AccountStore => ({
   users: [],
 });
 
+export const getReadableDisplayName = (displayName: string, username: string) => {
+  const normalized = displayName.trim();
+  return normalized && !/^[?\uFFFD]+$/.test(normalized) ? normalized : username;
+};
+
 export const toPublicAccount = (account: UserAccount): PublicUserAccount => ({
   id: account.id,
   username: account.username,
-  displayName: account.displayName,
+  displayName: getReadableDisplayName(account.displayName, account.username),
   createdAt: account.createdAt,
   updatedAt: account.updatedAt,
   lastLoginAt: account.lastLoginAt,
