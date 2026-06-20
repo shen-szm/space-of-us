@@ -1,4 +1,4 @@
-﻿import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import {
   clearAuthCookies,
   getMissingAuthEnv,
@@ -11,6 +11,7 @@ import {
   consumeLoginRateLimit,
   getLoginRateLimitStatus,
 } from "@/lib/server/loginRateLimit";
+import { resolveLoginRole } from "@/lib/server/loginIdentity";
 import { markAccountLogin, verifyAccountPassword } from "@/lib/server/accountStore";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +24,11 @@ const parseLoginPayload = (payload: unknown): { role: AuthRole; username: string
   if (!isRecord(payload) || typeof payload.password !== "string") return null;
 
   return {
-    role: payload.mode === "admin" ? "admin" : "site",
+    role: resolveLoginRole({
+      requestedMode: payload.mode === "admin" ? "admin" : "site",
+      username: typeof payload.username === "string" ? payload.username : "",
+      adminUsername: process.env.ADMIN_USERNAME,
+    }),
     username: typeof payload.username === "string" ? payload.username.trim() : "",
     password: payload.password,
   };

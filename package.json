@@ -13,7 +13,7 @@
     "start:production": "node scripts/start-production.mjs",
     "preview": "next start",
     "start": "next start",
-    "test": "node --no-warnings --test tests/auth-session-info.test.mts tests/guest-access.test.mts tests/music-card-copy.test.mts tests/admin-inbox-loading.test.mts tests/auth-security.test.mts tests/security-config.test.mts tests/theme-settings.test.mts",
+    "test": "node --no-warnings --test tests/auth-session-info.test.mts tests/admin-login-role.test.mts tests/guest-access.test.mts tests/music-card-copy.test.mts tests/admin-inbox-loading.test.mts tests/auth-security.test.mts tests/security-config.test.mts tests/theme-settings.test.mts",
     "lint": "eslint",
     "check:production-mail": "node scripts/check-production-mail.mjs",
     "verify:production-env": "node scripts/verify-production-env-loader.mjs",

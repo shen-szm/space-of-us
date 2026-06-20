@@ -176,14 +176,14 @@ export default function EntryExperience({
   };
 
   const submitLogin = async () => {
-    const adminLogin = isAdminName(username);
-    await postJson("/api/auth/login", {
-      mode: adminLogin ? "admin" : "site",
+    const adminHint = isAdminName(username);
+    const loginResult = await postJson<{ role: "site" | "admin" }>("/api/auth/login", {
+      mode: adminHint ? "admin" : "site",
       username,
       password,
     });
 
-    if (adminLogin) {
+    if (loginResult.role === "admin") {
       setAdminPanel(true);
       setStatus("done");
       setMessage("管理员已登录，正在读取后台数据。");
