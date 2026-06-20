@@ -23,3 +23,8 @@ test("server-side Supabase config only accepts service role style keys", () => {
 
   assert.doesNotMatch(source, /NEXT_PUBLIC_SUPABASE_(?:ANON|PUBLISHABLE)_KEY|SUPABASE_(?:ANON|PUBLISHABLE)_KEY/);
 });
+test("production startup validates the account hashing secret", () => {
+  const source = readSource("../scripts/start-production.mjs");
+
+  assert.match(source, /"ACCOUNT_HASH_SECRET"/);
+});

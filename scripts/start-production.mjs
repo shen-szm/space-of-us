@@ -8,6 +8,7 @@ const result = await loadProductionEnvFile(root);
 
 const requiredKeys = [
   "AUTH_COOKIE_SECRET",
+  "ACCOUNT_HASH_SECRET",
   "SITE_PASSWORD",
   "ADMIN_USERNAME",
   "ADMIN_PASSWORD",
