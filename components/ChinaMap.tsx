@@ -24,6 +24,8 @@ interface ChinaMapProps {
   width?: number;
   height?: number;
   className?: string;
+  demoLitProvinceIds?: readonly string[];
+  readOnly?: boolean;
 }
 
 const colors = {
@@ -90,7 +92,13 @@ export function SouthChinaSeaInset() {
   );
 }
 
-export default function ChinaMap({ width = 1100, height = 860, className }: ChinaMapProps) {
+export default function ChinaMap({
+  width = 1100,
+  height = 860,
+  className,
+  demoLitProvinceIds,
+  readOnly = false,
+}: ChinaMapProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [localMemories, setLocalMemories] = useState<LocalMemoryStore>({});
   const [zoom, setZoom] = useState(1);
@@ -99,6 +107,8 @@ export default function ChinaMap({ width = 1100, height = 860, className }: Chin
   const router = useRouter();
 
   useEffect(() => {
+    if (demoLitProvinceIds) return;
+
     let cancelled = false;
     const handleMemoryUpdate = (event: Event) => {
       const detail = (event as CustomEvent<LocalMemoryStore>).detail;
@@ -123,11 +133,14 @@ export default function ChinaMap({ width = 1100, height = 860, className }: Chin
       cancelled = true;
       window.removeEventListener(memoryStoreUpdatedEvent, handleMemoryUpdate);
     };
-  }, []);
+  }, [demoLitProvinceIds]);
 
   const litProvinceIds = useMemo(
-    () => getLitProvinceIds(getLitCityIds(localMemories)),
-    [localMemories],
+    () =>
+      demoLitProvinceIds
+        ? new Set(demoLitProvinceIds)
+        : getLitProvinceIds(getLitCityIds(localMemories)),
+    [demoLitProvinceIds, localMemories],
   );
 
   const paths = useMemo(() => {
@@ -169,6 +182,7 @@ export default function ChinaMap({ width = 1100, height = 860, className }: Chin
   };
 
   const goProvince = (id: string) => {
+    if (readOnly) return;
     router.push(`/province/${id}`);
   };
 
@@ -289,13 +303,13 @@ export default function ChinaMap({ width = 1100, height = 860, className }: Chin
                   strokeOpacity={path.lit ? 0.95 : 0.24}
                   strokeWidth={path.lit ? 2.2 : 1.25}
                   strokeLinejoin="round"
-                  className="cursor-pointer transition-all duration-300"
+                  className={`${readOnly ? "cursor-default" : "cursor-pointer"} transition-all duration-300`}
                   filter={path.lit || isHovered ? "url(#visitedGlow)" : undefined}
                   onMouseEnter={() => setHoveredId(path.id)}
                   onMouseLeave={() =>
                     setHoveredId((current) => (current === path.id ? null : current))
                   }
-                  onClick={() => goProvince(path.id)}
+                  onClick={readOnly ? undefined : () => goProvince(path.id)}
                 />
               );
             })}
@@ -313,12 +327,12 @@ export default function ChinaMap({ width = 1100, height = 860, className }: Chin
                     stroke={colors.bloom}
                     strokeOpacity={hoveredId === path.id ? 0.5 : 0.18}
                     strokeWidth="1.5"
-                    className="cursor-pointer transition-all duration-300"
+                    className={`${readOnly ? "cursor-default" : "cursor-pointer"} transition-all duration-300`}
                     onMouseEnter={() => setHoveredId(path.id)}
                     onMouseLeave={() =>
                       setHoveredId((current) => (current === path.id ? null : current))
                     }
-                    onClick={() => goProvince(path.id)}
+                    onClick={readOnly ? undefined : () => goProvince(path.id)}
                   />
                   <circle
                     cx={path.x}

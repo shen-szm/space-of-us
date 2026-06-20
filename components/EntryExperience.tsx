@@ -66,7 +66,11 @@ const statusClassName = (status: Status) => {
   return "border-[var(--border-soft)] bg-white/72 text-[var(--text-muted)]";
 };
 
-export default function EntryExperience() {
+export default function EntryExperience({
+  nextPath = "/map",
+}: Readonly<{
+  nextPath?: string;
+}>) {
   const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("login");
   const [recoverStage, setRecoverStage] = useState<RecoverStage>("request-code");
@@ -193,7 +197,7 @@ export default function EntryExperience() {
     }
 
     setStatus("done");
-    router.push("/map");
+    router.push(nextPath);
   };
 
   const sendRegisterCode = async () => {

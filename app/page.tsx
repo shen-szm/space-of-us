@@ -1,5 +1,5 @@
-import EntryExperience from "@/components/EntryExperience";
+import GuestHomeExperience from "@/components/GuestHomeExperience";
 
 export default function Home() {
-  return <EntryExperience />;
+  return <GuestHomeExperience />;
 }
